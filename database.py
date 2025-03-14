@@ -68,7 +68,16 @@ class DatabaseManager:
         if query.exec("SELECT COUNT(id) FROM colors_parts") and query.next():
             return query.value(0)
         else:
-            return 0       
+            return 0
+
+    def addContainer(self, name: str, _description: str) -> bool:
+        query = QSqlQuery()
+        query.prepare("INSERT INTO containers (name) VALUES (?)")
+        query.addBindValue(name)
+        if not query.exec():
+            logging.error(f"Error inserting container {name}: {query.lastError().text()}")
+            return False
+        return True
     
     def _create_tables(self) -> bool:
         """Create database tables using schema.sql"""
