@@ -1,0 +1,45 @@
+from pathlib import Path
+
+class AppConfig:
+    # Application Information
+    APP_NAME = "Brick Collection Manager"
+    APP_VERSION = "1.0.0"
+    ORGANIZATION_NAME = "YourOrganization"
+    
+    # File Paths
+    BASE_DIR = Path(__file__).parent
+    UI_DIR = BASE_DIR / "ui"
+    RESOURCES_DIR = BASE_DIR / "resources"
+    DATABASE_DIR = BASE_DIR / "database"
+    
+    # Database Configuration
+    DATABASE_NAME = "brick_collection.db"
+    DATABASE_PATH = DATABASE_DIR / DATABASE_NAME
+    DATABASE_TYPE = "QSQLITE"
+    DATABASE_SCHEMA_PATH = DATABASE_DIR / "schema.sql"
+    
+    # UI Configuration
+    WINDOW_WIDTH = 800
+    WINDOW_HEIGHT = 600
+    WINDOW_TITLE = APP_NAME
+    
+    # Style Configuration
+    STYLE_SHEET_PATH = UI_DIR / "style.qss"
+    
+    # Application Settings
+    DEBUG_MODE = True
+    LOG_LEVEL = "INFO"
+    
+    @classmethod
+    def initialize(cls):
+        """Create necessary directories if they don't exist"""
+        cls.UI_DIR.mkdir(exist_ok=True)
+        cls.RESOURCES_DIR.mkdir(exist_ok=True)
+        cls.DATABASE_DIR.mkdir(exist_ok=True)
+
+    @classmethod
+    def load_stylesheet(cls) -> str:
+        """Load the application stylesheet"""
+        if cls.STYLE_SHEET_PATH.exists():
+            return cls.STYLE_SHEET_PATH.read_text()
+        return ""
