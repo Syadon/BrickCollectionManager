@@ -10,6 +10,16 @@ class BrickColor:
         self.rgb = rgb
         self.type = color_type
 
+class Container:
+    def __init__(self, id: int, name: str, description: str, part_count: int = None):
+        self.id = id
+        self.name = name
+        self.description = description
+        self.part_count = part_count
+
+    def toTuple(self):
+        return (self.id, self.name, self.description, self.part_count)
+
 class DatabaseManager:
     def __init__(self):
         self.db = None
@@ -69,6 +79,29 @@ class DatabaseManager:
             return query.value(0)
         else:
             return 0
+        
+    def getContainers(self) -> list[Container]:
+        """Get all containers from the database"""
+        containers = []
+        query = QSqlQuery("SELECT * FROM containers")
+        while query.next():
+            container = Container(
+                query.value("id"),
+                query.value("name"),
+                "", #query.value("description"),
+                self.getConteinerPartCount(query.value("id"))
+            )
+            containers.append(container)
+        return containers
+
+    def getConteinerPartCount(self, container_id: int) -> int:
+        query = QSqlQuery()
+        query.prepare("SELECT COUNT(id) FROM parts_collection WHERE container_id = ?")
+        query.addBindValue(container_id)
+        if query.exec() and query.next():
+            return query.value(0)
+        else:
+            return None
 
     def addContainer(self, name: str, _description: str) -> bool:
         query = QSqlQuery()
