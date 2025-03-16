@@ -1,4 +1,4 @@
-from PySide6.QtWidgets import QDialog, QLabel
+from PySide6.QtWidgets import QDialog, QLabel, QComboBox
 from PySide6.QtCore import Qt, QTimer
 from PySide6.QtGui import QImage, QPixmap
 from ui.ui_addbricksdialog import Ui_AddBricksDialog
@@ -15,6 +15,12 @@ class AddBricksDialog(QDialog):
         self.ui = Ui_AddBricksDialog()
         self.ui.setupUi(self)
 
+        # Create camera selection combobox
+        self.camera_combo = QComboBox()
+        self.ui.gridLayout.addWidget(self.camera_combo, 1, 0, 1, 1)
+        self.populate_camera_list()
+        self.camera_combo.currentIndexChanged.connect(self.switch_camera)
+
         # Create video display label
         self.video_label = QLabel()
         self.ui.gridLayout.addWidget(self.video_label, 0, 0, 1, 1)
@@ -25,13 +31,43 @@ class AddBricksDialog(QDialog):
         # Connect capture button
         self.ui.captureButton.clicked.connect(self.capture_image)
 
-    def setup_camera(self):
+    def populate_camera_list(self):
+        """Find and populate available cameras"""
+        self.camera_combo.clear()
+        camera_count = 0
+        
+        # Try cameras until we find one that doesn't open
+        while True:
+            cap = cv2.VideoCapture(camera_count)
+            if not cap.isOpened():
+                break
+            
+            # Get camera name if possible, otherwise use index
+            ret, _ = cap.read()
+            if ret:
+                camera_name = f"Camera {camera_count}"
+                self.camera_combo.addItem(camera_name, camera_count)
+            
+            cap.release()
+            camera_count += 1
+
+    def switch_camera(self, index):
+        """Switch to the selected camera"""
+        if hasattr(self, 'cap'):
+            self.cap.release()
+        if hasattr(self, 'timer'):
+            self.timer.stop()
+            
+        camera_id = self.camera_combo.itemData(index)
+        self.setup_camera(camera_id)
+
+    def setup_camera(self, camera_id=0):
         """Initialize the camera and start the video stream"""
         try:
-            # Initialize camera (0 is usually the default camera)
-            self.cap = cv2.VideoCapture(0)
+            # Initialize selected camera
+            self.cap = cv2.VideoCapture(camera_id)
             if not self.cap.isOpened():
-                raise Exception("Could not open camera")
+                raise Exception(f"Could not open camera {camera_id}")
 
             # Set camera properties
             actual_width = self.cap.get(cv2.CAP_PROP_FRAME_WIDTH)
