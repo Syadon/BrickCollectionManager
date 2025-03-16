@@ -29,6 +29,9 @@ class CameraStreamView(QGraphicsView):
         self.timer.stop()
         self.cap.release()
 
+    def startStream(self):
+            self.timer.start(40)  # Update every 40ms (approx. 25 fps)
+
     def setup_camera(self, camera_id=0):
         try:
             # Initialize selected camera
@@ -45,7 +48,7 @@ class CameraStreamView(QGraphicsView):
             # Create timer for video updates
             self.timer = QTimer()
             self.timer.timeout.connect(self.update_frame)
-            self.timer.start(40)  # Update every 40ms (approx. 25 fps)
+            self.startStream()
 
         except Exception as e:
             logging.error(f"Camera setup failed: {str(e)}")

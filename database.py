@@ -19,13 +19,19 @@ class Container:
 
     def toTuple(self):
         return (self.id, self.name, self.description, self.part_count)
+    
+class ColorPart:
+    def __init__(self, id:int, part_id: str, color_id: int, code_name: int):
+        self.id = id
+        self.part_id = part_id
+        self.color_id = color_id
+        self.code_name = code_name
 
 class DatabaseManager:
     def __init__(self):
         self.db = None
         
     def initialize_database(self) -> bool:
-        """Initialize the SQLite database connection and setup"""
         self.db = QSqlDatabase.addDatabase(AppConfig.DATABASE_TYPE)
         self.db.setDatabaseName(str(AppConfig.DATABASE_PATH))
         
@@ -59,7 +65,6 @@ class DatabaseManager:
         return True
     
     def close_connection(self):
-        """Close the database connection"""
         if self.db and self.db.isOpen():
             self.db.close()
 
@@ -81,7 +86,6 @@ class DatabaseManager:
             return 0
         
     def getContainers(self) -> list[Container]:
-        """Get all containers from the database"""
         containers = []
         query = QSqlQuery("SELECT * FROM containers")
         while query.next():
@@ -138,8 +142,36 @@ class DatabaseManager:
             return False
         return True
     
+    def getColorPart(self, part_id: str, color_id: int) -> int:
+        query = QSqlQuery()
+        query.prepare("SELECT id, codename FROM colors_parts WHERE part_id = ? AND color_id = ?")
+        query.addBindValue(part_id)
+        query.addBindValue(color_id)
+        if query.exec() and query.next():
+            return ColorPart(query.value("id"), part_id, color_id, query.value("codename"))
+        else:
+            return None
+
+    def addColorPartToContainer(self, colorPart: ColorPart, container_id: int, quantity: int) -> bool:
+        query = QSqlQuery()
+        query.prepare("""INSERT OR IGNORE INTO parts_collection (item, container_id, count) VALUES (?, ?, 0);""")
+        query.addBindValue(colorPart.id)
+        query.addBindValue(container_id)
+        if not query.exec():
+            logging.error(f"Error adding part to collection: {query.lastError().text()}")
+            return False
+        
+        query.prepare("""UPDATE parts_collection SET count = count + ? WHERE item = ? AND container_id = ?""")
+        query.addBindValue(quantity)
+        query.addBindValue(colorPart.id)
+        query.addBindValue(container_id)
+        if not query.exec():
+            logging.error(f"Error updating part count: {query.lastError().text()}")
+            return False
+
+        return True
+    
     def _create_tables(self) -> bool:
-        """Create database tables using schema.sql"""
         try:
             if AppConfig.DATABASE_SCHEMA_PATH.exists():
                 query = QSqlQuery()

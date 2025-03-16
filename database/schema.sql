@@ -34,10 +34,10 @@ CREATE TABLE IF NOT EXISTS containers (
 );
 
 CREATE TABLE IF NOT EXISTS parts_collection (
-    id INTEGER PRIMARY KEY AUTOINCREMENT,
     item INTEGER NOT NULL,
     count INTEGER NOT NULL,
     container_id INTEGER NOT NULL,
+    PRIMARY KEY (item, container_id),
     FOREIGN KEY(item) REFERENCES color_parts(id),
     FOREIGN KEY(container_id) REFERENCES containers(id)
 );

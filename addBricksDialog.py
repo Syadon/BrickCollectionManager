@@ -34,6 +34,10 @@ class AddBricksDialog(QDialog):
         # Populate container combobox
         self.populate_container_list()
 
+        # Connect add part button
+        self.ui.addToContainerButton.clicked.connect(self.on_add_part_clicked)
+        self.ui.qtySpinBox.setValue(1)  # Set default quantity to 1
+
     def populate_camera_list(self):
         """Find and populate available cameras"""
         self.ui.camera_combo.clear()
@@ -150,6 +154,61 @@ class AddBricksDialog(QDialog):
             # Display name and part count
             display_text = f"{container.name} ({container.part_count} parts)"
             self.ui.containerCombobox.addItem(display_text, container.id)
+
+    def on_add_part_clicked(self):
+        """Handle adding part to container"""
+        try:
+            # Get selected part
+            part_item = self.ui.parts_list.currentItem()
+            if not part_item:
+                logging.warning("No part selected")
+                return
+
+            # Get selected color
+            color_item = self.ui.colors_list.currentItem()
+            if not color_item:
+                logging.warning("No color selected")
+                return
+
+            # Get selected container
+            container_id = self.ui.containerCombobox.currentData()
+            if container_id is None:
+                logging.warning("No container selected")
+                return
+
+            # Get quantity
+            quantity = self.ui.qtySpinBox.value()
+            if quantity <= 0:
+                logging.warning("Invalid quantity")
+                return
+
+            # Get part and color IDs
+            part_data = part_item.data(Qt.UserRole)
+            color_data = color_item.data(Qt.UserRole)
+            
+            # Get colors_parts ID
+            dbManager = DatabaseManager()
+            colorPart = dbManager.getColorPart(part_data['id'], color_data.id)
+            if colorPart is None:
+                logging.warning("No color_part found")
+                return        
+
+            # Insert into parts_collection
+            if not dbManager.addColorPartToContainer(colorPart, container_id, quantity):
+                logging.warning("Color_part not added to collection!")
+                return                 
+
+            logging.info(f"Added {quantity} of part {part_data['id']} in color {color_data.name} to container {container_id}")
+            
+            self.video_view.startStream()
+            # Clear selection and reset quantity
+            #self.ui.qtySpinBox.setValue(1)
+            #self.video_view.clear_detection()
+            #self.ui.parts_list.clear()
+            #self.ui.colors_list.clear()
+
+        except Exception as e:
+            logging.error(f"Error adding part to collection: {str(e)}")
 
     def closeEvent(self, event):
         self.video_view.close_stream()
