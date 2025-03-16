@@ -1,7 +1,7 @@
-from PySide6.QtWidgets import (QDialog, QComboBox, QListWidget, 
+from PySide6.QtWidgets import (QDialog, QComboBox, QListWidget, QGraphicsRectItem, 
                               QListWidgetItem, QGraphicsView, QGraphicsScene)
 from PySide6.QtCore import Qt, QTimer
-from PySide6.QtGui import QImage, QPixmap, QColor, QPainter
+from PySide6.QtGui import QImage, QPixmap, QColor, QPainter, QPen
 from database import DatabaseManager, BrickColor
 from ui.ui_addbricksdialog import Ui_AddBricksDialog
 from config import AppConfig
@@ -161,25 +161,28 @@ class AddBricksDialog(QDialog):
     def partDetectedSetup(self, image, detectionData):
         self.timer.stop()
 
+        # Clear scene
+        self.video_scene.clear()
+
         # Convert frame from BGR to RGB
         image = cv2.cvtColor(image, cv2.COLOR_BGR2RGB)
         
         # Draw bounding box
+        # Add bounding box to scene using QGraphicsRectItem
+
+        # Convert bounding box coordinates
         bbleft = int(detectionData['bounding_box']['left'])
-        bbright = int(detectionData['bounding_box']['right'])
+        bbright = int(detectionData['bounding_box']['right']) 
         bbupper = int(detectionData['bounding_box']['upper'])
         bblower = int(detectionData['bounding_box']['lower'])
-        cv2.rectangle(image, (bbleft, bbupper), (bbright, bblower), (0, 255, 0), 2)
 
-        # Convert to QImage
-        h, w, ch = image.shape
-        bytes_per_line = ch * w
-        qimage = QImage(image.data, w, h, bytes_per_line, QImage.Format_RGB888)
-        
-        # Convert to QPixmap and update scene
-        pixmap = QPixmap.fromImage(qimage)
-        self.video_scene.clear()
+        # Create rectangle item
+        rect = QGraphicsRectItem(bbleft, bbupper, bbright-bbleft, bblower-bbupper)
+        rect.setPen(QPen(QColor(0, 255, 0), 2))
+
+        pixmap = self.opencvToPixmap(image)
         self.video_scene.addPixmap(pixmap)
+        self.video_scene.addItem(rect)
         self.video_view.fitInView(self.video_scene.sceneRect(), Qt.KeepAspectRatio)
 
         # Clear previous items
@@ -200,6 +203,15 @@ class AddBricksDialog(QDialog):
         # Select first item if available
         if self.parts_list.count() > 0:
             self.parts_list.setCurrentRow(0)
+
+    def opencvToPixmap(self, image):
+        # Convert to QImage
+        h, w, ch = image.shape
+        bytes_per_line = ch * w
+        qimage = QImage(image.data, w, h, bytes_per_line, QImage.Format_RGB888)
+        
+        # Convert to QPixmap and update scene
+        return QPixmap.fromImage(qimage)
 
     def on_part_selected(self):
         """Handle part selection from list"""
