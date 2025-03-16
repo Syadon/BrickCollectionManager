@@ -18,22 +18,81 @@
   </property>
   <layout class="QGridLayout" name="gridLayout_2">
    <item row="0" column="0">
-    <layout class="QGridLayout" name="gridLayout"/>
-   </item>
-   <item row="1" column="0">
-    <widget class="QPushButton" name="captureButton">
-     <property name="text">
-      <string>Capture</string>
-     </property>
-    </widget>
+    <layout class="QGridLayout" name="dialogLayout" rowstretch="0,0,0" columnstretch="2,1,1">
+     <item row="2" column="1">
+      <widget class="QListWidget" name="colors_list"/>
+     </item>
+     <item row="1" column="1">
+      <widget class="QListWidget" name="parts_list"/>
+     </item>
+     <item row="0" column="0" rowspan="3">
+      <layout class="QVBoxLayout" name="cameraLayout">
+       <item>
+        <widget class="QLabel" name="label">
+         <property name="text">
+          <string>Camera</string>
+         </property>
+        </widget>
+       </item>
+       <item>
+        <widget class="QComboBox" name="camera_combo"/>
+       </item>
+       <item>
+        <widget class="QPushButton" name="captureButton">
+         <property name="text">
+          <string>Capture</string>
+         </property>
+        </widget>
+       </item>
+      </layout>
+     </item>
+     <item row="0" column="1">
+      <widget class="QLabel" name="label_2">
+       <property name="text">
+        <string>Detection Result</string>
+       </property>
+      </widget>
+     </item>
+     <item row="0" column="2" rowspan="3">
+      <layout class="QVBoxLayout" name="collectionLayout">
+       <item>
+        <widget class="QLabel" name="collectionLabel">
+         <property name="text">
+          <string>Collection</string>
+         </property>
+        </widget>
+       </item>
+       <item>
+        <widget class="QComboBox" name="containerCombobox"/>
+       </item>
+       <item>
+        <widget class="QSpinBox" name="qtySpinBox"/>
+       </item>
+       <item>
+        <widget class="QPushButton" name="addToContainerButton">
+         <property name="text">
+          <string>Add to Container</string>
+         </property>
+        </widget>
+       </item>
+       <item>
+        <widget class="QPushButton" name="skipButton">
+         <property name="text">
+          <string>Next</string>
+         </property>
+        </widget>
+       </item>
+      </layout>
+     </item>
+    </layout>
    </item>
    <item row="2" column="0">
     <widget class="QDialogButtonBox" name="buttonBox">
      <property name="orientation">
-      <enum>Qt::Horizontal</enum>
+      <enum>Qt::Orientation::Horizontal</enum>
      </property>
      <property name="standardButtons">
-      <set>QDialogButtonBox::Cancel|QDialogButtonBox::Ok</set>
+      <set>QDialogButtonBox::StandardButton::Cancel|QDialogButtonBox::StandardButton::Ok</set>
      </property>
     </widget>
    </item>
