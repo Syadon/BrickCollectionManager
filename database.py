@@ -94,11 +94,11 @@ class DatabaseManager:
             containers.append(container)
         return containers
     
-    def getPartColotrs(self, part_id: str) -> list[BrickColor]:
+    def getPartColors(self, part_id: str) -> list[BrickColor]:
         # Create SQL query to get colors for part
         query = QSqlQuery()
         query.prepare("""
-            SELECT DISTINCT c.id, c.name, c.rgb
+            SELECT DISTINCT c.id, c.name, c.rgb, c.type
             FROM colors c
             JOIN colors_parts cp ON c.id = cp.color_id
             WHERE cp.part_id = ?

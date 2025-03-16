@@ -1,7 +1,7 @@
-from PySide6.QtWidgets import (QDialog, QLabel, QComboBox, QListWidget, 
-                              QListWidgetItem)
+from PySide6.QtWidgets import (QDialog, QComboBox, QListWidget, 
+                              QListWidgetItem, QGraphicsView, QGraphicsScene)
 from PySide6.QtCore import Qt, QTimer
-from PySide6.QtGui import QImage, QPixmap, QColor
+from PySide6.QtGui import QImage, QPixmap, QColor, QPainter
 from database import DatabaseManager, BrickColor
 from ui.ui_addbricksdialog import Ui_AddBricksDialog
 from config import AppConfig
@@ -23,9 +23,14 @@ class AddBricksDialog(QDialog):
         self.populate_camera_list()
         self.camera_combo.currentIndexChanged.connect(self.switch_camera)
 
-        # Create video display label
-        self.video_label = QLabel()
-        self.ui.gridLayout.addWidget(self.video_label, 0, 0, 1, 1)
+        # Replace the video label creation with graphics view
+        self.video_scene = QGraphicsScene()
+        self.video_view = QGraphicsView(self.video_scene)
+        self.video_view.setMinimumSize(640, 480)
+        self.video_view.setHorizontalScrollBarPolicy(Qt.ScrollBarAlwaysOff)
+        self.video_view.setVerticalScrollBarPolicy(Qt.ScrollBarAlwaysOff)
+        self.video_view.setRenderHint(QPainter.SmoothPixmapTransform)
+        self.ui.gridLayout.addWidget(self.video_view, 0, 0, 1, 1)
 
         # Create parts list widget
         self.parts_list = QListWidget()
@@ -98,7 +103,7 @@ class AddBricksDialog(QDialog):
             # Create timer for video updates
             self.timer = QTimer()
             self.timer.timeout.connect(self.update_frame)
-            self.timer.start(30)  # Update every 30ms (approx. 33 fps)
+            self.timer.start(40)  # Update every 40ms (approx. 25 fps)
 
         except Exception as e:
             logging.error(f"Camera setup failed: {str(e)}")
@@ -117,14 +122,18 @@ class AddBricksDialog(QDialog):
                 bytes_per_line = ch * w
                 image = QImage(frame.data, w, h, bytes_per_line, QImage.Format_RGB888)
                 
-                # Scale image to fit label while maintaining aspect ratio
+                # Convert to QPixmap and add to scene
                 pixmap = QPixmap.fromImage(image)
-                scaled_pixmap = pixmap.scaled(self.video_label.size(), 
-                                            Qt.KeepAspectRatio,
-                                            Qt.SmoothTransformation)
                 
-                # Display the image
-                self.video_label.setPixmap(scaled_pixmap)
+                # Clear previous frame
+                self.video_scene.clear()
+                
+                # Add new frame to scene
+                self.video_scene.addPixmap(pixmap)
+                
+                # Fit scene in view
+                self.video_view.fitInView(self.video_scene.sceneRect(), 
+                                        Qt.KeepAspectRatio)
 
         except Exception as e:
             logging.error(f"Frame update failed: {str(e)}")
@@ -152,15 +161,14 @@ class AddBricksDialog(QDialog):
     def partDetectedSetup(self, image, detectionData):
         self.timer.stop()
 
-        """Setup the UI to display the detected part"""
         # Convert frame from BGR to RGB
         image = cv2.cvtColor(image, cv2.COLOR_BGR2RGB)
+        
+        # Draw bounding box
         bbleft = int(detectionData['bounding_box']['left'])
         bbright = int(detectionData['bounding_box']['right'])
         bbupper = int(detectionData['bounding_box']['upper'])
         bblower = int(detectionData['bounding_box']['lower'])
-
-        # Draw bounding box
         cv2.rectangle(image, (bbleft, bbupper), (bbright, bblower), (0, 255, 0), 2)
 
         # Convert to QImage
@@ -168,14 +176,11 @@ class AddBricksDialog(QDialog):
         bytes_per_line = ch * w
         qimage = QImage(image.data, w, h, bytes_per_line, QImage.Format_RGB888)
         
-        # Scale image to fit label while maintaining aspect ratio
+        # Convert to QPixmap and update scene
         pixmap = QPixmap.fromImage(qimage)
-        scaled_pixmap = pixmap.scaled(self.video_label.size(), 
-                                    Qt.KeepAspectRatio,
-                                    Qt.SmoothTransformation)
-        
-        # Display the image
-        self.video_label.setPixmap(scaled_pixmap)
+        self.video_scene.clear()
+        self.video_scene.addPixmap(pixmap)
+        self.video_view.fitInView(self.video_scene.sceneRect(), Qt.KeepAspectRatio)
 
         # Clear previous items
         self.parts_list.clear()
@@ -208,7 +213,7 @@ class AddBricksDialog(QDialog):
         """Update colors list for selected part"""
         self.colors_list.clear()
         dbManage = DatabaseManager()
-        colors = dbManage.getPartColotrs(part_id)
+        colors = dbManage.getPartColors(part_id)
         for color in colors:                
             # Create list item
             item = self.create_color_list_item(color)
@@ -224,7 +229,7 @@ class AddBricksDialog(QDialog):
         item.setBackground(bgColor)
 
             # Set text color for better visibility
-        luminance = (0.299 * bgColor.r + 0.587 * bgColor.g + 0.114 * bgColor.b)
+        luminance = (0.299 * bgColor.red() + 0.587 * bgColor.green() + 0.114 * bgColor.blue())
         text_color = Qt.white if luminance < 128 else Qt.black
         item.setForeground(text_color)
 
@@ -238,3 +243,8 @@ class AddBricksDialog(QDialog):
         if hasattr(self, 'cap'):
             self.cap.release()
         super().closeEvent(event)
+
+    def resizeEvent(self, event):
+        super().resizeEvent(event)
+        if hasattr(self, 'video_view') and hasattr(self, 'video_scene'):
+            self.video_view.fitInView(self.video_scene.sceneRect(), Qt.KeepAspectRatio)
