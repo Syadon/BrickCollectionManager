@@ -1,6 +1,8 @@
-from PySide6.QtWidgets import QDialog, QLabel, QComboBox
+from PySide6.QtWidgets import (QDialog, QLabel, QComboBox, QListWidget, 
+                              QListWidgetItem)
 from PySide6.QtCore import Qt, QTimer
-from PySide6.QtGui import QImage, QPixmap
+from PySide6.QtGui import QImage, QPixmap, QColor
+from database import DatabaseManager, BrickColor
 from ui.ui_addbricksdialog import Ui_AddBricksDialog
 from config import AppConfig
 import cv2
@@ -25,11 +27,29 @@ class AddBricksDialog(QDialog):
         self.video_label = QLabel()
         self.ui.gridLayout.addWidget(self.video_label, 0, 0, 1, 1)
 
+        # Create parts list widget
+        self.parts_list = QListWidget()
+        self.parts_list.setMinimumWidth(300)  # Set minimum width for better visibility
+        self.ui.gridLayout.addWidget(self.parts_list, 0, 1, 2, 1)  # Span 2 rows
+
+        # Create colors list widget
+        self.colors_list = QListWidget()
+        self.colors_list.setMinimumWidth(300)  # Match parts list width
+        self.colors_list.setMaximumHeight(150)  # Limit height
+        self.ui.gridLayout.addWidget(self.colors_list, 2, 1, 1, 1)  # Add below parts_list
+
+        # Set column stretch factors (3:1 ratio)
+        self.ui.gridLayout.setColumnStretch(0, 2)  # Video column gets 2 parts
+        self.ui.gridLayout.setColumnStretch(1, 1)  # Lists get 1 part
+
         # Setup camera
         self.setup_camera()
 
         # Connect capture button
         self.ui.captureButton.clicked.connect(self.capture_image)
+
+        # Connect list item selection
+        self.parts_list.itemSelectionChanged.connect(self.on_part_selected)
 
     def populate_camera_list(self):
         """Find and populate available cameras"""
@@ -142,9 +162,6 @@ class AddBricksDialog(QDialog):
 
         # Draw bounding box
         cv2.rectangle(image, (bbleft, bbupper), (bbright, bblower), (0, 255, 0), 2)
-        
-        for i in detectionData['items']:
-            print(f"{i['id']} - {i['name']} - {i['score']} - {i['img_url']}")
 
         # Convert to QImage
         h, w, ch = image.shape
@@ -160,10 +177,59 @@ class AddBricksDialog(QDialog):
         # Display the image
         self.video_label.setPixmap(scaled_pixmap)
 
-        # Display the detected part
-        # self.ui.detectedPartLabel.setText(f"Detected Part: {detectionData['part']}")
-        # self.ui.detectedPartLabel.show()
+        # Clear previous items
+        self.parts_list.clear()
 
+        # Add detected parts to list widget
+        for item in detectionData['items']:
+            # Create list item with part info
+            list_item = QListWidgetItem()
+            list_item.setText(f"{item['id']} - {item['name']} - Score: {item['score']:.2%} ")
+            
+            # Store full item data in item's data role
+            list_item.setData(Qt.UserRole, item)
+            
+            # Add item to list
+            self.parts_list.addItem(list_item)
+        
+        # Select first item if available
+        if self.parts_list.count() > 0:
+            self.parts_list.setCurrentRow(0)
+
+    def on_part_selected(self):
+        """Handle part selection from list"""
+        current_item = self.parts_list.currentItem()
+        if current_item:
+            part_data = current_item.data(Qt.UserRole)
+            logging.info(f"Selected part: {part_data['id']} - {part_data['name']}")
+            self.update_colors_list(part_data['id'])
+
+    def update_colors_list(self, part_id):
+        """Update colors list for selected part"""
+        self.colors_list.clear()
+        dbManage = DatabaseManager()
+        colors = dbManage.getPartColotrs(part_id)
+        for color in colors:                
+            # Create list item
+            item = self.create_color_list_item(color)
+            self.colors_list.addItem(item)
+
+    def create_color_list_item(self, color:BrickColor) -> QListWidgetItem:
+        item = QListWidgetItem()
+
+        itemNext = f"{color.name} - {color.type}" if color.type else color.name
+        item.setText(itemNext)
+
+        bgColor = QColor(f"#{color.rgb}")
+        item.setBackground(bgColor)
+
+            # Set text color for better visibility
+        luminance = (0.299 * bgColor.r + 0.587 * bgColor.g + 0.114 * bgColor.b)
+        text_color = Qt.white if luminance < 128 else Qt.black
+        item.setForeground(text_color)
+
+        item.setData(Qt.UserRole, color)
+        return item
 
     def closeEvent(self, event):
         """Clean up resources when dialog is closed"""

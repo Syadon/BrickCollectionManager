@@ -93,6 +93,32 @@ class DatabaseManager:
             )
             containers.append(container)
         return containers
+    
+    def getPartColotrs(self, part_id: str) -> list[BrickColor]:
+        # Create SQL query to get colors for part
+        query = QSqlQuery()
+        query.prepare("""
+            SELECT DISTINCT c.id, c.name, c.rgb
+            FROM colors c
+            JOIN colors_parts cp ON c.id = cp.color_id
+            WHERE cp.part_id = ?
+            ORDER BY c.name
+        """)
+        query.addBindValue(part_id)
+        
+        if query.exec():
+            colors = []
+            while query.next():
+                color = BrickColor(
+                    query.value("id"),
+                    query.value("name"),
+                    query.value("rgb"),
+                    query.value("type")
+                )
+                colors.append(color)
+            return colors
+        else:
+            return []
 
     def getConteinerPartCount(self, container_id: int) -> int:
         query = QSqlQuery()
