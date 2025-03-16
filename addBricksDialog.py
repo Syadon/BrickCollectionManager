@@ -31,6 +31,9 @@ class AddBricksDialog(QDialog):
         # Connect list item selection
         self.ui.parts_list.itemSelectionChanged.connect(self.on_part_selected)
 
+        # Populate container combobox
+        self.populate_container_list()
+
     def populate_camera_list(self):
         """Find and populate available cameras"""
         self.ui.camera_combo.clear()
@@ -134,6 +137,19 @@ class AddBricksDialog(QDialog):
 
         item.setData(Qt.UserRole, color)
         return item
+
+    def populate_container_list(self):
+        self.ui.containerCombobox.clear()
+        
+        # Get containers from database
+        db_manager = DatabaseManager()
+        containers = db_manager.getContainers()
+        
+        # Add containers to combobox
+        for container in containers:
+            # Display name and part count
+            display_text = f"{container.name} ({container.part_count} parts)"
+            self.ui.containerCombobox.addItem(display_text, container.id)
 
     def closeEvent(self, event):
         self.video_view.close_stream()
