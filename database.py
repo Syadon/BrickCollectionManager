@@ -126,7 +126,7 @@ class DatabaseManager:
 
     def getConteinerPartCount(self, container_id: int) -> int:
         query = QSqlQuery()
-        query.prepare("SELECT COUNT(id) FROM parts_collection WHERE container_id = ?")
+        query.prepare("SELECT SUM(count) FROM parts_collection WHERE container_id = ?")
         query.addBindValue(container_id)
         if query.exec() and query.next():
             return query.value(0)
