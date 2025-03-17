@@ -1,6 +1,7 @@
 from PySide6.QtWidgets import (QGraphicsRectItem, QGraphicsView, QGraphicsScene)
 from PySide6.QtGui import QImage, QPixmap, QColor, QPainter, QPen
 from PySide6.QtCore import QTimer, Qt, Signal, QRect
+from utils import opencvToPixmap, opencvToQImage
 import cv2
 import logging
 
@@ -63,7 +64,7 @@ class CameraStreamView(QGraphicsView):
         try:
             ret, frame = self.cap.read()
             if ret:
-                pixmap = self.opencvToPixmap(frame)
+                pixmap = opencvToPixmap(frame)
 
                 # Clear previous frame
                 self.clearScene()
@@ -83,7 +84,7 @@ class CameraStreamView(QGraphicsView):
         try:
             ret, frame = self.cap.read()
             if ret:
-                image = self.opencvToQImage(frame)
+                image = opencvToQImage(frame)
                 self.image_captured.emit(image)
         except Exception as e:
             logging.error(f"Image capture failed: {str(e)}")
@@ -105,12 +106,3 @@ class CameraStreamView(QGraphicsView):
         super().resizeEvent(event)
         self.fitInView(self.scene.sceneRect(), Qt.KeepAspectRatio)
 
-    def opencvToQImage(self, image):
-        # Convert to QImage
-        h, w, ch = image.shape
-        bytes_per_line = ch * w
-        imageTmp = cv2.cvtColor(image, cv2.COLOR_BGR2RGB)
-        return QImage(imageTmp.data, w, h, bytes_per_line, QImage.Format_RGB888)
-
-    def opencvToPixmap(self, image):
-        return QPixmap.fromImage(self.opencvToQImage(image))

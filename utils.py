@@ -1,4 +1,4 @@
-from PySide6.QtGui import QImage
+from PySide6.QtGui import QImage, QPixmap
 import cv2
 import numpy as np
 
@@ -65,3 +65,13 @@ def qImageToOpenCV(image:QImage):
     cv_image = cv2.cvtColor(arr, cv2.COLOR_BGRA2BGR)
 
     return cv_image
+
+def opencvToQImage(image):
+    # Convert to QImage
+    h, w, ch = image.shape
+    bytes_per_line = ch * w
+    imageTmp = cv2.cvtColor(image, cv2.COLOR_BGR2RGB)
+    return QImage(imageTmp.data, w, h, bytes_per_line, QImage.Format_RGB888)
+
+def opencvToPixmap(image):
+    return QPixmap.fromImage(opencvToQImage(image))
