@@ -6,8 +6,8 @@
    <rect>
     <x>0</x>
     <y>0</y>
-    <width>716</width>
-    <height>477</height>
+    <width>1000</width>
+    <height>600</height>
    </rect>
   </property>
   <property name="windowTitle">
@@ -18,7 +18,7 @@
   </property>
   <layout class="QGridLayout" name="gridLayout_2">
    <item row="0" column="0">
-    <layout class="QGridLayout" name="dialogLayout" rowstretch="0,0,0" columnstretch="2,1,1">
+    <layout class="QGridLayout" name="dialogLayout" rowstretch="0,0,0" columnstretch="2,0">
      <item row="2" column="1">
       <widget class="QListWidget" name="colors_list"/>
      </item>
@@ -26,22 +26,59 @@
       <widget class="QListWidget" name="parts_list"/>
      </item>
      <item row="0" column="0" rowspan="3">
-      <layout class="QVBoxLayout" name="cameraLayout">
+      <layout class="QVBoxLayout" name="acqCollLayout">
        <item>
-        <widget class="QLabel" name="label">
-         <property name="text">
-          <string>Camera</string>
-         </property>
-        </widget>
+        <layout class="QHBoxLayout" name="acquisitionOptLayout" stretch="0,1">
+         <item>
+          <widget class="QLabel" name="acquisitionLabel">
+           <property name="text">
+            <string>Acqiosition Method</string>
+           </property>
+          </widget>
+         </item>
+         <item>
+          <widget class="QComboBox" name="acquisition_combo"/>
+         </item>
+        </layout>
        </item>
        <item>
-        <widget class="QComboBox" name="camera_combo"/>
+       <layout class="QVBoxLayout" name="cameraLayout">
+        <item>
+            <widget class="QPushButton" name="captureButton">
+            <property name="text">
+            <string>Capture</string>
+            </property>
+            </widget>
+        </item>
+       </layout>
        </item>
        <item>
-        <widget class="QPushButton" name="captureButton">
-         <property name="text">
-          <string>Capture</string>
+        <widget class="QGroupBox" name="collectionGroupBox">
+         <property name="title">
+          <string>Collection</string>
          </property>
+         <layout class="QVBoxLayout" name="collectionLayout">
+          <item>
+           <widget class="QComboBox" name="containerCombobox"/>
+          </item>
+          <item>
+           <widget class="QSpinBox" name="qtySpinBox"/>
+          </item>
+          <item>
+           <widget class="QPushButton" name="addToContainerButton">
+            <property name="text">
+             <string>Add to Container</string>
+            </property>
+           </widget>
+          </item>
+          <item>
+           <widget class="QPushButton" name="skipButton">
+            <property name="text">
+             <string>Next</string>
+            </property>
+           </widget>
+          </item>
+         </layout>
         </widget>
        </item>
       </layout>
@@ -53,84 +90,10 @@
        </property>
       </widget>
      </item>
-     <item row="0" column="2" rowspan="3">
-      <layout class="QVBoxLayout" name="collectionLayout">
-       <item>
-        <widget class="QLabel" name="collectionLabel">
-         <property name="text">
-          <string>Collection</string>
-         </property>
-        </widget>
-       </item>
-       <item>
-        <widget class="QComboBox" name="containerCombobox"/>
-       </item>
-       <item>
-        <widget class="QSpinBox" name="qtySpinBox"/>
-       </item>
-       <item>
-        <widget class="QPushButton" name="addToContainerButton">
-         <property name="text">
-          <string>Add to Container</string>
-         </property>
-        </widget>
-       </item>
-       <item>
-        <widget class="QPushButton" name="skipButton">
-         <property name="text">
-          <string>Next</string>
-         </property>
-        </widget>
-       </item>
-      </layout>
-     </item>
     </layout>
-   </item>
-   <item row="2" column="0">
-    <widget class="QDialogButtonBox" name="buttonBox">
-     <property name="orientation">
-      <enum>Qt::Orientation::Horizontal</enum>
-     </property>
-     <property name="standardButtons">
-      <set>QDialogButtonBox::StandardButton::Cancel|QDialogButtonBox::StandardButton::Ok</set>
-     </property>
-    </widget>
    </item>
   </layout>
  </widget>
  <resources/>
- <connections>
-  <connection>
-   <sender>buttonBox</sender>
-   <signal>accepted()</signal>
-   <receiver>AddBricksDialog</receiver>
-   <slot>accept()</slot>
-   <hints>
-    <hint type="sourcelabel">
-     <x>248</x>
-     <y>254</y>
-    </hint>
-    <hint type="destinationlabel">
-     <x>157</x>
-     <y>274</y>
-    </hint>
-   </hints>
-  </connection>
-  <connection>
-   <sender>buttonBox</sender>
-   <signal>rejected()</signal>
-   <receiver>AddBricksDialog</receiver>
-   <slot>reject()</slot>
-   <hints>
-    <hint type="sourcelabel">
-     <x>316</x>
-     <y>260</y>
-    </hint>
-    <hint type="destinationlabel">
-     <x>286</x>
-     <y>274</y>
-    </hint>
-   </hints>
-  </connection>
- </connections>
+ <connections/>
 </ui>

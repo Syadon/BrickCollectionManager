@@ -18,11 +18,11 @@ class AddBricksDialog(QDialog):
         self.ui.setupUi(self)
 
         self.video_view = CameraStreamView()
-        self.ui.cameraLayout.insertWidget(1, self.video_view)
+        self.ui.cameraLayout.insertWidget(0, self.video_view)
 
         # Create camera selection combobox
         self.populate_camera_list()
-        self.ui.camera_combo.currentIndexChanged.connect(self.switch_camera)
+        self.ui.acquisition_combo.currentIndexChanged.connect(self.switch_camera)
 
         # Connect capture button
         self.ui.captureButton.clicked.connect(self.video_view.capture_image)
@@ -38,9 +38,13 @@ class AddBricksDialog(QDialog):
         self.ui.addToContainerButton.clicked.connect(self.on_add_part_clicked)
         self.ui.qtySpinBox.setValue(1)  # Set default quantity to 1
 
+        if self.ui.acquisition_combo.count() > 1:
+            self.ui.acquisition_combo.setCurrentIndex(1)
+
     def populate_camera_list(self):
-        """Find and populate available cameras"""
-        self.ui.camera_combo.clear()
+        self.ui.acquisition_combo.clear()
+        self.ui.acquisition_combo.addItem("Manual", {"method": 0})
+
         camera_count = 0
         
         # Try cameras until we find one that doesn't open
@@ -53,14 +57,20 @@ class AddBricksDialog(QDialog):
             ret, _ = cap.read()
             if ret:
                 camera_name = f"Camera {camera_count}"
-                self.ui.camera_combo.addItem(camera_name, camera_count)
+                self.ui.acquisition_combo.addItem(camera_name, {"method": 1, "camera_count": camera_count})
             
             cap.release()
             camera_count += 1
 
     def switch_camera(self, index):
-        camera_id = self.ui.camera_combo.itemData(index)
-        self.video_view.switch_camera(camera_id)
+        acqMethod = self.ui.acquisition_combo.itemData(index)
+        if acqMethod["method"] == 1:
+            self.video_view.show()
+            self.video_view.switch_camera(acqMethod["camera_count"])
+        else:
+            print("No Camera")
+            self.video_view.close_stream()
+            self.video_view.hide()
 
     def on_image_captured(self, image:QImage):
         # Convert QImage to bytes in memory
