@@ -107,26 +107,80 @@
        <property name="gridStyle">
         <enum>Qt::PenStyle::NoPen</enum>
        </property>
+       <property name="sortingEnabled">
+        <bool>true</bool>
+       </property>
        <property name="rowCount">
         <number>0</number>
        </property>
        <property name="columnCount">
         <number>4</number>
        </property>
-       <column/>
-       <column/>
-       <column/>
-       <column/>
+       <attribute name="horizontalHeaderStretchLastSection">
+        <bool>true</bool>
+       </attribute>
+       <attribute name="verticalHeaderStretchLastSection">
+        <bool>false</bool>
+       </attribute>
+       <column>
+        <property name="text">
+         <string>Image</string>
+        </property>
+       </column>
+       <column>
+        <property name="text">
+         <string>ID</string>
+        </property>
+       </column>
+       <column>
+        <property name="text">
+         <string>Name</string>
+        </property>
+       </column>
+       <column>
+        <property name="text">
+         <string>Score</string>
+        </property>
+       </column>
       </widget>
      </item>
      <item>
-      <widget class="QListWidget" name="colors_list">
+      <widget class="QTableWidget" name="colors_list">
        <property name="editTriggers">
         <set>QAbstractItemView::EditTrigger::NoEditTriggers</set>
+       </property>
+       <property name="selectionMode">
+        <enum>QAbstractItemView::SelectionMode::SingleSelection</enum>
        </property>
        <property name="selectionBehavior">
         <enum>QAbstractItemView::SelectionBehavior::SelectRows</enum>
        </property>
+       <property name="sortingEnabled">
+        <bool>true</bool>
+       </property>
+       <attribute name="horizontalHeaderStretchLastSection">
+        <bool>true</bool>
+       </attribute>
+       <column>
+        <property name="text">
+         <string>Color</string>
+        </property>
+       </column>
+       <column>
+        <property name="text">
+         <string>Type</string>
+        </property>
+       </column>
+       <column>
+        <property name="text">
+         <string>Score</string>
+        </property>
+       </column>
+       <column>
+        <property name="text">
+         <string>ID</string>
+        </property>
+       </column>
       </widget>
      </item>
     </layout>

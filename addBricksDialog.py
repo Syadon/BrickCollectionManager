@@ -1,4 +1,4 @@
-from PySide6.QtWidgets import QDialog, QListWidgetItem, QTableWidgetItem
+from PySide6.QtWidgets import QDialog, QListWidgetItem, QTableWidgetItem, QAbstractItemView
 from PySide6.QtCore import Qt, QByteArray, QBuffer, QRect
 from PySide6.QtGui import QImage, QColor, QIcon, QPixmap, QPainter
 from database import DatabaseManager, BrickColor
@@ -44,8 +44,6 @@ class AddBricksDialog(QDialog):
 
         if self.ui.acquisition_combo.count() > 1:
             self.ui.acquisition_combo.setCurrentIndex(1)
-
-        self.ui.parts_list.setHorizontalHeaderLabels(['Image', 'ID', 'Name', 'Score'])
 
     def populate_camera_list(self):
         self.ui.acquisition_combo.clear()
@@ -150,10 +148,7 @@ class AddBricksDialog(QDialog):
         self.colorsDetected = self.detect_image_colors(image, bb)
 
         # Clear previous items
-        self.ui.parts_list.clear()
         self.ui.parts_list.setRowCount(0)
-        self.ui.parts_list.setColumnCount(4)
-        self.ui.parts_list.setHorizontalHeaderLabels(['Image', 'ID', 'Name', 'Score'])
 
         iconSize = 100
 
@@ -172,7 +167,8 @@ class AddBricksDialog(QDialog):
     
             id_item = QTableWidgetItem(f"{item['id']}")
             name_item = QTableWidgetItem(f"{item['name']}")
-            score_item = QTableWidgetItem(f"{item['score']:.2%}")
+            score_item = QTableWidgetItem()
+            score_item.setData(Qt.EditRole, round(item['score']*100, 2))
 
             # Store full item data in item's data role
             image_item.setData(Qt.UserRole, item)
@@ -204,15 +200,14 @@ class AddBricksDialog(QDialog):
                 self.update_colors_list(part_data['id'])
 
     def update_colors_list(self, part_id):
-        self.ui.colors_list.clear()
+        self.ui.colors_list.setRowCount(0)
         dbManage = DatabaseManager()
         colors = dbManage.getPartColors(part_id)
 
         # Skip sorting if no detected colors
         if not self.colorsDetected:
             for color in colors:
-                item = self.create_color_list_item(color)
-                self.ui.colors_list.addItem(item)
+                self.add_color_to_table(color)
             return
 
         # Calculate color similarity scores
@@ -245,16 +240,44 @@ class AddBricksDialog(QDialog):
         # Sort colors by score (highest first)
         scored_colors.sort(key=lambda x: x[1], reverse=True)
 
-        # Add sorted colors to list
+        # Add sorted colors to table
         for color, score in scored_colors:
-            item = self.create_color_list_item(color, score)
-            self.ui.colors_list.addItem(item)
+            self.add_color_to_table(color, score.item())
 
         # Add remaining colors without RGB values at the end
         for color in colors:
             if not color.rgb:
-                item = self.create_color_list_item(color)
-                self.ui.colors_list.addItem(item)
+                self.add_color_to_table(color)
+
+    def add_color_to_table(self, color: BrickColor, score: float = None):
+        row = self.ui.colors_list.rowCount()
+        self.ui.colors_list.insertRow(row)
+
+        # Create items
+        name_item = QTableWidgetItem(color.name)
+        type_item = QTableWidgetItem(color.type if color.type else "")
+        score_item = QTableWidgetItem()
+        score_item.setData(Qt.EditRole, round(score*100, 2) if score is not None else 0)
+        id_item = QTableWidgetItem(str(color.id))
+
+        # Set background color
+        if color.rgb:
+            bg_color = QColor(f"#{color.rgb}")
+            name_item.setBackground(bg_color)
+            
+            # Set text color for better visibility
+            luminance = (0.299 * bg_color.red() + 0.587 * bg_color.green() + 0.114 * bg_color.blue())
+            text_color = Qt.white if luminance < 128 else Qt.black
+            name_item.setForeground(text_color)
+
+        # Store color data
+        name_item.setData(Qt.UserRole, color)
+
+        # Add items to row
+        self.ui.colors_list.setItem(row, 0, name_item)
+        self.ui.colors_list.setItem(row, 1, type_item)
+        self.ui.colors_list.setItem(row, 2, score_item)
+        self.ui.colors_list.setItem(row, 3, id_item)
 
     def create_color_list_item(self, color:BrickColor, score:float = None) -> QListWidgetItem:
         item = QListWidgetItem()
