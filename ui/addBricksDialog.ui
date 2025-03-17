@@ -16,79 +16,79 @@
   <property name="modal">
    <bool>true</bool>
   </property>
-  <layout class="QGridLayout" name="gridLayout_2">
-   <item row="0" column="0">
-    <layout class="QGridLayout" name="dialogLayout" rowstretch="0,0,0" columnstretch="2,0">
-     <item row="2" column="1">
-      <widget class="QListWidget" name="colors_list"/>
-     </item>
-     <item row="1" column="1">
-      <widget class="QListWidget" name="parts_list"/>
-     </item>
-     <item row="0" column="0" rowspan="3">
-      <layout class="QVBoxLayout" name="acqCollLayout">
+  <layout class="QHBoxLayout" name="horizontalLayout">
+   <item>
+    <layout class="QVBoxLayout" name="acqCollLayout">
+     <item>
+      <layout class="QHBoxLayout" name="acquisitionOptLayout" stretch="0,1">
        <item>
-        <layout class="QHBoxLayout" name="acquisitionOptLayout" stretch="0,1">
-         <item>
-          <widget class="QLabel" name="acquisitionLabel">
-           <property name="text">
-            <string>Acqiosition Method</string>
-           </property>
-          </widget>
-         </item>
-         <item>
-          <widget class="QComboBox" name="acquisition_combo"/>
-         </item>
-        </layout>
-       </item>
-       <item>
-       <layout class="QVBoxLayout" name="cameraLayout">
-        <item>
-            <widget class="QPushButton" name="captureButton">
-            <property name="text">
-            <string>Capture</string>
-            </property>
-            </widget>
-        </item>
-       </layout>
-       </item>
-       <item>
-        <widget class="QGroupBox" name="collectionGroupBox">
-         <property name="title">
-          <string>Collection</string>
+        <widget class="QLabel" name="acquisitionLabel">
+         <property name="text">
+          <string>Acqiosition Method</string>
          </property>
-         <layout class="QVBoxLayout" name="collectionLayout">
-          <item>
-           <widget class="QComboBox" name="containerCombobox"/>
-          </item>
-          <item>
-           <widget class="QSpinBox" name="qtySpinBox"/>
-          </item>
-          <item>
-           <widget class="QPushButton" name="addToContainerButton">
-            <property name="text">
-             <string>Add to Container</string>
-            </property>
-           </widget>
-          </item>
-          <item>
-           <widget class="QPushButton" name="skipButton">
-            <property name="text">
-             <string>Next</string>
-            </property>
-           </widget>
-          </item>
-         </layout>
+        </widget>
+       </item>
+       <item>
+        <widget class="QComboBox" name="acquisition_combo"/>
+       </item>
+      </layout>
+     </item>
+     <item>
+      <layout class="QVBoxLayout" name="cameraLayout">
+       <item>
+        <widget class="QPushButton" name="captureButton">
+         <property name="text">
+          <string>Capture</string>
+         </property>
         </widget>
        </item>
       </layout>
      </item>
-     <item row="0" column="1">
+     <item>
+      <widget class="QGroupBox" name="collectionGroupBox">
+       <property name="title">
+        <string>Collection</string>
+       </property>
+       <layout class="QVBoxLayout" name="collectionLayout">
+        <item>
+         <widget class="QComboBox" name="containerCombobox"/>
+        </item>
+        <item>
+         <widget class="QSpinBox" name="qtySpinBox"/>
+        </item>
+        <item>
+         <widget class="QPushButton" name="addToContainerButton">
+          <property name="text">
+           <string>Add to Container</string>
+          </property>
+         </widget>
+        </item>
+        <item>
+         <widget class="QPushButton" name="skipButton">
+          <property name="text">
+           <string>Next</string>
+          </property>
+         </widget>
+        </item>
+       </layout>
+      </widget>
+     </item>
+    </layout>
+   </item>
+   <item>
+    <layout class="QVBoxLayout" name="partsColorsLayout">
+     <item>
       <widget class="QLabel" name="label_2">
        <property name="text">
         <string>Detection Result</string>
        </property>
       </widget>
+     </item>
+     <item>
+      <widget class="QListWidget" name="parts_list"/>
+     </item>
+     <item>
+      <widget class="QListWidget" name="colors_list"/>
      </item>
     </layout>
    </item>
