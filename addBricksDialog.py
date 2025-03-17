@@ -1,17 +1,20 @@
 from PySide6.QtWidgets import QDialog, QListWidgetItem, QTableWidgetItem
 from PySide6.QtCore import Qt, QByteArray, QBuffer, QRect
-from PySide6.QtGui import QImage, QColor, QIcon, QPixmap
+from PySide6.QtGui import QImage, QColor, QIcon, QPixmap, QPainter
 from database import DatabaseManager, BrickColor
 from ui.ui_addbricksdialog import Ui_AddBricksDialog
 from widgets.cameraStreamView import CameraStreamView
 from config import AppConfig
 import cv2
+import numpy as np
 import logging
 import requests
 
 class AddBricksDialog(QDialog):
     def __init__(self, parent=None):
         super().__init__(parent)
+
+        self.colorsDetected = []
 
         # Create and setup UI
         self.ui = Ui_AddBricksDialog()
@@ -88,9 +91,59 @@ class AddBricksDialog(QDialog):
         response = requests.post('https://api.brickognize.com/predict/parts', files=files)
         # Print response
         if response.status_code == 200:
-            self.on_part_detected(image, response.json())
+            detectionData = response.json()
+            self.on_part_detected(image, detectionData)
         else:
             print(f"Error: {response.status_code}", response.text)
+
+    def detect_image_colors(self, image:QImage, bb:QRect):
+        try:
+            # Crop the image using the bounding box
+            cropped = image.copy(bb).convertToFormat(QImage.Format_RGB32)
+
+            # Convert QImage to OpenCV format
+            width = cropped.width()
+            height = cropped.height()
+            ptr = cropped.bits()
+            #ptr.set(height * width * 4)
+            arr = np.frombuffer(ptr, np.uint8).reshape((height, width, 4))
+            cv_image = cv2.cvtColor(arr, cv2.COLOR_BGRA2BGR)
+
+            # Reshape the image to be a list of pixels
+            pixels = cv_image.reshape((-1, 3)).astype(np.float32)
+
+            # Define criteria and apply kmeans
+            criteria = (cv2.TERM_CRITERIA_EPS + cv2.TERM_CRITERIA_MAX_ITER, 10, 1.0)
+            k = 3  # Number of clusters (main colors)
+            _, labels, centers = cv2.kmeans(pixels, k, None, criteria, 10, cv2.KMEANS_RANDOM_CENTERS)
+
+            # Convert centers to integers
+            centers = centers.astype(np.uint8)
+
+            # Get the count of pixels in each cluster
+            unique_labels, counts = np.unique(labels, return_counts=True)
+            total_pixels = sum(counts)
+
+            # Sort colors by frequency
+            colors_with_percentages = []
+            for i, center in enumerate(centers):
+                b, g, r = center
+                pixel_count = counts[i]
+                percentage = (pixel_count / total_pixels) * 100
+                hex_color = f"{r:02x}{g:02x}{b:02x}"
+                colors_with_percentages.append({
+                    'rgb': (r, g, b),
+                    'hex': hex_color.upper(),
+                    'percentage': percentage
+                })
+
+            # Sort by percentage
+            colors_with_percentages.sort(key=lambda x: x['percentage'], reverse=True)
+
+            return colors_with_percentages
+        except Exception as e:
+            logging.error(f"Error detecting colors: {str(e)}")
+            return []
 
     def on_part_detected(self, image, detectionData):
         # Convert bounding box coordinates
@@ -101,6 +154,7 @@ class AddBricksDialog(QDialog):
         bb = QRect(bbleft, bbupper, bbright-bbleft, bblower-bbupper)
 
         self.video_view.setDetectionImage(image, bb)
+        self.colorsDetected = self.detect_image_colors(image, bb)
 
         # Clear previous items
         self.ui.parts_list.clear()
@@ -129,12 +183,6 @@ class AddBricksDialog(QDialog):
 
             # Store full item data in item's data role
             image_item.setData(Qt.UserRole, item)
-
-            # Disable editing for all items
-            # image_item.setFlags(image_item.flags() & ~Qt.ItemIsEditable)
-            # id_item.setFlags(id_item.flags() & ~Qt.ItemIsEditable)
-            # name_item.setFlags(name_item.flags() & ~Qt.ItemIsEditable) 
-            # score_item.setFlags(score_item.flags() & ~Qt.ItemIsEditable)
 
             # Add item to list
             self.ui.parts_list.setItem(row, 0, image_item)
@@ -166,16 +214,112 @@ class AddBricksDialog(QDialog):
         self.ui.colors_list.clear()
         dbManage = DatabaseManager()
         colors = dbManage.getPartColors(part_id)
-        for color in colors:                
-            # Create list item
-            item = self.create_color_list_item(color)
+
+        # Skip sorting if no detected colors
+        if not self.colorsDetected:
+            for color in colors:
+                item = self.create_color_list_item(color)
+                self.ui.colors_list.addItem(item)
+            return
+
+        def rgb_to_hsv(r, g, b):
+            r, g, b = r/255.0, g/255.0, b/255.0
+            cmax = max(r, g, b)
+            cmin = min(r, g, b)
+            diff = cmax - cmin
+
+            # Calculate Hue
+            if diff == 0:
+                h = 0
+            elif cmax == r:
+                h = (60 * ((g-b)/diff) + 360) % 360
+            elif cmax == g:
+                h = (60 * ((b-r)/diff) + 120) % 360
+            else:
+                h = (60 * ((r-g)/diff) + 240) % 360
+
+            # Calculate Saturation
+            s = 0 if cmax == 0 else (diff / cmax) * 100
+
+            # Calculate Value
+            v = cmax * 100
+
+            return h, s, v
+
+        def calculate_hsv_similarity(hsv1, hsv2):
+            h1, s1, v1 = hsv1
+            h2, s2, v2 = hsv2
+            
+            # Calculate hue difference (considering circular nature of hue)
+            h_diff = min(abs(h1 - h2), 360 - abs(h1 - h2)) / 180.0
+            
+            # Calculate saturation and value differences
+            s_diff = abs(s1 - s2) / 100.0
+            v_diff = abs(v1 - v2) / 100.0
+            
+            # Weight the components (adjustable weights)
+            h_weight = 0.5
+            s_weight = 0.25
+            v_weight = 0.25
+            
+            # Calculate weighted similarity (1 is most similar, 0 is least similar)
+            similarity = 1.0 - (
+                h_weight * h_diff +
+                s_weight * s_diff +
+                v_weight * v_diff
+            )
+            
+            return similarity
+
+        # Calculate color similarity scores
+        scored_colors = []
+        for color in colors:
+            # Skip colors without RGB values
+            if not color.rgb:
+                continue
+
+            # Convert color RGB string to tuple
+            c = QColor(f"#{color.rgb}")
+            r, g, b = c.red(), c.green(), c.blue()
+            color_hsv = rgb_to_hsv(r, g, b)
+            
+            # Calculate best match score against detected colors
+            max_score = 0
+            for detected in self.colorsDetected:
+                dr, dg, db = detected['rgb']
+                detected_hsv = rgb_to_hsv(dr, dg, db)
+                
+                # Calculate similarity in HSV space
+                similarity = calculate_hsv_similarity(color_hsv, detected_hsv)
+                
+                # Weight similarity by detected color percentage
+                weighted_score = similarity * (detected['percentage'] / 100)
+                max_score = max(max_score, weighted_score)
+
+            scored_colors.append((color, max_score))
+
+        # Sort colors by score (highest first)
+        scored_colors.sort(key=lambda x: x[1], reverse=True)
+
+        # Add sorted colors to list
+        for color, score in scored_colors:
+            item = self.create_color_list_item(color, score)
             self.ui.colors_list.addItem(item)
 
-    def create_color_list_item(self, color:BrickColor) -> QListWidgetItem:
+        # Add remaining colors without RGB values at the end
+        for color in colors:
+            if not color.rgb:
+                item = self.create_color_list_item(color)
+                self.ui.colors_list.addItem(item)
+
+    def create_color_list_item(self, color:BrickColor, score:float = None) -> QListWidgetItem:
         item = QListWidgetItem()
 
-        itemNext = f"{color.name} - {color.type}" if color.type else color.name
-        item.setText(itemNext)
+        itemText = f"{color.name} - {color.type}" if color.type else color.name
+        if score != None:
+            itemText += f" - Match score: {score:.2%}"
+
+        item.setText(itemText)
 
         bgColor = QColor(f"#{color.rgb}")
         item.setBackground(bgColor)
@@ -186,6 +330,10 @@ class AddBricksDialog(QDialog):
         item.setForeground(text_color)
 
         item.setData(Qt.UserRole, color)
+
+        # Add score to tooltip
+        item.setToolTip(f"Match score: {score:.2%}")
+
         return item
 
     def populate_container_list(self):
@@ -202,7 +350,6 @@ class AddBricksDialog(QDialog):
             self.ui.containerCombobox.addItem(display_text, container.id)
 
     def on_add_part_clicked(self):
-        """Handle adding part to container"""
         try:
             # Get selected part
             current_row = self.ui.parts_list.currentRow()
