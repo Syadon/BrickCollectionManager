@@ -32,14 +32,12 @@ class AppConfig:
     
     @classmethod
     def initialize(cls):
-        """Create necessary directories if they don't exist"""
         cls.UI_DIR.mkdir(exist_ok=True)
         cls.RESOURCES_DIR.mkdir(exist_ok=True)
         cls.DATABASE_DIR.mkdir(exist_ok=True)
 
     @classmethod
     def load_stylesheet(cls) -> str:
-        """Load the application stylesheet"""
         if cls.STYLE_SHEET_PATH.exists():
             return cls.STYLE_SHEET_PATH.read_text()
         return ""

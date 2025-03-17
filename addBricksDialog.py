@@ -1,6 +1,6 @@
-from PySide6.QtWidgets import QDialog, QListWidgetItem
+from PySide6.QtWidgets import QDialog, QListWidgetItem, QTableWidgetItem
 from PySide6.QtCore import Qt, QByteArray, QBuffer, QRect
-from PySide6.QtGui import QImage, QColor
+from PySide6.QtGui import QImage, QColor, QIcon, QPixmap
 from database import DatabaseManager, BrickColor
 from ui.ui_addbricksdialog import Ui_AddBricksDialog
 from widgets.cameraStreamView import CameraStreamView
@@ -40,6 +40,8 @@ class AddBricksDialog(QDialog):
 
         if self.ui.acquisition_combo.count() > 1:
             self.ui.acquisition_combo.setCurrentIndex(1)
+
+        self.ui.parts_list.setHorizontalHeaderLabels(['Image', 'ID', 'Name', 'Score'])
 
     def populate_camera_list(self):
         self.ui.acquisition_combo.clear()
@@ -102,29 +104,63 @@ class AddBricksDialog(QDialog):
 
         # Clear previous items
         self.ui.parts_list.clear()
+        self.ui.parts_list.setRowCount(0)
+        self.ui.parts_list.setColumnCount(4)
+        self.ui.parts_list.setHorizontalHeaderLabels(['Image', 'ID', 'Name', 'Score'])
+
+        iconSize = 100
 
         # Add detected parts to list widget
         for item in detectionData['items']:
+            row = self.ui.parts_list.rowCount()
+            self.ui.parts_list.insertRow(row)
             # Create list item with part info
-            list_item = QListWidgetItem()
-            list_item.setText(f"{item['id']} - {item['name']} - Score: {item['score']:.2%} ")
-            
+            image_item = QTableWidgetItem()
+            response = requests.get(item['img_url'])
+            if response.status_code == 200:
+                img = QImage.fromData(response.content)
+                if not img.isNull():
+                    scaled = img.scaled(iconSize, iconSize, Qt.KeepAspectRatio, Qt.SmoothTransformation)
+                    image_item.setIcon(QIcon(QPixmap.fromImage(scaled)))
+    
+            id_item = QTableWidgetItem(f"{item['id']}")
+            name_item = QTableWidgetItem(f"{item['name']}")
+            score_item = QTableWidgetItem(f"{item['score']:.2%}")
+
             # Store full item data in item's data role
-            list_item.setData(Qt.UserRole, item)
-            
+            image_item.setData(Qt.UserRole, item)
+
+            # Disable editing for all items
+            # image_item.setFlags(image_item.flags() & ~Qt.ItemIsEditable)
+            # id_item.setFlags(id_item.flags() & ~Qt.ItemIsEditable)
+            # name_item.setFlags(name_item.flags() & ~Qt.ItemIsEditable) 
+            # score_item.setFlags(score_item.flags() & ~Qt.ItemIsEditable)
+
             # Add item to list
-            self.ui.parts_list.addItem(list_item)
+            self.ui.parts_list.setItem(row, 0, image_item)
+            self.ui.parts_list.setItem(row, 1, id_item)
+            self.ui.parts_list.setItem(row, 2, name_item)
+            self.ui.parts_list.setItem(row, 3, score_item)
         
+        # Adjust row heights for icons
+        self.ui.parts_list.verticalHeader().setDefaultSectionSize(iconSize)
+
+        # Adjust columns to content
+        self.ui.parts_list.resizeColumnsToContents()
+
         # Select first item if available
-        if self.ui.parts_list.count() > 0:
-            self.ui.parts_list.setCurrentRow(0)
+        if self.ui.parts_list.rowCount() > 0:
+            self.ui.parts_list.selectRow(0)
 
     def on_part_selected(self):
-        current_item = self.ui.parts_list.currentItem()
-        if current_item:
-            part_data = current_item.data(Qt.UserRole)
-            logging.info(f"Selected part: {part_data['id']} - {part_data['name']}")
-            self.update_colors_list(part_data['id'])
+        current_row = self.ui.parts_list.currentRow()
+        if current_row >= 0:
+            # Get data from first column
+            current_item = self.ui.parts_list.item(current_row, 0)
+            if current_item:
+                part_data = current_item.data(Qt.UserRole)
+                logging.info(f"Selected part: {part_data['id']} - {part_data['name']}")
+                self.update_colors_list(part_data['id'])
 
     def update_colors_list(self, part_id):
         self.ui.colors_list.clear()
@@ -169,9 +205,14 @@ class AddBricksDialog(QDialog):
         """Handle adding part to container"""
         try:
             # Get selected part
-            part_item = self.ui.parts_list.currentItem()
-            if not part_item:
+            current_row = self.ui.parts_list.currentRow()
+            if current_row < 0:
                 logging.warning("No part selected")
+                return
+                
+            part_item = self.ui.parts_list.item(current_row, 0)
+            if not part_item:
+                logging.warning("No part data found")
                 return
 
             # Get selected color
