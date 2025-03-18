@@ -29,6 +29,8 @@ class AddBricksDialog(QDialog):
 
         # Connect capture button
         self.ui.captureButton.clicked.connect(self.video_manager.capture_image)
+        self.ui.skipButton.clicked.connect(self.video_manager.startStream)
+        self.ui.skipButton.clicked.connect(self.clearDetection)
         self.ui.whiteBalanceButton.toggled.connect(self.video_manager.enableWhiteBalance)
         self.video_manager.image_captured.connect(self.on_image_captured)
 
@@ -69,6 +71,10 @@ class AddBricksDialog(QDialog):
             
             cap.release()
             camera_count += 1
+
+    def clearDetection(self):
+        self.ui.parts_list.setRowCount(0)
+        self.ui.colors_list.setRowCount(0)
 
     def switch_camera(self, index):
         acqMethod = self.ui.acquisition_combo.itemData(index)
