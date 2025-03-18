@@ -30,7 +30,8 @@ CREATE TABLE IF NOT EXISTS colors_parts (
 
 CREATE TABLE IF NOT EXISTS containers (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
-    name TEXT NOT NULL UNIQUE
+    name TEXT NOT NULL UNIQUE,
+    description TEXT
 );
 
 CREATE TABLE IF NOT EXISTS parts_collection (

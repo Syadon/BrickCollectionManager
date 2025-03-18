@@ -11,14 +11,12 @@ class BrickColor:
         self.type = color_type
 
 class Container:
-    def __init__(self, id: int, name: str, description: str, part_count: int = None):
+    def __init__(self, id: int, name: str, description: str, part_count: int = 0, lot_count:int = 0):
         self.id = id
         self.name = name
         self.description = description
-        self.part_count = part_count
-
-    def toTuple(self):
-        return (self.id, self.name, self.description, self.part_count)
+        self.part_count = part_count if part_count != None else 0
+        self.lot_count = lot_count if lot_count != None else 0
     
 class ColorPart:
     def __init__(self, id:int, part_id: str, color_id: int, code_name: int):
@@ -92,8 +90,9 @@ class DatabaseManager:
             container = Container(
                 query.value("id"),
                 query.value("name"),
-                "", #query.value("description"),
-                self.getConteinerPartCount(query.value("id"))
+                query.value("description"),
+                self.getConteinerPartCount(query.value("id")),
+                self.getConteinerLotCount(query.value("id"))
             )
             containers.append(container)
         return containers
@@ -129,14 +128,26 @@ class DatabaseManager:
         query.prepare("SELECT SUM(count) FROM parts_collection WHERE container_id = ?")
         query.addBindValue(container_id)
         if query.exec() and query.next():
-            return query.value(0)
+            val = query.value(0)
+            return val if val != None and val != '' else 0
+        else:
+            return None
+        
+    def getConteinerLotCount(self, container_id: int) -> int:
+        query = QSqlQuery()
+        query.prepare("SELECT COUNT(*) FROM parts_collection WHERE container_id = ? AND count > 0")
+        query.addBindValue(container_id)
+        if query.exec() and query.next():
+            val = query.value(0)
+            return val if val != None and val != '' else 0
         else:
             return None
 
-    def addContainer(self, name: str, _description: str) -> bool:
+    def addContainer(self, name: str, description: str) -> bool:
         query = QSqlQuery()
-        query.prepare("INSERT INTO containers (name) VALUES (?)")
+        query.prepare("INSERT INTO containers (name, description) VALUES (?, ?)")
         query.addBindValue(name)
+        query.addBindValue(description)
         if not query.exec():
             logging.error(f"Error inserting container {name}: {query.lastError().text()}")
             return False
@@ -171,6 +182,28 @@ class DatabaseManager:
 
         return True
     
+    def updateContainer(self, container: Container) -> bool:
+        try:
+            query = QSqlQuery()
+            query.prepare("""
+                UPDATE containers 
+                SET name = ?, description = ?
+                WHERE id = ?
+            """)
+            query.addBindValue(container.name)
+            query.addBindValue(container.description)
+            query.addBindValue(container.id)
+            
+            if not query.exec():
+                logging.error(f"Error updating container: {query.lastError().text()}")
+                return False
+                
+            return True
+            
+        except Exception as e:
+            logging.error(f"Error updating container: {str(e)}")
+            return False
+
     def _create_tables(self) -> bool:
         try:
             if AppConfig.DATABASE_SCHEMA_PATH.exists():
