@@ -1,6 +1,7 @@
 from PySide6.QtWidgets import QDialog, QTableView
 from containerPartsModel import ContainerPartsModel
 from database import DatabaseManager
+from utils import TransparentSelectionDelegate
 from ui.ui_containerDetailDialog import Ui_containerDetailDialog
 
 class ContainerDetailDialog(QDialog):
@@ -26,14 +27,17 @@ class ContainerDetailDialog(QDialog):
         dbManager = DatabaseManager()
 
         parts_data = dbManager.getContainersParts(self.container.id)
+        
         # Create and set model
         self.parts_model = ContainerPartsModel(parts_data)
         self.ui.partsView.setModel(self.parts_model)
-
-        # Configure table view
-        # self.ui.partsView.horizontalHeader().setStretchLastSection(True)
-        # self.ui.partsView.setSelectionBehavior(QTableView.SelectRows)
-        # self.ui.partsView.setSelectionMode(QTableView.SingleSelection)
+        
+        # Impedisci che la colonna dell'immagine mostri lo sfondo di selezione        
+        delegate = TransparentSelectionDelegate(self.ui.partsView)
+        self.ui.partsView.setItemDelegateForColumn(self.parts_model.imageColumnIndex, delegate)
+        self.ui.partsView.setItemDelegateForColumn(self.parts_model.colorColumnIndex, delegate)
+        
+        # Ridimensiona le altre colonne in base al contenuto
         self.ui.partsView.resizeColumnsToContents()
 
     def accept(self):

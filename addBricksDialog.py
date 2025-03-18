@@ -5,7 +5,7 @@ from database import DatabaseManager, BrickColor
 from ui.ui_addbricksdialog import Ui_AddBricksDialog
 from cameraStreamManager import CameraStreamManager
 from config import AppConfig
-from utils import rgb_to_hsv, calculate_hsv_similarity, qImageToOpenCV
+from utils import rgb_to_hsv, calculate_hsv_similarity, qImageToOpenCV, TransparentSelectionDelegate
 from imageProvider import ImagesProvider
 import cv2
 import numpy as np
@@ -44,6 +44,9 @@ class AddBricksDialog(QDialog):
         self.ui.whiteBalanceButton.toggled.connect(self.video_manager.enableWhiteBalance)
         self.video_manager.image_captured.connect(self.on_image_captured)
 
+
+        self.ui.parts_list.setItemDelegateForColumn(0, TransparentSelectionDelegate(self.ui.parts_list))
+        self.ui.colors_list.setItemDelegateForColumn(0, TransparentSelectionDelegate(self.ui.colors_list))
         # Connect list item selection
         self.ui.parts_list.itemSelectionChanged.connect(self.on_part_selected)
 

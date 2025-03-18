@@ -1,7 +1,13 @@
 from PySide6.QtGui import QImage, QPixmap
+from PySide6.QtWidgets import QStyledItemDelegate, QStyle
 import cv2
 import numpy as np
 
+class TransparentSelectionDelegate(QStyledItemDelegate):
+    def initStyleOption(self, option, index):
+        super().initStyleOption(option, index)
+        # Rimuovi l'effetto di selezione
+        option.state &= ~QStyle.State_Selected
 
 def rgb_to_hsv(r, g, b):
     r, g, b = r/255.0, g/255.0, b/255.0
