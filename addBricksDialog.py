@@ -30,6 +30,7 @@ class AddBricksDialog(QDialog):
 
         # Connect capture button
         self.ui.captureButton.clicked.connect(self.video_view.capture_image)
+        self.ui.whiteBalanceButton.toggled.connect(self.video_view.enableWhiteBalance)
         self.video_view.image_captured.connect(self.on_image_captured)
 
         # Connect list item selection

@@ -9,6 +9,10 @@ class CameraStreamView(QGraphicsView):
     image_captured = Signal(QImage)
 
     def __init__(self, parent=None):
+        self.avg_a = None
+        self.avg_b = None
+        self.wbEnebled = False
+
         super().__init__(parent)
         self.scene = QGraphicsScene()
         self.setScene(self.scene)
@@ -64,6 +68,9 @@ class CameraStreamView(QGraphicsView):
         try:
             ret, frame = self.cap.read()
             if ret:
+                if self.wbEnebled:
+                    frame = self.whiteBalance(frame)
+
                 pixmap = opencvToPixmap(frame)
 
                 # Clear previous frame
@@ -106,3 +113,39 @@ class CameraStreamView(QGraphicsView):
         super().resizeEvent(event)
         self.fitInView(self.scene.sceneRect(), Qt.KeepAspectRatio)
 
+    def enableWhiteBalance(self, enable):
+        if enable:
+            self.computeWhiteBalance()
+
+        self.wbEnebled = enable
+
+    def computeWhiteBalance(self):
+        try:
+            ret, frame = self.cap.read()
+            if ret:
+                # Convert to LAB color space
+                lab = cv2.cvtColor(frame, cv2.COLOR_BGR2LAB)
+
+                # Calculate average L, A, B values
+                l, a, b = cv2.split(lab)
+                self.avg_a = int(cv2.mean(a)[0])
+                self.avg_b = int(cv2.mean(b)[0])
+        except Exception as e:
+            logging.error(f"Compute white balance failed: {str(e)}")
+            self.avg_a = None
+            self.avg_b = None
+
+    def whiteBalance(self, image):
+        if self.avg_a == None or self.avg_b == None:
+            return image
+
+        # Convert to LAB color space
+        lab = cv2.cvtColor(image, cv2.COLOR_BGR2LAB) 
+        l, a, b = cv2.split(lab)    
+        # Subtract mean values to balance
+        lab_balanced = cv2.merge([l, 
+                                 cv2.subtract(a, self.avg_a - 128), 
+                                 cv2.subtract(b, self.avg_b - 128)])
+
+        # Convert back to BGR
+        return cv2.cvtColor(lab_balanced, cv2.COLOR_LAB2BGR)

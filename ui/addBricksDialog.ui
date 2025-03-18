@@ -36,6 +36,34 @@
      <item>
       <layout class="QVBoxLayout" name="cameraLayout">
        <item>
+        <widget class="QGraphicsView" name="cameraView">
+         <property name="enabled">
+          <bool>false</bool>
+         </property>
+        </widget>
+       </item>
+       <item>
+        <layout class="QHBoxLayout" name="calibsLayout">
+         <item>
+          <widget class="QPushButton" name="whiteBalanceButton">
+           <property name="text">
+            <string>White Balance</string>
+           </property>
+           <property name="checkable">
+            <bool>true</bool>
+           </property>
+          </widget>
+         </item>
+         <item>
+          <widget class="QPushButton" name="colorCalibButton">
+           <property name="text">
+            <string>Color Calibration</string>
+           </property>
+          </widget>
+         </item>
+        </layout>
+       </item>
+       <item>
         <widget class="QPushButton" name="captureButton">
          <property name="text">
           <string>Capture</string>
