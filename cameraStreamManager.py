@@ -1,29 +1,31 @@
 from PySide6.QtWidgets import (QGraphicsRectItem, QGraphicsView, QGraphicsScene)
 from PySide6.QtGui import QImage, QPixmap, QColor, QPainter, QPen
-from PySide6.QtCore import QTimer, Qt, Signal, QRect
+from PySide6.QtCore import QTimer, Qt, Signal, QRect, QObject
 from utils import opencvToPixmap, opencvToQImage
 import cv2
 import logging
 
-class CameraStreamView(QGraphicsView):
+class CameraStreamManager(QObject):
     image_captured = Signal(QImage)
 
-    def __init__(self, parent=None):
+    def __init__(self, graphicsView: QGraphicsView, parent=None):
+        super().__init__(parent)
+        self.graphicsView = graphicsView
+        self.scene = QGraphicsScene()
+        self.graphicsView.setScene(self.scene)
+        # self.setSceneRect(0, 0, 640, 480)
+
+        self.graphicsView.setHorizontalScrollBarPolicy(Qt.ScrollBarAlwaysOff)
+        self.graphicsView.setVerticalScrollBarPolicy(Qt.ScrollBarAlwaysOff)
+        self.graphicsView.setRenderHint(QPainter.SmoothPixmapTransform)
+        self.graphicsView.setRenderHint(QPainter.Antialiasing)
+        self.graphicsView.setRenderHint(QPainter.SmoothPixmapTransform)
+        self.graphicsView.setRenderHint(QPainter.TextAntialiasing)
+
         self.avg_a = None
         self.avg_b = None
         self.wbEnebled = False
 
-        super().__init__(parent)
-        self.scene = QGraphicsScene()
-        self.setScene(self.scene)
-        # self.setSceneRect(0, 0, 640, 480)
-
-        self.setHorizontalScrollBarPolicy(Qt.ScrollBarAlwaysOff)
-        self.setVerticalScrollBarPolicy(Qt.ScrollBarAlwaysOff)
-        self.setRenderHint(QPainter.SmoothPixmapTransform)
-        self.setRenderHint(QPainter.Antialiasing)
-        self.setRenderHint(QPainter.SmoothPixmapTransform)
-        self.setRenderHint(QPainter.TextAntialiasing)
 
         self.setup_camera()
 
@@ -33,6 +35,9 @@ class CameraStreamView(QGraphicsView):
     def close_stream(self):
         self.timer.stop()
         self.cap.release()
+
+    def manageResizeEvent(self, event):
+        self.graphicsView.fitInView(self.scene.sceneRect(), Qt.KeepAspectRatio)
 
     def startStream(self):
             self.timer.start(40)  # Update every 40ms (approx. 25 fps)
@@ -57,7 +62,7 @@ class CameraStreamView(QGraphicsView):
 
         except Exception as e:
             logging.error(f"Camera setup failed: {str(e)}")
-            self.close()
+            self.graphicsView.close()
 
     def switch_camera(self, camera_id):
         self.cap.release()
@@ -80,7 +85,7 @@ class CameraStreamView(QGraphicsView):
                 self.scene.addPixmap(pixmap)
                 
                 # Fit scene in view
-                self.fitInView(self.scene.sceneRect(), 
+                self.graphicsView.fitInView(self.scene.sceneRect(), 
                                         Qt.KeepAspectRatio)
 
         except Exception as e:
@@ -107,11 +112,7 @@ class CameraStreamView(QGraphicsView):
         pixmap = QPixmap.fromImage(image)
         self.scene.addPixmap(pixmap)
         self.scene.addItem(rect)
-        self.fitInView(self.scene.sceneRect(), Qt.KeepAspectRatio)
-
-    def resizeEvent(self, event):
-        super().resizeEvent(event)
-        self.fitInView(self.scene.sceneRect(), Qt.KeepAspectRatio)
+        self.graphicsView.fitInView(self.scene.sceneRect(), Qt.KeepAspectRatio)
 
     def enableWhiteBalance(self, enable):
         if enable:

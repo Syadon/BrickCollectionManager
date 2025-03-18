@@ -3,7 +3,7 @@ from PySide6.QtCore import Qt, QByteArray, QBuffer, QRect
 from PySide6.QtGui import QImage, QColor, QIcon, QPixmap, QPainter
 from database import DatabaseManager, BrickColor
 from ui.ui_addbricksdialog import Ui_AddBricksDialog
-from widgets.cameraStreamView import CameraStreamView
+from cameraStreamManager import CameraStreamManager
 from config import AppConfig
 from utils import rgb_to_hsv, calculate_hsv_similarity, qImageToOpenCV
 import cv2
@@ -21,17 +21,16 @@ class AddBricksDialog(QDialog):
         self.ui = Ui_AddBricksDialog()
         self.ui.setupUi(self)
 
-        self.video_view = CameraStreamView()
-        self.ui.cameraLayout.insertWidget(0, self.video_view)
+        self.video_manager = CameraStreamManager(self.ui.cameraView, self)
 
         # Create camera selection combobox
         self.populate_camera_list()
         self.ui.acquisition_combo.currentIndexChanged.connect(self.switch_camera)
 
         # Connect capture button
-        self.ui.captureButton.clicked.connect(self.video_view.capture_image)
-        self.ui.whiteBalanceButton.toggled.connect(self.video_view.enableWhiteBalance)
-        self.video_view.image_captured.connect(self.on_image_captured)
+        self.ui.captureButton.clicked.connect(self.video_manager.capture_image)
+        self.ui.whiteBalanceButton.toggled.connect(self.video_manager.enableWhiteBalance)
+        self.video_manager.image_captured.connect(self.on_image_captured)
 
         # Connect list item selection
         self.ui.parts_list.itemSelectionChanged.connect(self.on_part_selected)
@@ -45,6 +44,10 @@ class AddBricksDialog(QDialog):
 
         if self.ui.acquisition_combo.count() > 1:
             self.ui.acquisition_combo.setCurrentIndex(1)
+
+    def resizeEvent(self, event):
+        super().resizeEvent(event)
+        self.video_manager.manageResizeEvent(event)
 
     def populate_camera_list(self):
         self.ui.acquisition_combo.clear()
@@ -70,12 +73,12 @@ class AddBricksDialog(QDialog):
     def switch_camera(self, index):
         acqMethod = self.ui.acquisition_combo.itemData(index)
         if acqMethod["method"] == 1:
-            self.video_view.show()
-            self.video_view.switch_camera(acqMethod["camera_count"])
+            self.ui.cameraView.show()
+            self.video_manager.switch_camera(acqMethod["camera_count"])
         else:
             print("No Camera")
-            self.video_view.close_stream()
-            self.video_view.hide()
+            self.video_manager.close_stream()
+            self.ui.cameraView.hide()
 
     def on_image_captured(self, image:QImage):
         # Convert QImage to bytes in memory
@@ -145,7 +148,7 @@ class AddBricksDialog(QDialog):
         bblower = int(detectionData['bounding_box']['lower'])
         bb = QRect(bbleft, bbupper, bbright-bbleft, bblower-bbupper)
 
-        self.video_view.setDetectionImage(image, bb)
+        self.video_manager.setDetectionImage(image, bb)
         self.colorsDetected = self.detect_image_colors(image, bb)
 
         # Clear previous items
@@ -366,7 +369,7 @@ class AddBricksDialog(QDialog):
 
             logging.info(f"Added {quantity} of part {part_data['id']} in color {color_data.name} to container {container_id}")
             
-            self.video_view.startStream()
+            self.video_manager.startStream()
             # Clear selection and reset quantity
             #self.ui.qtySpinBox.setValue(1)
             #self.video_view.clear_detection()
@@ -377,6 +380,6 @@ class AddBricksDialog(QDialog):
             logging.error(f"Error adding part to collection: {str(e)}")
 
     def closeEvent(self, event):
-        self.video_view.close_stream()
+        self.video_manager.close_stream()
         super().closeEvent(event)
 
