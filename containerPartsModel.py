@@ -1,4 +1,4 @@
-from PySide6.QtCore import QAbstractTableModel, Qt
+from PySide6.QtCore import QAbstractTableModel, Qt, QSize
 from PySide6.QtGui import QColor, QBrush, QPixmap
 from config import AppConfig
 from imageProvider import ImagesProvider
@@ -12,19 +12,35 @@ class ContainerPartsModel(QAbstractTableModel):
         
         self.colorColumnIndex = self.headers.index("Color")
         self.imageColumnIndex = self.headers.index("Image")
+
+        self.imageSizes = QSize(64, 64)
+        
+        # Create image provider
+        self.imgProvider = ImagesProvider(AppConfig.PARTS_IMG_CACHE_DIR)
+        self.imgProvider.image_loaded.connect(self._update_image)
         
         # Load images for all parts
         self.load_part_images()
 
     def load_part_images(self):
-        imgProvider = ImagesProvider(AppConfig.PARTS_IMG_CACHE_DIR)
-        imageSizes = (64, 64)
         for row in self.parts_data:
             color_id = row.get('color_id')
             part_id = row.get('part_id')
             if color_id and part_id:
-                image = imgProvider.get_part_image(part_id, color_id, imageSizes)
-                row['image'] = image
+                image = self.imgProvider.get_part_image(part_id, color_id)
+                row['image'] = image.scaled(self.imageSizes, Qt.KeepAspectRatio, Qt.SmoothTransformation)
+    
+    def _update_image(self, key, pixmap):
+        part_id, color_id = key.split('_')
+        
+        # Find all rows with this part_id and color_id
+        for row_idx, row_data in enumerate(self.parts_data):
+            if (row_data.get('part_id') == part_id and 
+                str(row_data.get('color_id')) == color_id):
+                row_data['image'] = pixmap.scaled(self.imageSizes, Qt.KeepAspectRatio, Qt.SmoothTransformation)
+                # Notify view that data has changed
+                model_idx = self.index(row_idx, self.imageColumnIndex)
+                self.dataChanged.emit(model_idx, model_idx)
 
     def rowCount(self, parent):
         return len(self.parts_data)
