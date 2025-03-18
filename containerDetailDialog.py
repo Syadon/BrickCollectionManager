@@ -1,45 +1,50 @@
 from PySide6.QtWidgets import (QDialog, QVBoxLayout, QFormLayout, QLineEdit, 
-                              QTextEdit, QDialogButtonBox, QLabel)
-from PySide6.QtCore import Qt
-from database import DatabaseManager, Container
+                              QTextEdit, QDialogButtonBox, QLabel, QTableView)
+from PySide6.QtCore import Qt, QAbstractTableModel
+from PySide6.QtSql import QSqlQuery
+from containerPartsModel import ContainerPartsModel
+from database import DatabaseManager, Container, ColorPart
+from ui.ui_containerDetailDialog import Ui_containerDetailDialog
 
 class ContainerDetailDialog(QDialog):
     def __init__(self, container, parent=None):
         super().__init__(parent)
+        
+        # Create and setup UI
+        self.ui = Ui_containerDetailDialog()
+        self.ui.setupUi(self)
+
         self.container = container
-        self.setWindowTitle(f"Edit Container - {container.name}")
-        self.setMinimumSize(400, 300)
 
-        # Create layout
-        layout = QVBoxLayout(self)
-        form_layout = QFormLayout()
+        # Setup container info
+        self.ui.name_edit.setText(container.name)
+        self.ui.description_edit.setText(container.description)
+        self.ui.part_count_label.setText(str(container.part_count))
+        self.ui.lots_count_label.setText(str(container.lot_count))
 
-        # Create widgets
-        self.name_edit = QLineEdit(container.name)
-        self.description_edit = QTextEdit(container.description)
-        self.part_count_label = QLabel(str(container.part_count))
+        # Setup parts table
+        self.setup_parts_table()
 
-        # Add widgets to form
-        form_layout.addRow("Name:", self.name_edit)
-        form_layout.addRow("Description:", self.description_edit)
-        form_layout.addRow("Part Count:", self.part_count_label)
+    def setup_parts_table(self):
+        dbManager = DatabaseManager()
 
-        # Create button box
-        button_box = QDialogButtonBox(
-            QDialogButtonBox.Ok | QDialogButtonBox.Cancel)
-        button_box.accepted.connect(self.accept)
-        button_box.rejected.connect(self.reject)
+        parts_data = dbManager.getContainersParts(self.container.id)
+        # Create and set model
+        self.parts_model = ContainerPartsModel(parts_data)
+        self.ui.partsView.setModel(self.parts_model)
 
-        # Add layouts
-        layout.addLayout(form_layout)
-        layout.addWidget(button_box)
+        # Configure table view
+        self.ui.partsView.horizontalHeader().setStretchLastSection(True)
+        self.ui.partsView.setSelectionBehavior(QTableView.SelectRows)
+        self.ui.partsView.setSelectionMode(QTableView.SingleSelection)
+        self.ui.partsView.resizeColumnsToContents()
 
     def accept(self):
         db_manager = DatabaseManager()
         
         # Update container object
-        self.container.name = self.name_edit.text()
-        self.container.description = self.description_edit.toPlainText()
+        self.container.name = self.ui.name_edit.text()
+        self.container.description = self.ui.description_edit.toPlainText()
         
         # Save to database
         if db_manager.updateContainer(self.container):

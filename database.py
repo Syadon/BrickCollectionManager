@@ -203,6 +203,45 @@ class DatabaseManager:
         except Exception as e:
             logging.error(f"Error updating container: {str(e)}")
             return False
+        
+    def getContainersParts(self, container_id):
+        parts_data = []
+        try:
+            query = QSqlQuery()
+            query.prepare("""
+                SELECT cp.id, p.id as part_id, p.name as part_name, 
+                    c.name as color_name, pc.count as quantity,
+                    c.id as color_id, cat.name as part_category,
+                    c.rgb as rgb, c.type as color_type, codename
+                FROM parts_collection pc
+                JOIN colors_parts cp ON pc.item = cp.id
+                JOIN parts p ON cp.part_id = p.id
+                JOIN colors c ON cp.color_id = c.id
+				JOIN categories cat ON p.category = cat.id
+                WHERE pc.container_id = ?
+                ORDER BY p.name, c.name
+            """)
+            query.addBindValue(container_id)
+
+            if query.exec():
+                while query.next():
+                    parts_data.append({
+                        'id': query.value('id'),
+                        'part_id': query.value('part_id'),
+                        'part_name': query.value('part_name'),
+                        'part_category': query.value('part_category'),
+                        'color_name': query.value('color_name'),
+                        'quantity': query.value('quantity'),
+                        'color_id': query.value('color_id'),
+                        'rgb': query.value('rgb'),
+                        'color_type': query.value('color_type'),
+                        'codename': query.value('codename')
+                    })
+        except Exception as e:
+            logging.error(f"Error updating container: {str(e)}")
+            return []
+        
+        return parts_data
 
     def _create_tables(self) -> bool:
         try:
