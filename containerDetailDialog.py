@@ -31,9 +31,9 @@ class ContainerDetailDialog(QDialog):
         self.ui.partsView.setModel(self.parts_model)
 
         # Configure table view
-        self.ui.partsView.horizontalHeader().setStretchLastSection(True)
-        self.ui.partsView.setSelectionBehavior(QTableView.SelectRows)
-        self.ui.partsView.setSelectionMode(QTableView.SingleSelection)
+        # self.ui.partsView.horizontalHeader().setStretchLastSection(True)
+        # self.ui.partsView.setSelectionBehavior(QTableView.SelectRows)
+        # self.ui.partsView.setSelectionMode(QTableView.SingleSelection)
         self.ui.partsView.resizeColumnsToContents()
 
     def accept(self):

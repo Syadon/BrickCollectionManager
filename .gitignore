@@ -175,3 +175,4 @@ cython_debug/
 database/brick_collection.db
 ui/ui_*.py
 database/bricklink_data
+cache

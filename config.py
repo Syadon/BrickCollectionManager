@@ -17,6 +17,10 @@ class AppConfig:
     DATABASE_PATH = DATABASE_DIR / DATABASE_NAME
     DATABASE_TYPE = "QSQLITE"
     DATABASE_SCHEMA_PATH = DATABASE_DIR / "schema.sql"
+
+    # Cache directory
+    CHACHE_DIR = DATABASE_DIR / "cache"
+    PARTS_IMG_CACHE_DIR = CHACHE_DIR / "parts_images"
     
     # UI Configuration
     WINDOW_WIDTH = 800
@@ -35,6 +39,8 @@ class AppConfig:
         cls.UI_DIR.mkdir(exist_ok=True)
         cls.RESOURCES_DIR.mkdir(exist_ok=True)
         cls.DATABASE_DIR.mkdir(exist_ok=True)
+        cls.CHACHE_DIR.mkdir(exist_ok=True)
+        cls.PARTS_IMG_CACHE_DIR.mkdir(parents=True, exist_ok=True)
 
     @classmethod
     def load_stylesheet(cls) -> str:
