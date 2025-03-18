@@ -1,9 +1,6 @@
-from PySide6.QtWidgets import (QDialog, QVBoxLayout, QFormLayout, QLineEdit, 
-                              QTextEdit, QDialogButtonBox, QLabel, QTableView)
-from PySide6.QtCore import Qt, QAbstractTableModel
-from PySide6.QtSql import QSqlQuery
+from PySide6.QtWidgets import QDialog, QTableView
 from containerPartsModel import ContainerPartsModel
-from database import DatabaseManager, Container, ColorPart
+from database import DatabaseManager
 from ui.ui_containerDetailDialog import Ui_containerDetailDialog
 
 class ContainerDetailDialog(QDialog):
