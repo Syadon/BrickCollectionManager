@@ -6,6 +6,7 @@ from ui.ui_addbricksdialog import Ui_AddBricksDialog
 from cameraStreamManager import CameraStreamManager
 from config import AppConfig
 from utils import rgb_to_hsv, calculate_hsv_similarity, qImageToOpenCV
+from imageProvider import ImagesProvider
 import cv2
 import numpy as np
 import logging
@@ -16,10 +17,19 @@ class AddBricksDialog(QDialog):
         super().__init__(parent)
 
         self.colorsDetected = []
+        self.iconSize = 100
+        self.current_part_id = None
+        
+        # Create image provider
+        self.imgProvider = ImagesProvider(AppConfig.PARTS_IMG_CACHE_DIR)
+        self.imgProvider.image_loaded.connect(self.on_image_loaded)
 
         # Create and setup UI
         self.ui = Ui_AddBricksDialog()
         self.ui.setupUi(self)
+
+        # Connect colors_list selection changed signal
+        self.ui.colors_list.itemSelectionChanged.connect(self.on_color_selected)
 
         self.video_manager = CameraStreamManager(self.ui.cameraView, self)
 
@@ -160,8 +170,6 @@ class AddBricksDialog(QDialog):
         # Clear previous items
         self.ui.parts_list.setRowCount(0)
 
-        iconSize = 100
-
         # Add detected parts to list widget
         for item in detectionData['items']:
             row = self.ui.parts_list.rowCount()
@@ -172,7 +180,7 @@ class AddBricksDialog(QDialog):
             if response.status_code == 200:
                 img = QImage.fromData(response.content)
                 if not img.isNull():
-                    scaled = img.scaled(iconSize, iconSize, Qt.KeepAspectRatio, Qt.SmoothTransformation)
+                    scaled = img.scaled(self.iconSize, self.iconSize, Qt.KeepAspectRatio, Qt.SmoothTransformation)
                     image_item.setIcon(QIcon(QPixmap.fromImage(scaled)))
     
             id_item = QTableWidgetItem(f"{item['id']}")
@@ -190,7 +198,7 @@ class AddBricksDialog(QDialog):
             self.ui.parts_list.setItem(row, 3, score_item)
         
         # Adjust row heights for icons
-        self.ui.parts_list.verticalHeader().setDefaultSectionSize(iconSize)
+        self.ui.parts_list.verticalHeader().setDefaultSectionSize(self.iconSize)
 
         # Adjust columns to content
         self.ui.parts_list.resizeColumnsToContents()
@@ -206,6 +214,7 @@ class AddBricksDialog(QDialog):
             current_item = self.ui.parts_list.item(current_row, 0)
             if current_item:
                 part_data = current_item.data(Qt.UserRole)
+                self.current_part_id = part_data['id']  # Store current part ID
                 logging.info(f"Selected part: {part_data['id']} - {part_data['name']}")
                 self.update_colors_list(part_data['id'])
 
@@ -388,4 +397,88 @@ class AddBricksDialog(QDialog):
     def closeEvent(self, event):
         self.video_manager.close_stream()
         super().closeEvent(event)
+
+    def on_color_selected(self):
+        """Update part image when color is selected"""
+        # Check if a part is selected
+        if not self.current_part_id:
+            return
+            
+        # Get selected color
+        current_row = self.ui.colors_list.currentRow()
+        if current_row < 0:
+            return
+            
+        color_item = self.ui.colors_list.item(current_row, 0)
+        if not color_item:
+            return
+            
+        # Get color data
+        color_data = color_item.data(Qt.UserRole)
+        
+        # Get current selected part row
+        part_row = self.ui.parts_list.currentRow()
+        if part_row < 0:
+            return
+        
+        # Request image for the part with this color
+        image = self.imgProvider.get_part_image(self.current_part_id, color_data.id)
+        
+        # If image is available, update immediately
+        if image:
+            self.update_part_image(image, part_row)
+        # If not, it will be handled by on_image_loaded when available
+
+    def on_image_loaded(self, key, pixmap):
+        """Handle image loaded event from ImageProvider"""
+        # Only process if we have a current part selected
+        if not self.current_part_id:
+            return
+            
+        # Parse key to get part_id and color_id
+        try:
+            part_id, color_id = key.split('_')
+        except:
+            return
+        
+        # Only update if this is our current part
+        if part_id != self.current_part_id:
+            return
+        
+        # Get current selected part and color
+        part_row = self.ui.parts_list.currentRow()
+        color_row = self.ui.colors_list.currentRow()
+        
+        if part_row < 0 or color_row < 0:
+            return
+            
+        # Get color data of selected color
+        color_item = self.ui.colors_list.item(color_row, 0)
+        if not color_item:
+            return
+            
+        color_data = color_item.data(Qt.UserRole)
+        
+        # Only update if this is our currently selected color
+        if str(color_data.id) != color_id:
+            return
+        
+        # Update image
+        self.update_part_image(pixmap, part_row)
+
+    def update_part_image(self, pixmap, row):
+        """Update part image in table"""
+        if row < 0 or row >= self.ui.parts_list.rowCount():
+            return
+            
+        # Scale image
+        scaled = pixmap.scaled(self.iconSize, self.iconSize, 
+                              Qt.KeepAspectRatio, 
+                              Qt.SmoothTransformation)
+        
+        # Update image in table
+        image_item = self.ui.parts_list.item(row, 0)
+        if image_item:
+            image_item.setIcon(QIcon(scaled))
+            self.ui.parts_list.viewport().update()  # Force repaint
 
