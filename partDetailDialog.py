@@ -1,110 +1,95 @@
-from PySide6.QtWidgets import (QDialog, QVBoxLayout, QFormLayout, QLabel, QSpinBox, QHBoxLayout, QPushButton, QComboBox, QDialogButtonBox, QMessageBox)
-from PySide6.QtSql import QSqlQuery
-from PySide6.QtGui import QColor
+from PySide6.QtWidgets import (QDialog, QMessageBox)
+from PySide6.QtGui import QColor, QPixmap
+from PySide6.QtCore import Qt
 from database import DatabaseManager
-
-
+from imageProvider import ImagesProvider
+from config import AppConfig
+from ui.ui_detailPartDialog import Ui_DeatilPartDialog
 
 class PartDetailDialog(QDialog):
     def __init__(self, part_data, container, parent=None):
         super().__init__(parent)
+
+        self.imgSize = 256
+        self.imgProvider = ImagesProvider(AppConfig.PARTS_IMG_CACHE_DIR)
+
+        # Create and setup UI
+        self.ui = Ui_DeatilPartDialog()
+        self.ui.setupUi(self)
+
         self.part_data = part_data
         self.container = container
-        self.db_manager = DatabaseManager()
-        
-        self.setWindowTitle(f"Brick Details - {part_data['part_name']}")
-        self.resize(450, 350)
+
+        self.imgProvider.image_loaded.connect(self.setup_image)
         
         self.setup_ui()
         
     def setup_ui(self):
-        main_layout = QVBoxLayout(self)
         
-        # Part information
-        form_layout = QFormLayout()
-        
+        image = self.imgProvider.get_part_image(self.part_data['part_id'], self.part_data['color_id'])
+        if image is not None:
+            self.setup_image("", image)
+
         # Part ID and Name
-        form_layout.addRow("Part ID:", QLabel(self.part_data['part_id']))
-        form_layout.addRow("Name:", QLabel(self.part_data['part_name']))
-        form_layout.addRow("Category:", QLabel(self.part_data['part_category']))
+        self.ui.idValLabel.setText(self.part_data['part_id'])
+        self.ui.nameValLabel.setText(self.part_data['part_name'])
+        self.ui.categoryValLabel.setText(self.part_data['part_category'])
         
         # Color information with colored background
-        color_label = QLabel(self.part_data['color_name'])
+        self.ui.colorValLabel.setText(self.part_data['color_name'])
         rgb = QColor(f"#{self.part_data['rgb']}")
         luminance = (0.299 * rgb.red() + 0.587 * rgb.green() + 0.114 * rgb.blue())
         
         # Set stylesheet for colored background
-        color_label.setStyleSheet(
+        self.ui.colorValLabel.setStyleSheet(
             f"background-color: #{self.part_data['rgb']}; "
             f"color: {'white' if luminance < 128 else 'black'}; "
             f"padding: 4px; border-radius: 4px;"
         )
-        
-        form_layout.addRow("Color:", color_label)
-        form_layout.addRow("Color Type:", QLabel(self.part_data['color_type']))
+
+        self.ui.colorTypeValLabel.setText(self.part_data['color_type'])
         
         # Current quantity
         self.current_quantity = self.part_data['quantity']
-        form_layout.addRow("Current Quantity:", QLabel(str(self.current_quantity)))
+        self.ui.currentQtyValLabel.setText(str(self.current_quantity))
+    
+        self.ui.qtySpinBox.setRange(1, self.current_quantity)
+        self.ui.qtySpinBox.setValue(1)
+
+        self.ui.moveButton.clicked.connect(self.on_move_remove_clicked)
+        self.ui.toContainerRadioButton.toggled.connect(self.ui.containerCombo.setEnabled)
         
-        main_layout.addLayout(form_layout)
-        
-        # Modify quantity section
-        main_layout.addSpacing(20)
-        main_layout.addWidget(QLabel("<b>Modify Quantity</b>"))
-        
-        # Remove quantity
-        remove_layout = QHBoxLayout()
-        remove_layout.addWidget(QLabel("Remove:"))
-        self.remove_spinbox = QSpinBox()
-        self.remove_spinbox.setRange(1, self.current_quantity)
-        self.remove_spinbox.setValue(1)
-        remove_layout.addWidget(self.remove_spinbox)
-        self.remove_button = QPushButton("Remove")
-        self.remove_button.clicked.connect(self.on_remove_clicked)
-        remove_layout.addWidget(self.remove_button)
-        
-        main_layout.addLayout(remove_layout)
-        
-        # Move quantity to another container
-        move_layout = QHBoxLayout()
-        move_layout.addWidget(QLabel("Move:"))
-        self.move_spinbox = QSpinBox()
-        self.move_spinbox.setRange(1, self.current_quantity)
-        self.move_spinbox.setValue(1)
-        move_layout.addWidget(self.move_spinbox)
-        
-        move_layout.addWidget(QLabel("to:"))
-        self.container_combo = QComboBox()
         self.populate_container_combo()
-        move_layout.addWidget(self.container_combo)
-        
-        self.move_button = QPushButton("Move")
-        self.move_button.clicked.connect(self.on_move_clicked)
-        move_layout.addWidget(self.move_button)
-        
-        main_layout.addLayout(move_layout)
-        
-        # Dialog buttons
-        button_box = QDialogButtonBox(QDialogButtonBox.Close)
-        button_box.rejected.connect(self.accept)
-        main_layout.addWidget(button_box)
+
+    def setup_image(self, key, pixmap:QPixmap):
+        sz = pixmap.size()
+        if sz.width() > self.imgSize or sz.height() > self.imgSize:
+            image = pixmap.scaled(self.imgSize, self.imgSize, Qt.KeepAspectRatio, Qt.SmoothTransformation)
+            self.ui.imageLabel.setPixmap(image)
+        else:
+            self.ui.imageLabel.setPixmap(pixmap)
         
     def populate_container_combo(self):
-        """Populate the container combo box with all containers except current one"""
-        containers = self.db_manager.getContainers()
+        dbManager = DatabaseManager()
+        containers = dbManager.getContainers()
         
         for container in containers:
             if container.id != self.container.id:
-                self.container_combo.addItem(container.name, container.id)
+                self.ui.containerCombo.addItem(container.name, container.id)
                 
-        if self.container_combo.count() == 0:
-            self.move_button.setEnabled(False)
-            self.container_combo.setEnabled(False)
+        if self.ui.containerCombo.count() == 0:
+            self.ui.toContainerRadioButton.setEnabled(False)
+            self.ui.containerCombo.setEnabled(False)
+            self.ui.toOutsideRadioButton.setChecked(True)
+
+    def on_move_remove_clicked(self):
+        if self.ui.toContainerRadioButton.isChecked():
+            self.on_move_clicked()
+        elif self.ui.toOutsideRadioButton.isChecked():
+            self.on_remove_clicked()
             
     def on_remove_clicked(self):
-        """Handle remove button click"""
-        quantity = self.remove_spinbox.value()
+        quantity = self.ui.qtySpinBox.value()
         
         if quantity <= 0 or quantity > self.current_quantity:
             QMessageBox.warning(self, "Invalid Quantity", "Please enter a valid quantity to remove")
@@ -118,9 +103,8 @@ class PartDetailDialog(QDialog):
             QMessageBox.critical(self, "Error", "Failed to remove parts")
             
     def on_move_clicked(self):
-        """Handle move button click"""
-        quantity = self.move_spinbox.value()
-        target_container_id = self.container_combo.currentData()
+        quantity = self.ui.qtySpinBox.value()
+        target_container_id = self.ui.containerCombo.currentData()
         
         if quantity <= 0 or quantity > self.current_quantity:
             QMessageBox.warning(self, "Invalid Quantity", "Please enter a valid quantity to move")
@@ -132,97 +116,17 @@ class PartDetailDialog(QDialog):
             
         # Move parts from one container to another
         if self.move_parts_to_container(quantity, target_container_id):
-            QMessageBox.information(self, "Success", f"Moved {quantity} parts to {self.container_combo.currentText()}")
+            QMessageBox.information(self, "Success", f"Moved {quantity} parts to {self.ui.containerCombo.currentText()}")
             self.accept()
         else:
             QMessageBox.critical(self, "Error", "Failed to move parts")
             
     def update_part_quantity(self, delta):
-        """Update part quantity in database"""
-        try:
-            query = QSqlQuery()
-            query.prepare("""
-                UPDATE parts_collection 
-                SET count = count + ? 
-                WHERE item = ? AND container_id = ?
-            """)
-            query.addBindValue(delta)
-            query.addBindValue(self.part_data['id'])
-            query.addBindValue(self.container.id)
-            
-            if not query.exec():
-                return False
-                
-            # If count is now zero, remove the entry
-            if self.current_quantity + delta <= 0:
-                query.prepare("""
-                    DELETE FROM parts_collection
-                    WHERE item = ? AND container_id = ?
-                """)
-                query.addBindValue(self.part_data['id'])
-                query.addBindValue(self.container.id)
-                
-                if not query.exec():
-                    return False
-                    
-            return True
-            
-        except Exception as e:
-            print(f"Error updating quantity: {str(e)}")
-            return False
-            
+        dbManager = DatabaseManager()
+        result = dbManager.addColorPartIDToContainer(self.part_data['id'], self.container.id, delta)
+        return result
+
     def move_parts_to_container(self, quantity, target_container_id):
-        """Move parts from current container to target container"""
-        try:
-            # Start transaction
-            self.db_manager.db.transaction()
-            
-            # Remove from current container
-            if not self.update_part_quantity(-quantity):
-                self.db_manager.db.rollback()
-                return False
-                
-            # Add to target container
-            query = QSqlQuery()
-            
-            # Check if part already exists in target container
-            query.prepare("""
-                SELECT count FROM parts_collection
-                WHERE item = ? AND container_id = ?
-            """)
-            query.addBindValue(self.part_data['id'])
-            query.addBindValue(target_container_id)
-            
-            if query.exec() and query.next():
-                # Update existing entry
-                current_count = query.value(0)
-                
-                query.prepare("""
-                    UPDATE parts_collection
-                    SET count = count + ?
-                    WHERE item = ? AND container_id = ?
-                """)
-                query.addBindValue(quantity)
-                query.addBindValue(self.part_data['id'])
-                query.addBindValue(target_container_id)
-            else:
-                # Insert new entry
-                query.prepare("""
-                    INSERT INTO parts_collection (item, container_id, count)
-                    VALUES (?, ?, ?)
-                """)
-                query.addBindValue(self.part_data['id'])
-                query.addBindValue(target_container_id)
-                query.addBindValue(quantity)
-                
-            if not query.exec():
-                self.db_manager.db.rollback()
-                return False
-                
-            # Commit transaction
-            return self.db_manager.db.commit()
-            
-        except Exception as e:
-            print(f"Error moving parts: {str(e)}")
-            self.db_manager.db.rollback()
-            return False
+        dbManager = DatabaseManager()
+        result = dbManager.movePartsBetweenContainers(self.part_data['id'], self.container.id, target_container_id, quantity)
+        return result

@@ -27,8 +27,8 @@ class ColorPart:
 
 class DatabaseManager:
     def __init__(self):
-        self.db = None
-        
+        self.db = QSqlDatabase.database()
+    
     def initialize_database(self) -> bool:
         self.db = QSqlDatabase.addDatabase(AppConfig.DATABASE_TYPE)
         self.db.setDatabaseName(str(AppConfig.DATABASE_PATH))
@@ -36,7 +36,7 @@ class DatabaseManager:
         if not self.db.open():
             logging.error(f"Database Error: {self.db.lastError().text()}")
             return False
-            
+
         # Create tables
         if not self._create_tables():
             return False
@@ -61,7 +61,7 @@ class DatabaseManager:
             logging.warning("Failed to import colors_parts data")
             
         return True
-    
+
     def close_connection(self):
         if self.db and self.db.isOpen():
             self.db.close()
@@ -164,23 +164,97 @@ class DatabaseManager:
             return None
 
     def addColorPartToContainer(self, colorPart: ColorPart, container_id: int, quantity: int) -> bool:
-        query = QSqlQuery()
-        query.prepare("""INSERT OR IGNORE INTO parts_collection (item, container_id, count) VALUES (?, ?, 0);""")
-        query.addBindValue(colorPart.id)
-        query.addBindValue(container_id)
-        if not query.exec():
-            logging.error(f"Error adding part to collection: {query.lastError().text()}")
+        return self.addColorPartIDToContainer(colorPart.id, container_id, quantity)
+    
+    def addColorPartIDToContainer(self, colorPartID: int, container_id: int, quantity: int) -> bool:
+        self.db.transaction()
+        try:
+            if not self.addColorPartIDToContainerNoTrans(colorPartID, container_id, quantity):
+                self.db.rollback()
+                return False
+            else:
+                self.db.commit()
+                return True
+        except Exception as e:
+            logging.error(f"Error adding part to container: {str(e)}")
+            self.db.rollback()
+            return False
+    
+    def addColorPartIDToContainerNoTrans(self, colorPartID: int, container_id: int, quantity: int) -> bool:
+        try:
+            query = QSqlQuery()
+
+            if quantity > 0:
+                query.prepare("""INSERT OR IGNORE INTO parts_collection (item, container_id, count) VALUES (?, ?, 0);""")
+                query.addBindValue(colorPartID)
+                query.addBindValue(container_id)
+                if not query.exec():
+                    logging.error(f"Error adding part to collection: {query.lastError().text()}")
+                    return False
+            
+            query.prepare("""UPDATE parts_collection SET count = count + ? WHERE item = ? AND container_id = ?""")
+            query.addBindValue(quantity)
+            query.addBindValue(colorPartID)
+            query.addBindValue(container_id)
+            if not query.exec():
+                logging.error(f"Error updating part count: {query.lastError().text()}")
+                return False
+            
+            if quantity < 0:
+                if not self.removeZeroQtyEntries(container_id):
+                    return False
+
+            return True
+    
+        except Exception as e:
+            logging.error(f"Error moving parts: {str(e)}")
+            return False
+    
+    def removeZeroQtyEntries(self, container_id: int) -> bool:
+        try:
+            query = QSqlQuery()
+            query.prepare("DELETE FROM parts_collection WHERE container_id = ? AND count = 0")
+            query.addBindValue(container_id)
+            if not query.exec():
+                logging.error(f"Error removing zero quantity entries: {query.lastError().text()}")
+                return False
+
+            return True
+        except Exception as e:
+            logging.error(f"Error cleaning zero qty {container_id}: {str(e)}")
             return False
         
-        query.prepare("""UPDATE parts_collection SET count = count + ? WHERE item = ? AND container_id = ?""")
-        query.addBindValue(quantity)
-        query.addBindValue(colorPart.id)
-        query.addBindValue(container_id)
-        if not query.exec():
-            logging.error(f"Error updating part count: {query.lastError().text()}")
-            return False
+    def movePartsBetweenContainers(self, part_id: str, source_container_id: int, target_container_id: int, quantity: int) -> bool:
+        # Start transaction
+        self.db.transaction()
 
-        return True
+        try:
+            # Remove from source container
+            if not self.addColorPartIDToContainerNoTrans(part_id, source_container_id, -quantity):
+                self.db.rollback()
+                return False
+                
+            # Add to target container
+            if not self.addColorPartIDToContainerNoTrans(part_id, target_container_id, quantity):
+                self.db.rollback()
+                return False
+                
+            # Remove zero quantity entries
+            if not self.removeZeroQtyEntries(source_container_id):
+                self.db.rollback()
+                return False
+                
+            # Commit transaction
+            if not self.db.commit():
+                logging.error(f"Error committing transaction: {self.db.lastError().text()}")
+                return False
+                
+            return True
+            
+        except Exception as e:
+            logging.error(f"Error moving parts: {str(e)}")
+            self.db.rollback()
+            return False
     
     def updateContainer(self, container: Container) -> bool:
         try:

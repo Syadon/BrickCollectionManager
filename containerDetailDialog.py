@@ -88,7 +88,7 @@ class ContainerDetailDialog(QDialog):
         
         # Update container object
         self.container.name = self.ui.name_edit.text()
-        self.container.description = self.ui.description_edit.toPlainText()
+        self.container.description = self.ui.description_edit.text()
         
         # Save to database
         if db_manager.updateContainer(self.container):
