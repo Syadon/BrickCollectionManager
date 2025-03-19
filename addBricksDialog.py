@@ -407,11 +407,17 @@ class AddBricksDialog(QDialog):
             # Insert into parts_collection
             if not dbManager.addColorPartToContainer(colorPart, container_id, quantity):
                 logging.warning("Color_part not added to collection!")
-                return                 
+                return
+
+            newPartCount = dbManager.getConteinerPartCount(container_id)
+            if newPartCount != None and newPartCount > 0:
+                self.ui.containerCombobox.setItemText(self.ui.containerCombobox.currentIndex(), 
+                    f"{self.ui.containerCombobox.currentText()} ({newPartCount} parts)")
 
             logging.info(f"Added {quantity} of part {part_data['id']} in color {color_data.name} to container {container_id}")
             
             self.video_manager.startStream()
+            self.clearDetection()
 
         except Exception as e:
             logging.error(f"Error adding part to collection: {str(e)}")
