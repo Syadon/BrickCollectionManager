@@ -5,6 +5,7 @@ from ui.ui_mainwindow import Ui_MainWindow
 from addBricksDialog import AddBricksDialog
 from addContainerDialog import AddContainerDialog
 from containerDetailDialog import ContainerDetailDialog
+from searchPartsDialog import SearchPartsDialog
 from database import DatabaseManager
 import operator
 
@@ -60,6 +61,8 @@ class MainWindow(QMainWindow):
         self.ui.addBricksButton.clicked.connect(self.openAddBricksDialog)
         self.ui.addNewContainerButton.clicked.connect(self.openAddContainerDialog)
 
+        self.ui.findBricksButton.clicked.connect(self.openFindDialog)
+
         # Connect double click signal
         self.ui.containerView.doubleClicked.connect(self.on_container_double_clicked)
         
@@ -76,6 +79,10 @@ class MainWindow(QMainWindow):
         dialog = AddContainerDialog(self)
         if dialog.exec() == AddContainerDialog.Accepted:
             self.updateContainerView()
+
+    def openFindDialog(self):
+        dialog = SearchPartsDialog(self)
+        dialog.exec()
 
     def updateContainerView(self):
         dbManager = DatabaseManager()
