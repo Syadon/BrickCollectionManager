@@ -28,7 +28,8 @@ class ContainerPartsModel(QAbstractTableModel):
             part_id = row.get('part_id')
             if color_id and part_id:
                 image = self.imgProvider.get_part_image(part_id, color_id)
-                row['image'] = image.scaled(self.imageSizes, Qt.KeepAspectRatio, Qt.SmoothTransformation)
+                if image != None:
+                    row['image'] = image.scaled(self.imageSizes, Qt.KeepAspectRatio, Qt.SmoothTransformation)
     
     def _update_image(self, key, pixmap):
         part_id, color_id = key.split('_')

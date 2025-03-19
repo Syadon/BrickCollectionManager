@@ -1,12 +1,13 @@
-from PySide6.QtWidgets import QDialog, QListWidgetItem, QTableWidgetItem, QAbstractItemView
+from PySide6.QtWidgets import QDialog, QListWidgetItem, QTableWidgetItem
 from PySide6.QtCore import Qt, QByteArray, QBuffer, QRect
-from PySide6.QtGui import QImage, QColor, QIcon, QPixmap, QPainter
+from PySide6.QtGui import QImage, QColor, QIcon, QPixmap
 from database import DatabaseManager, BrickColor
 from ui.ui_addbricksdialog import Ui_AddBricksDialog
 from cameraStreamManager import CameraStreamManager
 from config import AppConfig
 from utils import rgb_to_hsv, calculate_hsv_similarity, qImageToOpenCV, TransparentSelectionDelegate
 from imageProvider import ImagesProvider
+from brickRecongnition import BrickRecognition
 import cv2
 import numpy as np
 import logging
@@ -107,16 +108,21 @@ class AddBricksDialog(QDialog):
         image.save(buffer, "JPG")
         buffer.close()
 
-        # Prepare files for POST request 
-        files = {'query_image': ('image.jpg', byte_array.data(), 'image/jpeg')}
-        # Make POST request to API
-        response = requests.post('https://api.brickognize.com/predict/parts', files=files)
-        # Print response
-        if response.status_code == 200:
-            detectionData = response.json()
-            self.on_part_detected(image, detectionData)
-        else:
-            print(f"Error: {response.status_code}", response.text)
+        # # Prepare files for POST request 
+        # files = {'query_image': ('image.jpg', byte_array.data(), 'image/jpeg')}
+        # # Make POST request to API
+        # response = requests.post('https://api.brickognize.com/predict/parts', files=files)
+        # # Print response
+        # if response.status_code == 200:
+        #     detectionData = response.json()
+        #     self.on_part_detected(image, detectionData)
+        # else:
+        #     print(f"Error: {response.status_code}", response.text)
+
+        recongnition = BrickRecognition()
+        recognition_result = recongnition.recognize(byte_array)
+        if recognition_result:
+            self.on_part_detected(image, recognition_result)
 
     def detect_image_colors(self, image:QImage, bb:QRect):
         try:
@@ -160,11 +166,25 @@ class AddBricksDialog(QDialog):
             return []
 
     def on_part_detected(self, image, detectionData):
-        # Convert bounding box coordinates
-        bbleft = int(detectionData['bounding_box']['left'])
-        bbright = int(detectionData['bounding_box']['right']) 
-        bbupper = int(detectionData['bounding_box']['upper'])
-        bblower = int(detectionData['bounding_box']['lower'])
+        # Check if detectionData contains required fields
+        if 'bb' not in detectionData or 'items' not in detectionData:
+            logging.error("Detection data missing required fields (bb or items)")
+            return
+
+        # Check if bb contains all required coordinates
+        if not all(key in detectionData['bb'] for key in ['left', 'right', 'upper', 'lower']):
+            logging.error("Bounding box missing required coordinates")
+            return
+
+        # Check if items list is not empty
+        if not detectionData['items']:
+            logging.error("No items detected")
+            return
+
+        bbleft = int(detectionData['bb']['left'])
+        bbright = int(detectionData['bb']['right']) 
+        bbupper = int(detectionData['bb']['upper'])
+        bblower = int(detectionData['bb']['lower'])
         bb = QRect(bbleft, bbupper, bbright-bbleft, bblower-bbupper)
 
         self.video_manager.setDetectionImage(image, bb)
@@ -179,12 +199,10 @@ class AddBricksDialog(QDialog):
             self.ui.parts_list.insertRow(row)
             # Create list item with part info
             image_item = QTableWidgetItem()
-            response = requests.get(item['img_url'])
-            if response.status_code == 200:
-                img = QImage.fromData(response.content)
-                if not img.isNull():
-                    scaled = img.scaled(self.iconSize, self.iconSize, Qt.KeepAspectRatio, Qt.SmoothTransformation)
-                    image_item.setIcon(QIcon(QPixmap.fromImage(scaled)))
+            img = self.imgProvider.get_image_from_url(item['img_url'], f"{item['id']}_part")
+            if img != None and not img.isNull():
+                scaled = img.scaled(self.iconSize, self.iconSize, Qt.KeepAspectRatio, Qt.SmoothTransformation)
+                image_item.setIcon(QIcon(scaled))
     
             id_item = QTableWidgetItem(f"{item['id']}")
             name_item = QTableWidgetItem(f"{item['name']}")
@@ -402,7 +420,6 @@ class AddBricksDialog(QDialog):
         super().closeEvent(event)
 
     def on_color_selected(self):
-        """Update part image when color is selected"""
         # Check if a part is selected
         if not self.current_part_id:
             return
@@ -433,44 +450,53 @@ class AddBricksDialog(QDialog):
         # If not, it will be handled by on_image_loaded when available
 
     def on_image_loaded(self, key, pixmap):
-        """Handle image loaded event from ImageProvider"""
-        # Only process if we have a current part selected
-        if not self.current_part_id:
-            return
-            
         # Parse key to get part_id and color_id
         try:
             part_id, color_id = key.split('_')
         except:
             return
         
-        # Only update if this is our current part
-        if part_id != self.current_part_id:
-            return
-        
-        # Get current selected part and color
-        part_row = self.ui.parts_list.currentRow()
-        color_row = self.ui.colors_list.currentRow()
-        
-        if part_row < 0 or color_row < 0:
-            return
+        if color_id == "part":
+            part_row = -1
+            for row in range(self.ui.parts_list.rowCount()):
+                item = self.ui.parts_list.item(row, 0)
+                if item and item.data(Qt.UserRole)['id'] == part_id:
+                    part_row = row
+                    break
+
+            if part_row < 0:
+                return
+        else:
+            # Only process if we have a current part selected
+            if not self.current_part_id:
+                return
             
-        # Get color data of selected color
-        color_item = self.ui.colors_list.item(color_row, 0)
-        if not color_item:
-            return
+            # Only update if this is our current part
+            if part_id != self.current_part_id:
+                return
             
-        color_data = color_item.data(Qt.UserRole)
-        
-        # Only update if this is our currently selected color
-        if str(color_data.id) != color_id:
-            return
-        
+            # Get current selected part and color
+            part_row = self.ui.parts_list.currentRow()
+            color_row = self.ui.colors_list.currentRow()
+            
+            if part_row < 0 or color_row < 0:
+                return
+                
+            # Get color data of selected color
+            color_item = self.ui.colors_list.item(color_row, 0)
+            if not color_item:
+                return
+                
+            color_data = color_item.data(Qt.UserRole)
+            
+            # Only update if this is our currently selected color
+            if str(color_data.id) != color_id:
+                return
+            
         # Update image
         self.update_part_image(pixmap, part_row)
 
     def update_part_image(self, pixmap, row):
-        """Update part image in table"""
         if row < 0 or row >= self.ui.parts_list.rowCount():
             return
             
@@ -484,4 +510,5 @@ class AddBricksDialog(QDialog):
         if image_item:
             image_item.setIcon(QIcon(scaled))
             self.ui.parts_list.viewport().update()  # Force repaint
+            self.ui.parts_list.resizeColumnsToContents()
 
