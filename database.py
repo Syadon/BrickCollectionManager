@@ -635,3 +635,127 @@ class DatabaseManager:
             logging.error(f"Error importing parts: {str(e)}")
             self.db.rollback()
             return False
+
+    def deleteContainer(self, container_id):
+        try:
+            # Check if container has parts
+            query = QSqlQuery()
+            query.prepare("SELECT COUNT(*) FROM parts_collection WHERE container_id = ?")
+            query.addBindValue(container_id)
+            
+            if query.exec() and query.next():
+                count = query.value(0)
+                if count > 0:
+                    logging.error("Cannot delete container with parts")
+                    return False
+                    
+            # Delete container
+            query.prepare("DELETE FROM containers WHERE id = ?")
+            query.addBindValue(container_id)
+            
+            return query.exec()
+            
+        except Exception as e:
+            logging.error(f"Error deleting container: {str(e)}")
+            return False
+
+    def moveAllParts(self, source_container_id, target_container_id):
+        try:
+            # Start transaction
+            self.db.transaction()
+            
+            # Get parts in source container
+            query = QSqlQuery()
+            query.prepare("SELECT item, count FROM parts_collection WHERE container_id = ?")
+            query.addBindValue(source_container_id)
+            
+            if not query.exec():
+                logging.error(f"Error querying parts: {query.lastError().text()}")
+                self.db.rollback()
+                return False
+            
+            # Process each part
+            while query.next():
+                item_id = query.value(0)
+                count = query.value(1)
+                
+                # Check if part already exists in target
+                check_query = QSqlQuery()
+                check_query.prepare("SELECT count FROM parts_collection WHERE item = ? AND container_id = ?")
+                check_query.addBindValue(item_id)
+                check_query.addBindValue(target_container_id)
+                
+                if check_query.exec() and check_query.next():
+                    # Update existing entry
+                    update_query = QSqlQuery()
+                    update_query.prepare("UPDATE parts_collection SET count = count + ? WHERE item = ? AND container_id = ?")
+                    update_query.addBindValue(count)
+                    update_query.addBindValue(item_id)
+                    update_query.addBindValue(target_container_id)
+                    
+                    if not update_query.exec():
+                        logging.error(f"Error updating part: {update_query.lastError().text()}")
+                        self.db.rollback()
+                        return False
+                else:
+                    # Insert new entry
+                    insert_query = QSqlQuery()
+                    insert_query.prepare("INSERT INTO parts_collection (item, count, container_id) VALUES (?, ?, ?)")
+                    insert_query.addBindValue(item_id)
+                    insert_query.addBindValue(count)
+                    insert_query.addBindValue(target_container_id)
+                    
+                    if not insert_query.exec():
+                        logging.error(f"Error inserting part: {insert_query.lastError().text()}")
+                        self.db.rollback()
+                        return False
+            
+            # Delete all parts from source container
+            delete_query = QSqlQuery()
+            delete_query.prepare("DELETE FROM parts_collection WHERE container_id = ?")
+            delete_query.addBindValue(source_container_id)
+            
+            if not delete_query.exec():
+                logging.error(f"Error deleting parts: {delete_query.lastError().text()}")
+                self.db.rollback()
+                return False
+                
+            # Commit transaction
+            return self.db.commit()
+            
+        except Exception as e:
+            logging.error(f"Error moving parts: {str(e)}")
+            self.db.rollback()
+            return False
+
+    def deleteContainerWithParts(self, container_id):
+        try:
+            # Start transaction
+            self.db.transaction()
+            
+            # Delete all parts
+            query = QSqlQuery()
+            query.prepare("DELETE FROM parts_collection WHERE container_id = ?")
+            query.addBindValue(container_id)
+            
+            if not query.exec():
+                logging.error(f"Error deleting parts: {query.lastError().text()}")
+                self.db.rollback()
+                return False
+                
+            # Delete container
+            query.prepare("DELETE FROM containers WHERE id = ?")
+            query.addBindValue(container_id)
+            
+            if not query.exec():
+                logging.error(f"Error deleting container: {query.lastError().text()}")
+                self.db.rollback()
+                return False
+                
+            # Commit transaction
+            return self.db.commit()
+            
+        except Exception as e:
+            logging.error(f"Error deleting container: {str(e)}")
+            self.db.rollback()
+            return False
