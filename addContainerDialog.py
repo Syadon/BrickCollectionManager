@@ -20,4 +20,4 @@ class AddContainerDialog(QDialog):
 
     def addContainer(self):
         dbManager = DatabaseManager()
-        dbManager.addContainer(self.ui.nameEdit.text(), self.ui.descriptionEdit.toPlainText())
+        dbManager.addContainer(self.ui.nameEdit.text(), self.ui.descriptionEdit.text())
