@@ -378,7 +378,11 @@ class AddBricksDialog(QDialog):
                 return
 
             # Get selected color
-            color_item = self.ui.colors_list.item(current_row, 0)
+            color_current_row = self.ui.colors_list.currentRow()
+            if color_current_row < 0:
+                return
+                
+            color_item = self.ui.colors_list.item(color_current_row, 0)
             if not color_item:
                 return
 
@@ -419,16 +423,15 @@ class AddBricksDialog(QDialog):
             logging.info(f"Added {quantity} of part {part_data['id']} in color {color_data.name} to container {container_id}")
             
             # Show a message box with the part image to confirm addition
-
-            
             msg = QMessageBox(self)
             msg.setWindowTitle("Part Added")
             msg.setText(f"Added {quantity} of part {part_data['id']} - {part_data['name']} in color {color_data.name} - {color_data.type} to container {container_name}")
             msg.setStandardButtons(QMessageBox.Ok)
 
             # Get the part image
-            if part_item.icon():
-                pixmap = part_item.icon().pixmap(self.iconSize, self.iconSize)
+            pixmap = self.imgProvider.get_part_image(part_data['id'], color_data.id)
+            if pixmap != None:
+                # TODO: resize image to max
                 msg.setIconPixmap(pixmap)
 
             msg.exec()
@@ -472,6 +475,8 @@ class AddBricksDialog(QDialog):
         if image:
             self.update_part_image(image, part_row)
         # If not, it will be handled by on_image_loaded when available
+
+        print(f"{color_data.id} - {color_data.name}")
 
     def on_image_loaded(self, key, pixmap):
         # Parse key to get part_id and color_id
