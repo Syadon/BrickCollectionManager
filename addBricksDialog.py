@@ -370,9 +370,8 @@ class AddBricksDialog(QDialog):
                 return
 
             # Get selected color
-            color_item = self.ui.colors_list.currentItem()
+            color_item = self.ui.colors_list.item(current_row, 0)
             if not color_item:
-                logging.warning("No color selected")
                 return
 
             # Get selected container
