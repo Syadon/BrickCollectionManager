@@ -12,6 +12,7 @@ import cv2
 import numpy as np
 import logging
 import requests
+from PySide6.QtWidgets import QMessageBox
 
 class AddBricksDialog(QDialog):
     def __init__(self, parent=None):
@@ -357,7 +358,7 @@ class AddBricksDialog(QDialog):
         for container in containers:
             # Display name and part count
             display_text = f"{container.name} ({container.part_count} parts)"
-            self.ui.containerCombobox.addItem(display_text, container.id)
+            self.ui.containerCombobox.addItem(display_text, (container.id, container.name))
 
     def on_next_clicked(self):
         self.video_manager.startStream()
@@ -382,7 +383,8 @@ class AddBricksDialog(QDialog):
                 return
 
             # Get selected container
-            container_id = self.ui.containerCombobox.currentData()
+            container_data = self.ui.containerCombobox.currentData()
+            container_id, container_name = container_data
             if container_id is None:
                 logging.warning("No container selected")
                 return
@@ -416,6 +418,21 @@ class AddBricksDialog(QDialog):
 
             logging.info(f"Added {quantity} of part {part_data['id']} in color {color_data.name} to container {container_id}")
             
+            # Show a message box with the part image to confirm addition
+
+            
+            msg = QMessageBox(self)
+            msg.setWindowTitle("Part Added")
+            msg.setText(f"Added {quantity} of part {part_data['id']} - {part_data['name']} in color {color_data.name} - {color_data.type} to container {container_name}")
+            msg.setStandardButtons(QMessageBox.Ok)
+
+            # Get the part image
+            if part_item.icon():
+                pixmap = part_item.icon().pixmap(self.iconSize, self.iconSize)
+                msg.setIconPixmap(pixmap)
+
+            msg.exec()
+
             self.video_manager.startStream()
             self.clearDetection()
 
