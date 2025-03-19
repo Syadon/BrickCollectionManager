@@ -56,6 +56,9 @@ class AddBricksDialog(QDialog):
 
         # Connect add part button
         self.ui.addToContainerButton.clicked.connect(self.on_add_part_clicked)
+
+        self.ui.skipButton.clicked.connect(self.on_next_clicked)
+
         self.ui.qtySpinBox.setValue(1)  # Set default quantity to 1
 
         if self.ui.acquisition_combo.count() > 1:
@@ -355,6 +358,10 @@ class AddBricksDialog(QDialog):
             # Display name and part count
             display_text = f"{container.name} ({container.part_count} parts)"
             self.ui.containerCombobox.addItem(display_text, container.id)
+
+    def on_next_clicked(self):
+        self.video_manager.startStream()
+        self.clearDetection()
 
     def on_add_part_clicked(self):
         try:
