@@ -405,11 +405,6 @@ class AddBricksDialog(QDialog):
             logging.info(f"Added {quantity} of part {part_data['id']} in color {color_data.name} to container {container_id}")
             
             self.video_manager.startStream()
-            # Clear selection and reset quantity
-            #self.ui.qtySpinBox.setValue(1)
-            #self.video_view.clear_detection()
-            #self.ui.parts_list.clear()
-            #self.ui.colors_list.clear()
 
         except Exception as e:
             logging.error(f"Error adding part to collection: {str(e)}")
