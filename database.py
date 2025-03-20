@@ -97,6 +97,137 @@ class DatabaseManager:
             containers.append(container)
         return containers
     
+    def getColors(self) -> list[BrickColor]:
+        query = QSqlQuery("SELECT * FROM colors ORDER BY name")
+        colors = []
+        while query.next():
+            color = BrickColor(
+                query.value("id"),
+                query.value("name"),
+                query.value("rgb"),
+                query.value("type")
+            )
+            colors.append(color)
+        return colors
+    
+    def getColorsNames(self) -> list[str]:
+        ret = []
+        query = QSqlQuery("SELECT DISTINCT name FROM colors ORDER BY name")
+        while query.next():
+            ret.append(query.value("name"))
+
+        return ret
+    
+    def getAllPartsIds(self) -> list[str]:
+        part_ids = []
+        query = QSqlQuery("""
+            SELECT DISTINCT p.id 
+            FROM parts p
+            JOIN colors_parts cp ON p.id = cp.part_id
+            JOIN parts_collection pc ON cp.id = pc.item
+            ORDER BY p.id
+        """)
+        
+        while query.next():
+            part_ids.append(query.value(0))
+            
+        return part_ids
+    
+    def getAllPartsNames(self) -> list[str]:
+        part_names = []
+        query = QSqlQuery("""
+            SELECT DISTINCT p.name 
+            FROM parts p
+            JOIN colors_parts cp ON p.id = cp.part_id
+            JOIN parts_collection pc ON cp.id = pc.item
+            ORDER BY p.name
+        """)
+        
+        while query.next():
+            part_names.append(query.value(0))
+            
+        return part_names
+    
+    def getColorsTypesNames(self) -> list[str]:
+        ret = []
+        query = QSqlQuery("SELECT DISTINCT type FROM colors ORDER BY type")
+        while query.next():
+            ret.append(query.value("type"))
+
+        return ret
+        
+    def searchIntoCollection(self, part_id: str = None, part_name: str = None, 
+                             color_name: str = None, color_type: str = None) -> list[dict]:
+        # Build query based on search criteria
+        query_str = """
+            SELECT cp.id, p.id as part_id, p.name as part_name, 
+                cp.color_id as color_id, c.name as color_name, c.rgb as color_rgb,
+                c.type as color_type, cat.name as part_category,
+                con.name as container_name, pc.count as quantity,
+                con.id as container_id
+            FROM parts_collection pc
+            JOIN colors_parts cp ON pc.item = cp.id
+            JOIN parts p ON cp.part_id = p.id
+            JOIN colors c ON cp.color_id = c.id
+            JOIN containers con ON pc.container_id = con.id
+            JOIN categories cat ON p.category = cat.id
+            WHERE 1=1
+        """
+        
+        params = []
+        
+        # Part ID filter
+        if part_id:
+            query_str += " AND p.id = ?"
+            params.append(part_id)
+            
+        # Part Name filter
+        elif part_name:
+            query_str += " AND p.name LIKE ?"
+            params.append(f"%{part_name}%")
+            
+        # Color filter
+        if color_name:
+            query_str += " AND c.name = ?"
+            params.append(color_name)
+            
+        # Color Type filter
+        if color_type:
+            query_str += " AND c.type = ?"
+            params.append(color_type)
+            
+        query_str += " ORDER BY p.name, c.name, con.name"
+        
+        # Execute query
+        query = QSqlQuery()
+        query.prepare(query_str)
+        
+        for param in params:
+            query.addBindValue(param)
+            
+        if not query.exec():
+            logging.warning(f"Failed to serach into collection: {query.lastError().text()}")
+            return []
+            
+        # Process results
+        results = []
+        while query.next():
+            results.append({
+                'id': query.value('id'),
+                'part_id': query.value('part_id'),
+                'part_name': query.value('part_name'),
+                'part_category': query.value('part_category'),
+                'color_id': query.value('color_id'),
+                'color_name': query.value('color_name'),
+                'rgb': query.value('color_rgb'),
+                'color_type': query.value('color_type'),
+                'container_name': query.value('container_name'),
+                'quantity': query.value('quantity'),
+                'container_id': query.value('container_id')
+            })
+
+        return results
+
     def getPartColors(self, part_id: str) -> list[BrickColor]:
         # Create SQL query to get colors for part
         query = QSqlQuery()
