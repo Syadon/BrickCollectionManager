@@ -176,3 +176,4 @@ database/brick_collection.db
 ui/ui_*.py
 database/bricklink_data
 cache
+resources_rc.py

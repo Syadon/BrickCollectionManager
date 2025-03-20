@@ -1,4 +1,4 @@
-from PySide6.QtGui import QPixmap
+from PySide6.QtGui import QPixmap, QColor
 from PySide6.QtCore import Qt, QObject, Signal, QRunnable, QThreadPool, Slot
 import requests
 from pathlib import Path
@@ -28,9 +28,23 @@ class ImageUrlWorker(QRunnable):
             }
             response = requests.get(self.url, headers=headers)
             if response.status_code == 200:
+                # Check if content is a valid image (JPG starts with specific bytes)
+                # content_type = response.headers.get('Content-Type', '')
+                # is_img = content_type.startswith('image')
+                
+                # # Additional check: JPG files start with bytes FF D8
+                # is_jpg_by_content = response.content.startswith(b'\xff\xd8')
+                
+                # if is_img:
                 self.cache_path.write_bytes(response.content)
                 pixmap = QPixmap(str(self.cache_path))
-                self.signals.finished.emit(self.cache_name, pixmap)
+                if not pixmap.isNull():
+                    self.signals.finished.emit(self.cache_name, pixmap)
+                else:
+                    Path.unlink(self.cache_path, missing_ok=True)
+                    self.signals.error.emit(self.cache_name, "Invalid image format")
+                # else:
+                #     self.signals.error.emit(self.cache_name, "Response was not a valid JPG image")
             else:
                 self.signals.error.emit(self.cache_name, 
                                      f"Error: {response.status_code}")
@@ -82,7 +96,7 @@ class ImagesProvider(QObject):
         self.thread_pool.start(worker)
         
         # Return placeholder while loading
-        return None
+        return self.get_placeholder_image(size=100)
 
     def get_part_image(self, part_id, color_id):
         key = f"{part_id}_{color_id}"
@@ -97,3 +111,27 @@ class ImagesProvider(QObject):
     def _handle_image_error(self, key, error):
         print(f"Failed to load image {key}: {error}")
         self.image_error.emit(key, error)
+
+    def cleanup_tasks(self):
+        # Tell thread pool to stop accepting new tasks
+        self.thread_pool.clear()
+        
+        # Wait for all running tasks to complete
+        # This timeout is optional - set to 0 to return immediately or a longer value to wait
+        self.thread_pool.waitForDone(1000)  # Wait up to 1 second
+        
+        print("Image provider tasks cleaned up")
+
+    def clear_cache(self):
+        # Clear the image cache to free memory
+        self.image_cache.clear()
+
+    @staticmethod
+    def get_placeholder_image(size=100):
+        pixmap = QPixmap(":/images/placeholder_icon.png")
+        if pixmap.isNull():
+            # Fallback: create a default placeholder if resource not found
+            pixmap = QPixmap(size, size)
+            pixmap.fill(QColor(200, 200, 200))
+        
+        return pixmap.scaled(size, size, Qt.KeepAspectRatio, Qt.SmoothTransformation)
