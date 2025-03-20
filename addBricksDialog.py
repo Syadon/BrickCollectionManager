@@ -31,6 +31,12 @@ class AddBricksDialog(QDialog):
         self.ui = Ui_AddBricksDialog()
         self.ui.setupUi(self)
 
+        # Crea e configura l'UI per la scheda search
+        self.setup_search_tab()
+
+        # Populate container combobox
+        self.populate_container_list()
+
         # Connect colors_list selection changed signal
         self.ui.colors_list.itemSelectionChanged.connect(self.on_color_selected)
 
@@ -53,9 +59,6 @@ class AddBricksDialog(QDialog):
         # Connect list item selection
         self.ui.parts_list.itemSelectionChanged.connect(self.on_part_selected)
 
-        # Populate container combobox
-        self.populate_container_list()
-
         # Connect add part button
         self.ui.addToContainerButton.clicked.connect(self.on_add_part_clicked)
 
@@ -68,9 +71,6 @@ class AddBricksDialog(QDialog):
         
         # Initial check of camera tab visibility
         self.on_tab_changed(self.ui.tabWidget.currentIndex())
-
-        # Crea e configura l'UI per la scheda search
-        self.setup_search_tab()
 
     def resizeEvent(self, event):
         super().resizeEvent(event)
@@ -351,6 +351,7 @@ class AddBricksDialog(QDialog):
 
     def populate_container_list(self):
         self.ui.containerCombobox.clear()
+        self.searchContainerComboBox.clear()
         
         # Get containers from database
         db_manager = DatabaseManager()
@@ -361,6 +362,7 @@ class AddBricksDialog(QDialog):
             # Display name and part count
             display_text = f"{container.name} ({container.part_count} parts)"
             self.ui.containerCombobox.addItem(display_text, (container.id, container.name))
+            self.searchContainerComboBox.addItem(display_text, (container.id, container.name))
 
     def on_next_clicked(self):
         self.video_manager.startStream()
@@ -591,6 +593,8 @@ class AddBricksDialog(QDialog):
             # Camera tab is not visible, stop the stream
             self.video_manager.close_stream()
 
+        self.populate_container_list()
+
     def setup_search_tab(self):
         # Layout principale
         main_layout = QVBoxLayout()
@@ -671,8 +675,8 @@ class AddBricksDialog(QDialog):
         self.search_qty_spinbox.setValue(1)
         add_layout.addRow("Quantity:", self.search_qty_spinbox)
         
-        # Container selector (riutilizziamo lo stesso della scheda camera)
-        add_layout.addRow("Container:", self.ui.containerCombobox)
+        self.searchContainerComboBox = QComboBox()
+        add_layout.addRow("Container:", self.searchContainerComboBox)
         
         # Add button
         self.search_add_button = QPushButton("Add to Container")
@@ -843,7 +847,7 @@ class AddBricksDialog(QDialog):
             data = item.data(Qt.UserRole)
             
             # Ottieni container selezionato
-            container_data = self.ui.containerCombobox.currentData()
+            container_data = self.searchContainerComboBox.currentData()
             if not container_data:
                 QMessageBox.warning(self, "No Container", "Please select a container")
                 return
