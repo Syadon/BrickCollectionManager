@@ -80,7 +80,14 @@ class ImagesProvider(QObject):
         if key in self.image_cache:
             return self.image_cache[key]
         
-        cache_path = self.cache_dir / f"{key}.jpg"
+        # Extract file extension from the URL
+        extension = Path(url).suffix
+        if not extension:
+            extension = '.jpg'  # Default extension if none found
+
+        # Use the extracted extension for the cache file
+        key_with_extension = f"{key}{extension}"
+        cache_path = self.cache_dir / key_with_extension
         
         # Check file cache
         if cache_path.exists():
