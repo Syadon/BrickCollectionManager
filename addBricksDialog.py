@@ -418,7 +418,7 @@ class AddBricksDialog(QDialog):
             newPartCount = dbManager.getConteinerPartCount(container_id)
             if newPartCount != None and newPartCount > 0:
                 self.ui.containerCombobox.setItemText(self.ui.containerCombobox.currentIndex(), 
-                    f"{self.ui.containerCombobox.currentText()} ({newPartCount} parts)")
+                    f"{container_name} ({newPartCount} parts)")
 
             logging.info(f"Added {quantity} of part {part_data['id']} in color {color_data.name} to container {container_id}")
             
