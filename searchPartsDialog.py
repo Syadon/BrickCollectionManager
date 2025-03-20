@@ -4,13 +4,11 @@ from PySide6.QtWidgets import (QDialog, QVBoxLayout, QHBoxLayout, QLabel,
                               QMessageBox, QCompleter, QSizePolicy, QDialogButtonBox)
 from PySide6.QtGui import QColor, QIcon
 from PySide6.QtCore import Qt, QStringListModel
-from PySide6.QtSql import QSqlQuery
 from database import DatabaseManager
 from utils import TransparentSelectionDelegate
 from imageProvider import ImagesProvider
 from config import AppConfig
 from partDetailDialog import PartDetailDialog
-import logging
 
 class SearchPartsDialog(QDialog):
     def __init__(self, parent=None):
@@ -106,8 +104,10 @@ class SearchPartsDialog(QDialog):
         self.setup_autocompletion()
         
     def setup_autocompletion(self):
+        dbManager = DatabaseManager()
+
         # Part ID completer
-        self.part_ids = self.get_all_part_ids()
+        self.part_ids = dbManager.getAllPartsIds()
         part_id_model = QStringListModel(self.part_ids)
         part_id_completer = QCompleter(part_id_model, self)
         part_id_completer.setCaseSensitivity(Qt.CaseInsensitive)
@@ -115,7 +115,7 @@ class SearchPartsDialog(QDialog):
         self.part_id_edit.setCompleter(part_id_completer)
         
         # Part Name completer
-        self.part_names = self.get_all_part_names()
+        self.part_names = dbManager.getAllPartsNames()
         part_name_model = QStringListModel(self.part_names)
         part_name_completer = QCompleter(part_name_model, self)
         part_name_completer.setCaseSensitivity(Qt.CaseInsensitive)
@@ -128,63 +128,29 @@ class SearchPartsDialog(QDialog):
         self.color_type_combo.addItem("Any", None)
         
         # Get all colors
-        query = QSqlQuery("SELECT DISTINCT name FROM colors ORDER BY name")
-        while query.next():
-            self.color_combo.addItem(query.value(0), query.value(0))
+        dbManager = DatabaseManager()
+
+        for color in dbManager.getColorsNames():
+            self.color_combo.addItem(color, color)
         
         # Get all color types
-        query = QSqlQuery("SELECT DISTINCT type FROM colors ORDER BY type")
-        while query.next():
-            self.color_type_combo.addItem(query.value(0), query.value(0))
-            
-    def get_all_part_ids(self):
-        """Get all part IDs that exist in parts_collection"""
-        part_ids = []
-        query = QSqlQuery("""
-            SELECT DISTINCT p.id 
-            FROM parts p
-            JOIN colors_parts cp ON p.id = cp.part_id
-            JOIN parts_collection pc ON cp.id = pc.item
-            ORDER BY p.id
-        """)
-        
-        while query.next():
-            part_ids.append(query.value(0))
-            
-        return part_ids
-    
-    def get_all_part_names(self):
-        """Get all part names that exist in parts_collection"""
-        part_names = []
-        query = QSqlQuery("""
-            SELECT DISTINCT p.name 
-            FROM parts p
-            JOIN colors_parts cp ON p.id = cp.part_id
-            JOIN parts_collection pc ON cp.id = pc.item
-            ORDER BY p.name
-        """)
-        
-        while query.next():
-            part_names.append(query.value(0))
-            
-        return part_names
+        for type in dbManager.getColorsTypesNames():
+             self.color_type_combo.addItem(type, type)
+
         
     def on_part_id_changed(self, text):
-        """Clear part name if part ID is entered"""
         if text:
             self.part_name_edit.blockSignals(True)
             self.part_name_edit.clear()
             self.part_name_edit.blockSignals(False)
             
     def on_part_name_changed(self, text):
-        """Clear part ID if part name is entered"""
         if text:
             self.part_id_edit.blockSignals(True)
             self.part_id_edit.clear()
             self.part_id_edit.blockSignals(False)
     
     def clear_search(self):
-        """Clear all search fields"""
         self.part_id_edit.clear()
         self.part_name_edit.clear()
         self.color_combo.setCurrentIndex(0)
@@ -192,75 +158,14 @@ class SearchPartsDialog(QDialog):
         self.results_table.setRowCount(0)
         
     def perform_search(self):
-        """Perform search based on entered criteria"""
         # Clear previous results
         self.results_table.setRowCount(0)
         
-        # Build query based on search criteria
-        query_str = """
-            SELECT cp.id, p.id as part_id, p.name as part_name, 
-                cp.color_id as color_id, c.name as color_name, c.rgb as color_rgb,
-                c.type as color_type, cat.name as part_category,
-                con.name as container_name, pc.count as quantity
-            FROM parts_collection pc
-            JOIN colors_parts cp ON pc.item = cp.id
-            JOIN parts p ON cp.part_id = p.id
-            JOIN colors c ON cp.color_id = c.id
-            JOIN containers con ON pc.container_id = con.id
-            JOIN categories cat ON p.category = cat.id
-            WHERE 1=1
-        """
-        
-        params = []
-        
-        # Part ID filter
-        if self.part_id_edit.text():
-            query_str += " AND p.id = ?"
-            params.append(self.part_id_edit.text())
-            
-        # Part Name filter
-        elif self.part_name_edit.text():
-            query_str += " AND p.name LIKE ?"
-            params.append(f"%{self.part_name_edit.text()}%")
-            
-        # Color filter
-        if self.color_combo.currentData():
-            query_str += " AND c.name = ?"
-            params.append(self.color_combo.currentData())
-            
-        # Color Type filter
-        if self.color_type_combo.currentData():
-            query_str += " AND c.type = ?"
-            params.append(self.color_type_combo.currentData())
-            
-        query_str += " ORDER BY p.name, c.name, con.name"
-        
-        # Execute query
-        query = QSqlQuery()
-        query.prepare(query_str)
-        
-        for param in params:
-            query.addBindValue(param)
-            
-        if not query.exec():
-            QMessageBox.critical(self, "Query Error", f"Error executing search: {query.lastError().text()}")
-            return
-            
-        # Process results
-        results = []
-        while query.next():
-            results.append({
-                'id': query.value('id'),
-                'part_id': query.value('part_id'),
-                'part_name': query.value('part_name'),
-                'part_category': query.value('part_category'),
-                'color_id': query.value('color_id'),
-                'color_name': query.value('color_name'),
-                'rgb': query.value('color_rgb'),
-                'color_type': query.value('color_type'),
-                'container_name': query.value('container_name'),
-                'quantity': query.value('quantity')
-            })
+        dbManager = DatabaseManager()
+        results =dbManager.searchIntoCollection(part_id=self.part_id_edit.text(), 
+                                               part_name=self.part_name_edit.text(),
+                                               color_name=self.color_combo.currentData(),
+                                               color_type=self.color_type_combo.currentData())
             
         # Display results
         if not results:
@@ -320,7 +225,6 @@ class SearchPartsDialog(QDialog):
         self.results_table.resizeColumnsToContents()
     
     def on_image_loaded(self, key, pixmap):
-        """Update image in table when loaded asynchronously"""
         # Parse key to get part_id and color_id
         try:
             part_id, color_id = key.split('_')
@@ -343,7 +247,6 @@ class SearchPartsDialog(QDialog):
                 self.results_table.viewport().update()
     
     def on_result_double_clicked(self, row, column):
-        """Handle double click on a result row"""
         # Get the data from the row
         item = self.results_table.item(row, 0)  # First column has the complete data
         if not item:
@@ -352,21 +255,9 @@ class SearchPartsDialog(QDialog):
         part_data = item.data(Qt.UserRole)
         if not part_data:
             return
-            
-        # Get container information
+        
+        container_id = part_data.get('container_id')
         container_name = part_data.get('container_name')
-        container_id = None
-        
-        # Query to get container ID
-        query = QSqlQuery()
-        query.prepare("SELECT id FROM containers WHERE name = ?")
-        query.addBindValue(container_name)
-        
-        if query.exec() and query.next():
-            container_id = query.value(0)
-        else:
-            QMessageBox.warning(self, "Error", "Could not find container information.")
-            return
             
         # Create container object
         from database import Container
