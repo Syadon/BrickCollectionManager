@@ -121,17 +121,6 @@ class AddBricksDialog(QDialog):
         image.save(buffer, "JPG")
         buffer.close()
 
-        # # Prepare files for POST request 
-        # files = {'query_image': ('image.jpg', byte_array.data(), 'image/jpeg')}
-        # # Make POST request to API
-        # response = requests.post('https://api.brickognize.com/predict/parts', files=files)
-        # # Print response
-        # if response.status_code == 200:
-        #     detectionData = response.json()
-        #     self.on_part_detected(image, detectionData)
-        # else:
-        #     print(f"Error: {response.status_code}", response.text)
-
         recongnition = BrickRecognition()
         recognition_result = recongnition.recognize(byte_array)
         if recognition_result:
@@ -484,8 +473,6 @@ class AddBricksDialog(QDialog):
         if image:
             self.update_part_image(image, part_row)
         # If not, it will be handled by on_image_loaded when available
-
-        print(f"{color_data.id} - {color_data.name}")
 
     def on_image_loaded(self, key, pixmap):
         # Parse key to get part_id and color_id
