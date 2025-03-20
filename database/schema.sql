@@ -20,12 +20,17 @@ CREATE TABLE IF NOT EXISTS parts (
 
 CREATE TABLE IF NOT EXISTS colors_parts (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
-    codename INTEGER NOT NULL,
     color_id INTEGER NOT NULL, 
     part_id TEXT NOT NULL,
-    UNIQUE (codename, part_id, color_id),
+    UNIQUE (part_id, color_id),
     FOREIGN KEY(color_id) REFERENCES colors(id),
     FOREIGN KEY(part_id) REFERENCES parts(id)
+);
+
+CREATE TABLE IF NOT EXISTS colors_parts_codenames (
+    codename INTEGER PRIMARY KEY,
+    color_part INTEGER NOT NULL,
+    FOREIGN KEY(color_part) REFERENCES colors_parts(id)
 );
 
 CREATE TABLE IF NOT EXISTS containers (

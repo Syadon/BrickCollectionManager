@@ -19,11 +19,10 @@ class Container:
         self.lot_count = lot_count if lot_count != None else 0
     
 class ColorPart:
-    def __init__(self, id:int, part_id: str, color_id: int, code_name: int):
+    def __init__(self, id:int, part_id: str, color_id: int):
         self.id = id
         self.part_id = part_id
         self.color_id = color_id
-        self.code_name = code_name
 
 class DatabaseManager:
     def __init__(self):
@@ -286,11 +285,11 @@ class DatabaseManager:
     
     def getColorPart(self, part_id: str, color_id: int) -> int:
         query = QSqlQuery()
-        query.prepare("SELECT id, codename FROM colors_parts WHERE part_id = ? AND color_id = ?")
+        query.prepare("SELECT id FROM colors_parts WHERE part_id = ? AND color_id = ?")
         query.addBindValue(part_id)
         query.addBindValue(color_id)
         if query.exec() and query.next():
-            return ColorPart(query.value("id"), part_id, color_id, query.value("codename"))
+            return ColorPart(query.value("id"), part_id, color_id)
         else:
             return None
 
@@ -417,7 +416,7 @@ class DatabaseManager:
                 SELECT cp.id, p.id as part_id, p.name as part_name, 
                     c.name as color_name, pc.count as quantity,
                     c.id as color_id, cat.name as part_category,
-                    c.rgb as rgb, c.type as color_type, codename
+                    c.rgb as rgb, c.type as color_type
                 FROM parts_collection pc
                 JOIN colors_parts cp ON pc.item = cp.id
                 JOIN parts p ON cp.part_id = p.id
@@ -439,8 +438,7 @@ class DatabaseManager:
                         'quantity': query.value('quantity'),
                         'color_id': query.value('color_id'),
                         'rgb': query.value('rgb'),
-                        'color_type': query.value('color_type'),
-                        'codename': query.value('codename')
+                        'color_type': query.value('color_type')
                     })
         except Exception as e:
             logging.error(f"Error updating container: {str(e)}")
@@ -706,12 +704,24 @@ class DatabaseManager:
                 logging.error(f"Error clearing colors_parts table: {clear_query.lastError().text()}")
                 self.db.rollback()
                 return False
+            
+            clear_query = QSqlQuery()
+            if not clear_query.exec("DELETE FROM colors_parts_codenames"):
+                logging.error(f"Error clearing colors_parts table: {clear_query.lastError().text()}")
+                self.db.rollback()
+                return False
 
             # Prepare insert query
             query = QSqlQuery()
             query.prepare("""
-                INSERT INTO colors_parts (codename, color_id, part_id)
-                VALUES (?, ?, ?)
+                INSERT OR IGNORE INTO colors_parts (color_id, part_id)
+                VALUES (?, ?)
+            """)
+
+            queryCodename = QSqlQuery()
+            queryCodename.prepare("""
+                INSERT OR IGNORE INTO colors_parts_codenames (codename, color_part)
+                VALUES (?, ?)
             """)
 
             # Process each part
@@ -726,8 +736,6 @@ class DatabaseManager:
                     continue
 
                 # Extract data
-                
-
                 c = self.getColorFromName(colorname.text.strip())
                 if c == None or c.id == None:
                     logging.warning(f"Invalid color in codes for color_part {codename.text} - {item_id.text}!")
@@ -743,7 +751,6 @@ class DatabaseManager:
                     continue
 
                 # Bind values
-                query.addBindValue(codenameNum)
                 query.addBindValue(color_id)
                 query.addBindValue(part_id)
 
@@ -753,6 +760,15 @@ class DatabaseManager:
                     logging.error(f"Error inserting color_part {part_id} - {colorname.text}: {query.lastError().text()}")
                     self.db.rollback()
                     return False
+                
+                ret = query.lastInsertId()
+                queryCodename.addBindValue(codenameNum)
+                queryCodename.addBindValue(ret)
+
+                if not queryCodename.exec():
+                    logging.error(f"Error inserting codename {part_id} - {colorname.text} - {ret}: {queryCodename.lastError().text()}")
+                    self.db.rollback()
+                    return False              
 
             # Commit transaction
             if not self.db.commit():
@@ -890,3 +906,65 @@ class DatabaseManager:
             logging.error(f"Error deleting container: {str(e)}")
             self.db.rollback()
             return False
+
+    def searchColorsParts(self, part_id=None, part_name=None, color_name=None, color_type=None):
+        """Cerca colors_parts in base ai criteri specificati"""
+        query_str = """
+            SELECT cp.id, p.id as part_id, p.name as part_name, 
+                   c.id as color_id, c.name as color_name, c.type as color_type,
+                   c.rgb as rgb
+            FROM colors_parts cp
+            JOIN parts p ON cp.part_id = p.id
+            JOIN colors c ON cp.color_id = c.id
+            WHERE 1=1
+        """
+        
+        params = []
+        
+        # Filtro Part ID
+        if part_id:
+            query_str += " AND p.id = ?"
+            params.append(part_id)
+            
+        # Filtro Part Name
+        elif part_name:
+            query_str += " AND p.name LIKE ?"
+            params.append(f"%{part_name}%")
+            
+        # Filtro Color
+        if color_name:
+            query_str += " AND c.name = ?"
+            params.append(color_name)
+            
+        # Filtro Color Type
+        if color_type:
+            query_str += " AND c.type = ?"
+            params.append(color_type)
+            
+        query_str += " ORDER BY p.name, c.name"
+        
+        # Esegui query
+        query = QSqlQuery()
+        query.prepare(query_str)
+        
+        for param in params:
+            query.addBindValue(param)
+            
+        if not query.exec():
+            logging.warning(f"Failed to search colors_parts: {query.lastError().text()}")
+            return []
+            
+        # Processa risultati
+        results = []
+        while query.next():
+            results.append({
+                'id': query.value('id'),
+                'part_id': query.value('part_id'),
+                'part_name': query.value('part_name'),
+                'color_id': query.value('color_id'),
+                'color_name': query.value('color_name'),
+                'color_type': query.value('color_type'),
+                'rgb': query.value('rgb')
+            })
+            
+        return results
