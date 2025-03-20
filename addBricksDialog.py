@@ -46,9 +46,9 @@ class AddBricksDialog(QDialog):
         self.ui.whiteBalanceButton.toggled.connect(self.video_manager.enableWhiteBalance)
         self.video_manager.image_captured.connect(self.on_image_captured)
 
-
         self.ui.parts_list.setItemDelegateForColumn(0, TransparentSelectionDelegate(self.ui.parts_list))
         self.ui.colors_list.setItemDelegateForColumn(0, TransparentSelectionDelegate(self.ui.colors_list))
+        
         # Connect list item selection
         self.ui.parts_list.itemSelectionChanged.connect(self.on_part_selected)
 
@@ -62,8 +62,11 @@ class AddBricksDialog(QDialog):
 
         self.ui.qtySpinBox.setValue(1)  # Set default quantity to 1
 
-        if self.ui.acquisition_combo.count() > 1:
-            self.ui.acquisition_combo.setCurrentIndex(1)
+        # Connect tab change signal
+        self.ui.tabWidget.currentChanged.connect(self.on_tab_changed)
+        
+        # Initial check of camera tab visibility
+        self.on_tab_changed(self.ui.tabWidget.currentIndex())
 
     def resizeEvent(self, event):
         super().resizeEvent(event)
@@ -71,7 +74,7 @@ class AddBricksDialog(QDialog):
 
     def populate_camera_list(self):
         self.ui.acquisition_combo.clear()
-        self.ui.acquisition_combo.addItem("Manual", {"method": 0})
+        # self.ui.acquisition_combo.addItem("Manual", {"method": 0})
 
         camera_count = 0
         
@@ -96,9 +99,15 @@ class AddBricksDialog(QDialog):
 
     def switch_camera(self, index):
         acqMethod = self.ui.acquisition_combo.itemData(index)
+        
         if acqMethod["method"] == 1:
             self.ui.cameraView.show()
             self.video_manager.switch_camera(acqMethod["camera_count"])
+            
+            # Only start stream if camera tab is visible
+            camera_tab_visible = (self.ui.tabWidget.currentIndex() == self.ui.tabWidget.indexOf(self.ui.cameraTab))
+            if camera_tab_visible:
+                self.video_manager.startStream()
         else:
             print("No Camera")
             self.video_manager.close_stream()
@@ -540,4 +549,20 @@ class AddBricksDialog(QDialog):
             image_item.setIcon(QIcon(scaled))
             self.ui.parts_list.viewport().update()  # Force repaint
             self.ui.parts_list.resizeColumnsToContents()
+
+    def on_tab_changed(self, index):
+        # Check if the camera tab is visible
+        camera_tab_visible = (index == self.ui.tabWidget.indexOf(self.ui.cameraTab))
+        
+        # Start or stop camera stream based on visibility
+        if camera_tab_visible:
+            # Camera tab is visible, start stream if acquisition method is camera
+            current_index = self.ui.acquisition_combo.currentIndex()
+            if current_index >= 0:
+                acqMethod = self.ui.acquisition_combo.itemData(current_index)
+                if acqMethod and acqMethod.get("method") == 1:
+                    self.video_manager.setup_camera(acqMethod["camera_count"])
+        else:
+            # Camera tab is not visible, stop the stream
+            self.video_manager.close_stream()
 

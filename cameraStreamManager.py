@@ -26,7 +26,6 @@ class CameraStreamManager(QObject):
         self.avg_b = None
         self.wbEnebled = False
 
-
         self.setup_camera()
 
     def clearScene(self):
@@ -40,7 +39,10 @@ class CameraStreamManager(QObject):
         self.graphicsView.fitInView(self.scene.sceneRect(), Qt.KeepAspectRatio)
 
     def startStream(self):
-            self.timer.start(40)  # Update every 40ms (approx. 25 fps)
+        self.timer.start(40)  # Update every 40ms (approx. 25 fps)
+
+    def stopStream(self):
+        self.timer.stop()
 
     def setup_camera(self, camera_id=0):
         try:
