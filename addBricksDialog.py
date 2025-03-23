@@ -3,7 +3,7 @@ from PySide6.QtWidgets import (QDialog, QListWidgetItem, QTableWidgetItem, QComb
                              QHBoxLayout, QLabel, QGroupBox, QSizePolicy, QMessageBox, QLineEdit, QTableWidget)
 from PySide6.QtCore import Qt, QByteArray, QBuffer, QRect, QStringListModel, QEvent
 from PySide6.QtGui import QImage, QColor, QIcon, QKeyEvent
-from database import DatabaseManager, BrickColor
+from database import DatabaseManager, BrickColor, Container
 from timedMessageBox import TimedMessageBox
 from ui.ui_addbricksdialog import Ui_AddBricksDialog
 from cameraStreamManager import CameraStreamManager
@@ -16,13 +16,14 @@ import numpy as np
 import logging
 
 class AddBricksDialog(QDialog):
-    def __init__(self, parent=None):
+    def __init__(self, targetContainer:Container= None, parent=None):
         super().__init__(parent)
 
         self.imageCaputured = False
         self.colorsDetected = []
         self.iconSize = 64
         self.current_part_id = None
+        self.targetContainer = targetContainer
         
         # Create image provider
         self.imgProvider = ImagesProvider(AppConfig.PARTS_IMG_CACHE_DIR)
@@ -369,10 +370,16 @@ class AddBricksDialog(QDialog):
         
         # Add containers to combobox
         for container in containers:
+            if self.targetContainer != None and container.id != self.targetContainer.id:
+                continue
+
             # Display name and part count
             display_text = f"{container.name} ({container.part_count} parts)"
             self.ui.containerCombobox.addItem(display_text, (container.id, container.name))
             self.searchContainerComboBox.addItem(display_text, (container.id, container.name))
+
+            self.ui.containerCombobox.setEnabled(self.targetContainer == None)
+            self.searchContainerComboBox.setEnabled(self.targetContainer == None)
 
     def on_next_clicked(self):
         self.video_manager.startStream()

@@ -71,7 +71,7 @@ class MainWindow(QMainWindow):
         self.ui.containerView.customContextMenuRequested.connect(self.show_context_menu)
 
     def openAddBricksDialog(self):
-        dialog = AddBricksDialog(self)
+        dialog = AddBricksDialog(targetContainer=None, parent=self)
         dialog.exec()
         self.updateContainerView()
 
@@ -100,6 +100,7 @@ class MainWindow(QMainWindow):
         
         if index.isValid():
             context_menu = QMenu(self)
+            add_bricks_action = context_menu.addAction("Add Bricks")
             edit_action = context_menu.addAction("Edit")
             
             # Show context menu at cursor position
@@ -108,6 +109,11 @@ class MainWindow(QMainWindow):
             if action == edit_action:
                 container = self.containersModel.containers[index.row()]
                 self.open_container_dialog(container)
+            elif action == add_bricks_action:
+                container = self.containersModel.containers[index.row()]
+                dialog = AddBricksDialog(targetContainer=container, parent=self)
+                dialog.exec()
+                self.updateContainerView()
 
     def open_container_dialog(self, container):
         dialog = ContainerDetailDialog(container, self)
