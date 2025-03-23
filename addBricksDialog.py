@@ -1,9 +1,10 @@
 from PySide6.QtWidgets import (QDialog, QListWidgetItem, QTableWidgetItem, QComboBox, 
                              QSpinBox, QPushButton, QVBoxLayout, QFormLayout, QCompleter,
                              QHBoxLayout, QLabel, QGroupBox, QSizePolicy, QMessageBox, QLineEdit, QTableWidget)
-from PySide6.QtCore import Qt, QByteArray, QBuffer, QRect, QStringListModel, QSize
-from PySide6.QtGui import QImage, QColor, QIcon, QPixmap
+from PySide6.QtCore import Qt, QByteArray, QBuffer, QRect, QStringListModel, QEvent
+from PySide6.QtGui import QImage, QColor, QIcon, QKeyEvent
 from database import DatabaseManager, BrickColor
+from timedMessageBox import TimedMessageBox
 from ui.ui_addbricksdialog import Ui_AddBricksDialog
 from cameraStreamManager import CameraStreamManager
 from config import AppConfig
@@ -13,12 +14,12 @@ from brickRecongnition import BrickRecognition
 import cv2
 import numpy as np
 import logging
-import requests
 
 class AddBricksDialog(QDialog):
     def __init__(self, parent=None):
         super().__init__(parent)
 
+        self.imageCaputured = False
         self.colorsDetected = []
         self.iconSize = 64
         self.current_part_id = None
@@ -72,6 +73,9 @@ class AddBricksDialog(QDialog):
         # Initial check of camera tab visibility
         self.on_tab_changed(self.ui.tabWidget.currentIndex())
 
+        # Installa event filter per intercettare eventi tastiera
+        self.installEventFilter(self)
+
     def resizeEvent(self, event):
         super().resizeEvent(event)
         self.video_manager.manageResizeEvent(event)
@@ -100,6 +104,10 @@ class AddBricksDialog(QDialog):
     def clearDetection(self):
         self.ui.parts_list.setRowCount(0)
         self.ui.colors_list.setRowCount(0)
+        self.imageCaputured = False
+        qty_active_spinbox = self.getActiveQtySpinbox()
+        if qty_active_spinbox:
+            qty_active_spinbox.setValue(1)
 
     def switch_camera(self, index):
         acqMethod = self.ui.acquisition_combo.itemData(index)
@@ -124,6 +132,8 @@ class AddBricksDialog(QDialog):
         buffer.open(QBuffer.WriteOnly)
         image.save(buffer, "JPG")
         buffer.close()
+
+        self.imageCaputured = True
 
         recongnition = BrickRecognition()
         recognition_result = recongnition.recognize(byte_array)
@@ -412,11 +422,37 @@ class AddBricksDialog(QDialog):
             colorPart = dbManager.getColorPart(part_data['id'], color_data.id)
             if colorPart is None:
                 logging.warning("No color_part found")
-                return        
+                return
+
+            msg_pixmap = self.imgProvider.get_part_image(part_data['id'], color_data.id)
+            # TODO: resize image to max
+            #...
+
+            # Show a message box with the part image to confirm addition
+            msg = TimedMessageBox(timeout=5, buttons=[QMessageBox.Ok, QMessageBox.Cancel], parent = self)
+            msg.setWindowTitle("Adding Part")
+            msg.setText(f"Adding {quantity} of part {part_data['id']} - {part_data['name']} in color {color_data.name} - {color_data.type} to container {container_name}")
+            # msg.setStandardButtons(QMessageBox.Ok|QMessageBox.Cancel)
+            # msg.setDefaultButton(QMessageBox.Ok)            
+            if msg_pixmap != None:
+                # TODO: resize image to max
+                msg.setIconPixmap(msg_pixmap)
+            
+            response = msg.exec()
+            if response == QMessageBox.Cancel:
+                return
 
             # Insert into parts_collection
             if not dbManager.addColorPartToContainer(colorPart, container_id, quantity):
                 logging.warning("Color_part not added to collection!")
+                msg = QMessageBox(self)
+                msg.setIcon(QMessageBox.Critical)
+                msg.setWindowTitle("Adding Part")
+                msg.setText(f"Fail to add {quantity} of part {part_data['id']} - {part_data['name']} in color {color_data.name} - {color_data.type} to container {container_name}")
+                msg.setStandardButtons(QMessageBox.Ok)
+                if msg_pixmap != None:
+                    msg.setIconPixmap(msg_pixmap)
+                msg.exec()
                 return
 
             newPartCount = dbManager.getConteinerPartCount(container_id)
@@ -425,20 +461,6 @@ class AddBricksDialog(QDialog):
                     f"{container_name} ({newPartCount} parts)")
 
             logging.info(f"Added {quantity} of part {part_data['id']} in color {color_data.name} to container {container_id}")
-            
-            # Show a message box with the part image to confirm addition
-            msg = QMessageBox(self)
-            msg.setWindowTitle("Part Added")
-            msg.setText(f"Added {quantity} of part {part_data['id']} - {part_data['name']} in color {color_data.name} - {color_data.type} to container {container_name}")
-            msg.setStandardButtons(QMessageBox.Ok)
-
-            # Get the part image
-            pixmap = self.imgProvider.get_part_image(part_data['id'], color_data.id)
-            if pixmap != None:
-                # TODO: resize image to max
-                msg.setIconPixmap(pixmap)
-
-            msg.exec()
 
             self.video_manager.startStream()
             self.clearDetection()
@@ -900,4 +922,46 @@ class AddBricksDialog(QDialog):
             
             if part_count is not None:
                 self.ui.containerCombobox.setItemText(current_index, f"{container_name} ({part_count} parts)")
+
+    def getActiveQtySpinbox(self):
+        # Determina lo spinbox attivo in base alla tab corrente
+        active_spinbox = None
+        if self.ui.tabWidget.currentIndex() == self.ui.tabWidget.indexOf(self.ui.cameraTab):
+            active_spinbox = self.ui.qtySpinBox
+        elif self.ui.tabWidget.currentIndex() == self.ui.tabWidget.indexOf(self.ui.searchTab):
+            active_spinbox = self.search_qty_spinbox
+
+        return active_spinbox
+
+    def eventFilter(self, obj, event):
+        if event.type() == QEvent.KeyPress:
+            key_event = QKeyEvent(event)
+
+            # Gestisci i tasti freccia
+            qty_active_spinbox = self.getActiveQtySpinbox()
+            if qty_active_spinbox:
+                if key_event.key() == Qt.Key_F2:
+                    # Incrementa il valore
+                    qty_active_spinbox.setValue(qty_active_spinbox.value() + 1)
+                    return True  # Evento gestito
+                elif key_event.key() == Qt.Key_F3:
+                    # Decrementa il valore (ma non sotto il minimo)
+                    new_value = max(1, qty_active_spinbox.value() - 1)
+                    qty_active_spinbox.setValue(new_value)
+                    return True  # Evento gestito
+
+            if self.ui.tabWidget.currentIndex() == self.ui.tabWidget.indexOf(self.ui.cameraTab):
+                if key_event.key() == Qt.Key_F1:
+                    if self.imageCaputured:
+                        self.on_add_part_clicked()
+                    else:
+                        self.video_manager.capture_image()
+                    return True
+
+                elif key_event.key() == Qt.Key_Escape:
+                    self.on_next_clicked()
+                    return True
+
+        # Lascia che altri eventi vengano gestiti normalmente
+        return super().eventFilter(obj, event)
 
