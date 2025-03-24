@@ -1,4 +1,4 @@
-from PySide6.QtWidgets import QWidget, QFileDialog, QTableWidgetItem, QMessageBox, QHeaderView
+from PySide6.QtWidgets import QWidget, QFileDialog, QTableWidgetItem, QMessageBox, QMenu
 from PySide6.QtCore import Qt, QDir, Signal, QSize
 from PySide6.QtGui import QColor, QIcon
 from ui.ui_addFromFileWidget import Ui_AddFromFileWidget
@@ -45,6 +45,10 @@ class AddFromFileWidget(QWidget):
         
         # Popola il combobox dei container
         self.populate_container_combo()
+
+        # Enable context menu
+        self.ui.tableWidget.setContextMenuPolicy(Qt.CustomContextMenu)
+        self.ui.tableWidget.customContextMenuRequested.connect(self.show_context_menu)
     
         # Dizionario per mappare le righe della tabella alle informazioni complete del pezzo
         self.parts_data = []
@@ -331,3 +335,23 @@ class AddFromFileWidget(QWidget):
                 if item:
                     item.setIcon(QIcon(scaled))
 
+    def show_context_menu(self, position):
+        index = self.ui.tableWidget.indexAt(position)
+
+        if index.isValid():
+            context_menu = QMenu(self)
+            remove_action = context_menu.addAction("Remove")
+            
+            # Show context menu at cursor position
+            action = context_menu.exec(self.ui.tableWidget.viewport().mapToGlobal(position))
+            
+            if action == remove_action:
+                # Get the selected row
+                selected_row = index.row()
+                if selected_row >= 0:
+                    # Remove the row from the table
+                    self.ui.tableWidget.removeRow(selected_row)
+                    
+                    # Remove the corresponding data from parts_data
+                    if selected_row < len(self.parts_data):
+                        self.parts_data.pop(selected_row)
