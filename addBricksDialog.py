@@ -6,6 +6,7 @@ from PySide6.QtGui import QImage, QColor, QIcon, QKeyEvent
 from database import DatabaseManager, BrickColor, Container
 from timedMessageBox import TimedMessageBox
 from ui.ui_addbricksdialog import Ui_AddBricksDialog
+from widgets.addFromFileWidget import AddFromFileWidget
 from cameraStreamManager import CameraStreamManager
 from config import AppConfig
 from utils import rgb_to_hsv, calculate_hsv_similarity, qImageToOpenCV, TransparentSelectionDelegate
@@ -731,6 +732,13 @@ class AddBricksDialog(QDialog):
         
         # Configura autocompletamento
         #self.setup_search_autocomplete()
+
+        #Setup load from file tab
+        self.file_import_widget = AddFromFileWidget(parent=self)
+        self.ui.fileTab.layout().addWidget(self.file_import_widget)
+
+        # Connect signals from file import widget
+        #self.file_import_widget.part_added.connect(lambda: self.populate_container_list())
         
         # Connetti al segnale di selezione tabella
         self.search_results_table.itemSelectionChanged.connect(self.on_search_selection_changed)

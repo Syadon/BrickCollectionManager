@@ -283,7 +283,7 @@ class DatabaseManager:
             return False
         return True
     
-    def getColorPart(self, part_id: str, color_id: int) -> int:
+    def getColorPart(self, part_id: str, color_id: int) -> ColorPart:
         query = QSqlQuery()
         query.prepare("SELECT id FROM colors_parts WHERE part_id = ? AND color_id = ?")
         query.addBindValue(part_id)
@@ -907,7 +907,7 @@ class DatabaseManager:
             self.db.rollback()
             return False
 
-    def searchColorsParts(self, part_id=None, part_name=None, color_name=None, color_type=None):
+    def searchColorsParts(self, part_id=None, part_name=None, color_name=None, color_type=None, color_id = None):
         """Cerca colors_parts in base ai criteri specificati"""
         query_str = """
             SELECT cp.id, p.id as part_id, p.name as part_name, 
@@ -940,6 +940,10 @@ class DatabaseManager:
         if color_type:
             query_str += " AND c.type = ?"
             params.append(color_type)
+
+        if color_id:
+            query_str += " AND c.id = ?"
+            params.append(color_id)
             
         query_str += " ORDER BY p.name, c.name"
         
