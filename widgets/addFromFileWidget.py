@@ -3,7 +3,7 @@ from PySide6.QtWidgets import (QWidget, QFileDialog, QTableWidgetItem, QMessageB
 from PySide6.QtCore import Qt, QDir, Signal, QSize, QModelIndex
 from PySide6.QtGui import QColor, QIcon
 from ui.ui_addFromFileWidget import Ui_AddFromFileWidget
-from database import DatabaseManager
+from database import DatabaseManager, Container
 from utils import TransparentSelectionDelegate
 from imageProvider import ImagesProvider
 from config import AppConfig
@@ -53,11 +53,13 @@ class AddFromFileWidget(QWidget):
     # Signal emitted when parts are added to a container
     part_added = Signal()
     
-    def __init__(self, parent=None):
+    def __init__(self, container:Container = None, parent=None):
         super(AddFromFileWidget, self).__init__(parent)
 
         self.ui = Ui_AddFromFileWidget()
         self.ui.setupUi(self)
+
+        self.targetContainer = container
         
         # Crea l'image provider
         self.icon_size = 48
@@ -284,13 +286,16 @@ class AddFromFileWidget(QWidget):
         
         # Aggiungi i container al combobox
         for container in containers:
-            part_count = container.part_count or 0
-            display_text = f"{container.name} ({part_count} parts)"
-            self.ui.containerCombo.addItem(display_text, (container.id, container.name))
+            if self.targetContainer == None or container.id == self.targetContainer.id:
+                part_count = container.part_count or 0
+                display_text = f"{container.name} ({part_count} parts)"
+                self.ui.containerCombo.addItem(display_text, (container.id, container.name))
+
+        self.ui.containerCombo.setEnabled(self.targetContainer == None)
     
     def add_to_container(self):
         """Aggiunge i pezzi selezionati al container selezionato"""
-        # Verifica che sia selezionato un container
+        # Verifica che sia selezionato un containers
         if self.ui.containerCombo.count() == 0:
             QMessageBox.warning(self, "No Container", "Please create a container first.")
             return

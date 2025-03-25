@@ -34,6 +34,10 @@ class AddBricksDialog(QDialog):
         self.ui = Ui_AddBricksDialog()
         self.ui.setupUi(self)
 
+        #Setup load from file tab
+        self.file_import_widget = AddFromFileWidget(container=self.targetContainer, parent=self)
+        self.ui.fileTab.layout().addWidget(self.file_import_widget)
+
         # Crea e configura l'UI per la scheda search
         self.setup_search_tab()
 
@@ -732,10 +736,6 @@ class AddBricksDialog(QDialog):
         
         # Configura autocompletamento
         #self.setup_search_autocomplete()
-
-        #Setup load from file tab
-        self.file_import_widget = AddFromFileWidget(parent=self)
-        self.ui.fileTab.layout().addWidget(self.file_import_widget)
 
         # Connect signals from file import widget
         #self.file_import_widget.part_added.connect(lambda: self.populate_container_list())
