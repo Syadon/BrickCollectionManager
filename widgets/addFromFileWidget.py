@@ -303,12 +303,12 @@ class AddFromFileWidget(QWidget):
         
         container_id, container_name = container_data
         
-        # Ottieni le righe selezionate
-        selected_rows = set(index.row() for index in self.ui.tableWidget.selectedIndexes())
+        # # Ottieni le righe selezionate
+        # selected_rows = set(index.row() for index in self.ui.tableWidget.selectedIndexes())
         
-        if not selected_rows:
-            # Se nessuna riga è selezionata, usa tutte le righe
-            selected_rows = range(self.ui.tableWidget.rowCount())
+        # if not selected_rows:
+        #     # Se nessuna riga è selezionata, usa tutte le righe
+        selected_rows = range(self.ui.tableWidget.rowCount())
         
         # Verifica che ci siano righe da aggiungere
         if not selected_rows:
@@ -322,6 +322,10 @@ class AddFromFileWidget(QWidget):
         success_count = 0
         error_count = 0
         missing_id_count = 0
+
+        success_qty = 0
+        error_qty = 0
+        missing_qty = 0
         
         try:
             for row in selected_rows:
@@ -329,6 +333,7 @@ class AddFromFileWidget(QWidget):
                     continue
                 
                 part_data = self.parts_data[row]
+                quantity = part_data['quantity']
                 
                 # Verifica che il pezzo abbia un ID di color_part
                 if part_data.get('id') is None:
@@ -339,14 +344,16 @@ class AddFromFileWidget(QWidget):
                         part_data['id'] = color_part.id
                     else:
                         missing_id_count += 1
+                        missing_qty += quantity
                         continue
                 
                 # Aggiungi il pezzo al container
-                quantity = part_data['quantity']
                 if db_manager.addColorPartIDToContainer(part_data['id'], container_id, quantity):
                     success_count += 1
+                    success_qty += quantity
                 else:
                     error_count += 1
+                    error_qty += quantity
             
             # Mostra un messaggio di riepilogo
             if success_count > 0:
@@ -356,11 +363,11 @@ class AddFromFileWidget(QWidget):
                 # Aggiorna il combobox dei container
                 self.populate_container_combo()
                 
-                message = f"Added {success_count} parts to container '{container_name}'."
+                message = f"Added {success_count} lots to container '{container_name}'."
                 if error_count > 0:
-                    message += f"\n{error_count} parts could not be added."
+                    message += f"\n{error_count} lots could not be added."
                 if missing_id_count > 0:
-                    message += f"\n{missing_id_count} parts were not found in the database."
+                    message += f"\n{missing_id_count} lots were not found in the database."
                 
                 QMessageBox.information(self, "Parts Added", message)
             else:
