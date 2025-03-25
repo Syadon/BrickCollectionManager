@@ -21,6 +21,7 @@ class AddFromCameraWidget(QWidget):
         self.ui = Ui_AddFromCameraWidget()
         self.ui.setupUi(self)
 
+        self.iconSize = 48
         self.targetContainer = container
         self.imageCaputured = False
         self.colorsDetected = []
@@ -31,16 +32,11 @@ class AddFromCameraWidget(QWidget):
         self.imgProvider = ImagesProvider(AppConfig.PARTS_IMG_CACHE_DIR)
         self.imgProvider.image_loaded.connect(self.on_image_loaded)
 
-        self.populate_container_list()
-        self.populate_camera_list()
-
         # Connect colors_list selection changed signal
         self.ui.colors_list.itemSelectionChanged.connect(self.on_color_selected)
 
         self.video_manager = CameraStreamManager(self.ui.cameraView, self)
 
-        # Create camera selection combobox
-        #self.populate_camera_list()
         self.ui.acquisition_combo.currentIndexChanged.connect(self.switch_camera)
 
         # Connect capture button
@@ -71,6 +67,10 @@ class AddFromCameraWidget(QWidget):
         self.video_manager.manageResizeEvent(event)
 
     def showEvent(self, event):
+        if self.ui.acquisition_combo.count() == 0:
+            # Create camera selection combobox
+            self.populate_camera_list()
+
         current_index = self.ui.acquisition_combo.currentIndex()
         if current_index >= 0:
             acqMethod = self.ui.acquisition_combo.itemData(current_index)

@@ -2,8 +2,7 @@ from PySide6.QtGui import QPixmap, QColor
 from PySide6.QtCore import Qt, QObject, Signal, QRunnable, QThreadPool, Slot
 import requests
 from pathlib import Path
-import asyncio
-from concurrent.futures import ThreadPoolExecutor
+
 
 class ImageUrlWorker(QRunnable):
     class Signals(QObject):
