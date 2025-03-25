@@ -1,5 +1,6 @@
-from PySide6.QtWidgets import QWidget, QFileDialog, QTableWidgetItem, QMessageBox, QMenu
-from PySide6.QtCore import Qt, QDir, Signal, QSize
+from PySide6.QtWidgets import (QWidget, QFileDialog, QTableWidgetItem, QMessageBox, 
+                              QMenu, QSpinBox, QStyledItemDelegate, QTableWidget)
+from PySide6.QtCore import Qt, QDir, Signal, QSize, QModelIndex
 from PySide6.QtGui import QColor, QIcon
 from ui.ui_addFromFileWidget import Ui_AddFromFileWidget
 from database import DatabaseManager
@@ -8,6 +9,44 @@ from imageProvider import ImagesProvider
 from config import AppConfig
 import xml.etree.ElementTree as ET
 import logging
+
+
+class SpinBoxDelegate(QStyledItemDelegate):
+    """Delegate per mostrare uno spinbox nelle celle della tabella"""
+    def __init__(self, parent=None, min_value=1, max_value=9999):
+        super().__init__(parent)
+        self.min_value = min_value
+        self.max_value = max_value
+        
+    def createEditor(self, parent, option, index):
+        """Crea l'editor (uno spinbox) per la cella"""
+        editor = QSpinBox(parent)
+        editor.setMinimum(self.min_value)
+        editor.setMaximum(self.max_value)
+        editor.setAlignment(Qt.AlignCenter)
+        return editor
+        
+    def setEditorData(self, editor, index):
+        """Imposta il valore dell'editor in base al valore nella cella"""
+        value = int(index.model().data(index, Qt.DisplayRole) or 0)
+        editor.setValue(value)
+        
+    def setModelData(self, editor, model, index):
+        """Imposta il valore del modello quando l'editing è completato"""
+        editor.interpretText()
+        value = editor.value()
+        model.setData(index, value, Qt.EditRole)
+        
+    def updateEditorGeometry(self, editor, option, index):
+        """Aggiorna la geometria dell'editor"""
+        editor.setGeometry(option.rect)
+        
+    def displayText(self, value, locale):
+        """Formatta il valore per la visualizzazione"""
+        try:
+            return str(int(value))
+        except:
+            return str(value)
 
 
 class AddFromFileWidget(QWidget):
@@ -65,9 +104,20 @@ class AddFromFileWidget(QWidget):
         self.ui.tableWidget.setItemDelegateForColumn(0, TransparentSelectionDelegate(self.ui.tableWidget))
         self.ui.tableWidget.setItemDelegateForColumn(3, TransparentSelectionDelegate(self.ui.tableWidget))
         
+        # Imposta il delegate per la colonna della quantità (colonna 5)
+        self.ui.tableWidget.setItemDelegateForColumn(5, SpinBoxDelegate(self.ui.tableWidget, 1, 9999))
+        
+        # Consenti l'editing solo per la colonna della quantità
+        #self.ui.tableWidget.setEditTriggers(QTableWidget.DoubleClicked | QTableWidget.EditKeyPressed)
+
+        self.ui.tableWidget.setEditTriggers(QTableWidget.NoEditTriggers)
+        
+        # Connetti il segnale per aggiornare i dati quando viene modificata una cella
+        self.ui.tableWidget.cellChanged.connect(self.on_cell_changed)
+        
         # Configura l'espansione delle colonne
         self.ui.tableWidget.horizontalHeader().setStretchLastSection(True)
-        
+    
     def open_file_dialog(self):
         """Apre un dialogo per selezionare un file XML e imposta il percorso nel campo fileEdit"""
         # Ottieni la directory iniziale (cartella documenti dell'utente)
@@ -160,6 +210,9 @@ class AddFromFileWidget(QWidget):
             logging.error(f"Error loading XML file: {str(e)}")
     
     def add_parts_to_table(self, parts_data):
+        # Disconnetti il segnale cellChanged temporaneamente per evitare chiamate durante il popolamento
+        self.ui.tableWidget.cellChanged.disconnect(self.on_cell_changed)
+        
         self.parts_data = parts_data
         self.ui.tableWidget.setRowCount(len(parts_data))
         
@@ -202,13 +255,18 @@ class AddFromFileWidget(QWidget):
             type_item = QTableWidgetItem(part.get('color_type', 'Unknown'))
             self.ui.tableWidget.setItem(row, 4, type_item)
             
-            # Colonna Quantity
-            qty_item = QTableWidgetItem(str(part.get('quantity', 0)))
+            # Colonna Quantity - imposta l'EditRole per permettere l'editing
+            qty_item = QTableWidgetItem()
+            qty_item.setData(Qt.EditRole, part.get('quantity', 1))
+            qty_item.setTextAlignment(Qt.AlignCenter)
             self.ui.tableWidget.setItem(row, 5, qty_item)
         
         # Regola la larghezza delle colonne
         self.ui.tableWidget.setColumnWidth(0, self.icon_size + 8)
         self.ui.tableWidget.resizeColumnsToContents()
+        
+        # Riconnetti il segnale cellChanged
+        self.ui.tableWidget.cellChanged.connect(self.on_cell_changed)
     
     def clear_table(self):
         """Pulisce la tabella e i dati associati"""
@@ -335,6 +393,21 @@ class AddFromFileWidget(QWidget):
                 if item:
                     item.setIcon(QIcon(scaled))
 
+    def on_cell_changed(self, row, column):
+        """Gestisce le modifiche alle celle della tabella"""
+        # Aggiorna solo se è la colonna della quantità (colonna 5)
+        if column == 5 and row < len(self.parts_data):
+            item = self.ui.tableWidget.item(row, column)
+            if item:
+                try:
+                    new_value = int(item.text())
+                    if new_value > 0:
+                        # Aggiorna il valore nei dati
+                        self.parts_data[row]['quantity'] = new_value
+                except ValueError:
+                    # Ripristina il valore originale se non è un numero valido
+                    item.setText(str(self.parts_data[row].get('quantity', 1)))
+
     def show_context_menu(self, position):
         index = self.ui.tableWidget.indexAt(position)
 
@@ -342,16 +415,25 @@ class AddFromFileWidget(QWidget):
             context_menu = QMenu(self)
             remove_action = context_menu.addAction("Remove")
             
+            # Aggiungi opzioni per modificare la quantità
+            edit_qty_action = context_menu.addAction("Edit Quantity")
+            
             # Show context menu at cursor position
             action = context_menu.exec(self.ui.tableWidget.viewport().mapToGlobal(position))
             
+            row = index.row()
+            
             if action == remove_action:
-                # Get the selected row
-                selected_row = index.row()
-                if selected_row >= 0:
-                    # Remove the row from the table
-                    self.ui.tableWidget.removeRow(selected_row)
-                    
-                    # Remove the corresponding data from parts_data
-                    if selected_row < len(self.parts_data):
-                        self.parts_data.pop(selected_row)
+                # Remove the row from the table
+                self.ui.tableWidget.removeRow(row)
+                
+                # Remove the corresponding data from parts_data
+                if row < len(self.parts_data):
+                    self.parts_data.pop(row)
+            
+            elif action == edit_qty_action:
+                # Focus sulla cella della quantità per quella riga e inizia l'editing
+                qty_cell = self.ui.tableWidget.item(row, 5)
+                if qty_cell:
+                    self.ui.tableWidget.setCurrentItem(qty_cell)
+                    self.ui.tableWidget.editItem(qty_cell)
