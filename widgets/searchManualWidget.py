@@ -87,8 +87,8 @@ class SearchManualWidget(QWidget):
         # Get all colors
         dbManager = DatabaseManager()
 
-        for color in dbManager.getColorsNames():
-            self.ui.search_color_combo.addItem(color, color)
+        for color in dbManager.getColors():
+            self.ui.search_color_combo.addItem(color.name, color)
         
         # Get all color types
         for type in dbManager.getColorsTypesNames():
@@ -160,17 +160,29 @@ class SearchManualWidget(QWidget):
             # Track results to display in the table
             display_results = []
             missing_parts = []
+
+            partIdEdit = self.ui.search_part_id_edit.text()
+            partNameEdit = self.ui.search_part_name_edit.text()
+            colorIdEdit = self.ui.search_color_combo.currentData()
+            colorTypeEdit = self.ui.search_color_type_combo.currentData()
             
             # Process each part in the file
             for part_info in parser_result.parts:
                 part_id = part_info['part_id']
                 color_id = part_info['color_id']
                 required_qty = part_info['quantity']
+
+                if partIdEdit and part_id != partIdEdit:
+                    continue
+
+                if colorIdEdit and color_id != int(colorIdEdit.id):
+                    continue
                 
                 # Cerca nelle parti della collezione per trovare i container che contengono questo pezzo
                 matching_parts = dbManager.searchIntoCollection(part_id=part_id, color_id=color_id)
 
-                if not matching_parts:
+                part_data = None
+                if not matching_parts and partNameEdit and colorTypeEdit:
                     # Cerca informazioni sul pezzo anche se non è nella collezione
                     color_part_info = dbManager.searchColorsParts(part_id=part_id, color_id=color_id)
                     
@@ -200,8 +212,16 @@ class SearchManualWidget(QWidget):
                         })
 
                     continue
+                else:
+                    part_data = matching_parts[0]
+
+                if colorTypeEdit and part_data["color_type"] != colorTypeEdit:
+                    continue
+
+                if partNameEdit and partNameEdit.lower() not in part_data["part_name"].lower():
+                    continue
                 
-                # Aggiungi ogni container che contiene il pezzo
+                # Aggiungi ogni container che contiene il pezzo                   
                 required_qty_count = required_qty
                 for part in matching_parts:
                     if required_qty_count <= part['quantity']:
@@ -218,15 +238,15 @@ class SearchManualWidget(QWidget):
                     display_results.append({
                         'part_id': part_id,
                         'color_id': color_id,
-                        'part_name': part['part_name'],
-                        'color_name': part['color_name'],
-                        'color_type': part['color_type'],
-                        'rgb': part['rgb'],
+                        'part_name': part_data['part_name'],
+                        'color_name': part_data['color_name'],
+                        'color_type': part_data['color_type'],
+                        'rgb': part_data['rgb'],
                         'quantity': 0,
                         'container_name': "Not enough parts",
                         'container_id': None,
                         'required_quantity': required_qty_count,
-                        'part_category': part['part_category']
+                        'part_category': part_data['part_category']
                     })
 
             # Aggiungi anche i pezzi mancanti
@@ -264,10 +284,12 @@ class SearchManualWidget(QWidget):
         # Clear previous results
         self.ui.search_results_table.setRowCount(0)
         
+        colorName = self.ui.search_color_combo.currentData().name if self.ui.search_color_combo.currentData() else None 
+
         dbManager = DatabaseManager()
         results =dbManager.searchIntoCollection(part_id=self.ui.search_part_id_edit.text(), 
                                                part_name=self.ui.search_part_name_edit.text(),
-                                               color_name=self.ui.search_color_combo.currentData(),
+                                               color_name=colorName,
                                                color_type=self.ui.search_color_type_combo.currentData())
             
         # Display results
