@@ -353,6 +353,7 @@ class SearchManualWidget(QWidget):
         self.ui.search_color_combo.setCurrentIndex(0)
         self.ui.search_color_type_combo.setCurrentIndex(0)
         self.ui.search_results_table.setRowCount(0)
+        self.ui.fileEdit.clear()
 
     def on_result_double_clicked(self, row, column):
         # Get the data from the row
@@ -367,12 +368,14 @@ class SearchManualWidget(QWidget):
         container_id = part_data.get('container_id')
         container_name = part_data.get('container_name')
         qty = part_data.get('quantity')
+        required_qty = part_data.get('required_quantity')
             
         # Create container object
         container = Container(container_id, container_name, "", 0, 0)
         
         # Open part detail dialog
-        dialog = PartDetailDialog(part_data, container, qty=qty, outsideDefault=True, parent = self)
+        defaultQty = required_qty if required_qty and required_qty > 0 else qty
+        dialog = PartDetailDialog(part_data, container, qty=defaultQty, outsideDefault=True, parent = self)
         result = dialog.exec()
         
         # If the dialog was accepted (changed were made), refresh the search results
