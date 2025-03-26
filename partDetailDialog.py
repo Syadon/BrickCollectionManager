@@ -7,7 +7,7 @@ from config import AppConfig
 from ui.ui_detailPartDialog import Ui_DeatilPartDialog
 
 class PartDetailDialog(QDialog):
-    def __init__(self, part_data, container, parent=None):
+    def __init__(self, part_data, container, qty = 1, outsideDefault = False, parent=None):
         super().__init__(parent)
 
         self.imgSize = 256
@@ -23,6 +23,9 @@ class PartDetailDialog(QDialog):
         self.imgProvider.image_loaded.connect(self.setup_image)
         
         self.setup_ui()
+
+        self.ui.qtySpinBox.setValue(qty)
+        self.ui.toOutsideRadioButton.setChecked(outsideDefault)
         
     def setup_ui(self):
         
@@ -48,6 +51,8 @@ class PartDetailDialog(QDialog):
         )
 
         self.ui.colorTypeValLabel.setText(self.part_data['color_type'])
+
+        self.ui.currentContainerValue.setText(self.container.name)
         
         # Current quantity
         self.current_quantity = self.part_data['quantity']

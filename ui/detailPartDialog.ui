@@ -86,15 +86,29 @@
        </property>
       </widget>
      </item>
-     <item row="5" column="0">
+     <item row="6" column="0">
       <widget class="QLabel" name="currentQtyLabel">
        <property name="text">
         <string>Current Quantity:</string>
        </property>
       </widget>
      </item>
-     <item row="5" column="1">
+     <item row="6" column="1">
       <widget class="QLabel" name="currentQtyValLabel">
+       <property name="text">
+        <string>TextLabel</string>
+       </property>
+      </widget>
+     </item>
+     <item row="5" column="0">
+      <widget class="QLabel" name="currentContainerLabel">
+       <property name="text">
+        <string>Current Container:</string>
+       </property>
+      </widget>
+     </item>
+     <item row="5" column="1">
+      <widget class="QLabel" name="currentContainerValue">
        <property name="text">
         <string>TextLabel</string>
        </property>
@@ -102,45 +116,7 @@
      </item>
     </layout>
    </item>
-   <item row="0" column="1">
-    <widget class="QLabel" name="imageLabel">
-     <property name="text">
-      <string>Preview Image</string>
-     </property>
-    </widget>
-   </item>
-   <item row="1" column="0" colspan="2">
-    <widget class="Line" name="line">
-     <property name="orientation">
-      <enum>Qt::Orientation::Horizontal</enum>
-     </property>
-    </widget>
-   </item>
    <item row="4" column="0" colspan="2">
-    <widget class="QDialogButtonBox" name="buttonBox">
-     <property name="orientation">
-      <enum>Qt::Orientation::Horizontal</enum>
-     </property>
-     <property name="standardButtons">
-      <set>QDialogButtonBox::StandardButton::Close</set>
-     </property>
-    </widget>
-   </item>
-   <item row="2" column="0" colspan="2">
-    <layout class="QHBoxLayout" name="moveLayout">
-     <item>
-      <widget class="QLabel" name="moveLabel">
-       <property name="text">
-        <string>Move quantity:</string>
-       </property>
-      </widget>
-     </item>
-     <item>
-      <widget class="QSpinBox" name="qtySpinBox"/>
-     </item>
-    </layout>
-   </item>
-   <item row="3" column="0" colspan="2">
     <layout class="QGridLayout" name="destinationLayout">
      <item row="0" column="0">
       <widget class="QRadioButton" name="toContainerRadioButton">
@@ -176,6 +152,44 @@
       </widget>
      </item>
     </layout>
+   </item>
+   <item row="3" column="0" colspan="2">
+    <layout class="QHBoxLayout" name="moveLayout">
+     <item>
+      <widget class="QLabel" name="moveLabel">
+       <property name="text">
+        <string>Move quantity:</string>
+       </property>
+      </widget>
+     </item>
+     <item>
+      <widget class="QSpinBox" name="qtySpinBox"/>
+     </item>
+    </layout>
+   </item>
+   <item row="5" column="0" colspan="2">
+    <widget class="QDialogButtonBox" name="buttonBox">
+     <property name="orientation">
+      <enum>Qt::Orientation::Horizontal</enum>
+     </property>
+     <property name="standardButtons">
+      <set>QDialogButtonBox::StandardButton::Close</set>
+     </property>
+    </widget>
+   </item>
+   <item row="2" column="0" colspan="2">
+    <widget class="Line" name="line">
+     <property name="orientation">
+      <enum>Qt::Orientation::Horizontal</enum>
+     </property>
+    </widget>
+   </item>
+   <item row="0" column="1">
+    <widget class="QLabel" name="imageLabel">
+     <property name="text">
+      <string>Preview Image</string>
+     </property>
+    </widget>
    </item>
   </layout>
  </widget>
