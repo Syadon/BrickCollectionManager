@@ -15,7 +15,7 @@ class SearchManualWidget(QWidget):
         self.setWindowTitle("Search Parts")
 
         # Set icon size
-        self.iconSize = 64
+        self.iconSize = AppConfig.DEFAULT_ICON_SIZE
 
         self.db_manager = DatabaseManager()
         self.imgProvider = ImagesProvider(AppConfig.PARTS_IMG_CACHE_DIR)
@@ -42,6 +42,12 @@ class SearchManualWidget(QWidget):
         self.ui.search_results_table.setSelectionMode(QTableWidget.SingleSelection)
         self.ui.search_results_table.setItemDelegateForColumn(0, TransparentSelectionDelegate(self.ui.search_results_table))
         self.ui.search_results_table.setItemDelegateForColumn(4, TransparentSelectionDelegate(self.ui.search_results_table))
+
+        self.ui.search_results_table.verticalHeader().setDefaultSectionSize(self.iconSize + 4)
+        self.ui.search_results_table.setColumnWidth(0, self.iconSize + 8)  # Set fixed width for image column
+
+        # Configura l'espansione delle colonne
+        self.ui.search_results_table.horizontalHeader().setStretchLastSection(True)
         
         # Connect double-click signal
         self.ui.search_results_table.cellDoubleClicked.connect(self.on_result_double_clicked)

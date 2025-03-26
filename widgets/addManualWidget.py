@@ -17,7 +17,7 @@ class AddManualWidget(QWidget):
         self.ui.setupUi(self)
 
         self.targetContainer = container
-        self.iconSize = 48
+        self.iconSize = AppConfig.DEFAULT_ICON_SIZE
 
         self.imgProvider = ImagesProvider(AppConfig.PARTS_IMG_CACHE_DIR)
         self.imgProvider.image_loaded.connect(self.on_image_loaded)

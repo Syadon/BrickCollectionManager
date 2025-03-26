@@ -21,14 +21,12 @@ class AddFromCameraWidget(QWidget):
         self.ui = Ui_AddFromCameraWidget()
         self.ui.setupUi(self)
 
-        self.iconSize = 48
+        self.iconSize = AppConfig.DEFAULT_ICON_SIZE
         self.targetContainer = container
         self.imageCaputured = False
         self.colorsDetected = []
         self.current_part_id = None
 
-
-        self.icon_size = 48
         self.imgProvider = ImagesProvider(AppConfig.PARTS_IMG_CACHE_DIR)
         self.imgProvider.image_loaded.connect(self.on_image_loaded)
 

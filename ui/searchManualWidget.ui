@@ -123,10 +123,13 @@
      </item>
      <item>
       <widget class="QTableWidget" name="search_results_table">
+       <property name="editTriggers">
+        <set>QAbstractItemView::EditTrigger::NoEditTriggers</set>
+       </property>
        <property name="iconSize">
         <size>
-         <width>48</width>
-         <height>48</height>
+         <width>64</width>
+         <height>64</height>
         </size>
        </property>
       </widget>

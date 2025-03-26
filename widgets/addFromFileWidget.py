@@ -62,7 +62,7 @@ class AddFromFileWidget(QWidget):
         self.targetContainer = container
         
         # Crea l'image provider
-        self.icon_size = 48
+        self.iconSize = AppConfig.DEFAULT_ICON_SIZE
         self.imgProvider = ImagesProvider(AppConfig.PARTS_IMG_CACHE_DIR)
         self.imgProvider.image_loaded.connect(self.on_image_loaded)
         
@@ -100,7 +100,7 @@ class AddFromFileWidget(QWidget):
         self.ui.tableWidget.setHorizontalHeaderLabels(headers)
         
         # Imposta l'altezza delle righe per le immagini
-        self.ui.tableWidget.verticalHeader().setDefaultSectionSize(self.icon_size + 4)
+        self.ui.tableWidget.verticalHeader().setDefaultSectionSize(self.iconSize + 4)
         self.ui.tableWidget.verticalHeader().setVisible(False)
 
         self.ui.tableWidget.setItemDelegateForColumn(0, TransparentSelectionDelegate(self.ui.tableWidget))
@@ -227,7 +227,7 @@ class AddFromFileWidget(QWidget):
             if 'part_id' in part and 'color_id' in part:
                 img = self.imgProvider.get_part_image(part['part_id'], part['color_id'])
                 if img is not None:
-                    scaled = img.scaled(self.icon_size, self.icon_size, 
+                    scaled = img.scaled(self.iconSize, self.iconSize, 
                                       Qt.KeepAspectRatio, Qt.SmoothTransformation)
                     image_item.setIcon(QIcon(scaled))
             self.ui.tableWidget.setItem(row, 0, image_item)
@@ -239,7 +239,7 @@ class AddFromFileWidget(QWidget):
             # Colonna Part Name
             name_item = QTableWidgetItem(part.get('part_name', 'Unknown'))
             self.ui.tableWidget.setItem(row, 2, name_item)
-            name_item.setSizeHint(QSize(400, self.icon_size))
+            name_item.setSizeHint(QSize(400, self.iconSize))
             
             # Colonna Color con sfondo colorato
             color_item = QTableWidgetItem(part.get('color_name', 'Unknown'))
@@ -264,7 +264,7 @@ class AddFromFileWidget(QWidget):
             self.ui.tableWidget.setItem(row, 5, qty_item)
         
         # Regola la larghezza delle colonne
-        self.ui.tableWidget.setColumnWidth(0, self.icon_size + 8)
+        self.ui.tableWidget.setColumnWidth(0, self.iconSize + 8)
         self.ui.tableWidget.resizeColumnsToContents()
         
         # Riconnetti il segnale cellChanged
@@ -397,7 +397,7 @@ class AddFromFileWidget(QWidget):
         for row, part_data in enumerate(self.parts_data):
             if str(part_data.get('part_id')) == part_id and str(part_data.get('color_id')) == color_id:
                 # Aggiorna l'icona
-                scaled = pixmap.scaled(self.icon_size, self.icon_size, 
+                scaled = pixmap.scaled(self.iconSize, self.iconSize, 
                                       Qt.KeepAspectRatio, Qt.SmoothTransformation)
                 
                 # Ottieni l'item della tabella

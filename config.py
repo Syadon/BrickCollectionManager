@@ -26,6 +26,8 @@ class AppConfig:
     WINDOW_WIDTH = 800
     WINDOW_HEIGHT = 600
     WINDOW_TITLE = APP_NAME
+
+    DEFAULT_ICON_SIZE = 64
     
     # Style Configuration
     STYLE_SHEET_PATH = UI_DIR / "style.qss"
