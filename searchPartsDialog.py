@@ -4,6 +4,7 @@ from PySide6.QtWidgets import (QDialog, QVBoxLayout, QHBoxLayout, QLabel,
                               QMessageBox, QCompleter, QSizePolicy, QDialogButtonBox)
 from PySide6.QtGui import QColor, QIcon
 from PySide6.QtCore import Qt, QStringListModel
+from widgets.searchManualWidget import SearchManualWidget
 from database import DatabaseManager
 from utils import TransparentSelectionDelegate
 from imageProvider import ImagesProvider
@@ -14,7 +15,7 @@ class SearchPartsDialog(QDialog):
     def __init__(self, parent=None):
         super().__init__(parent)
         self.setWindowTitle("Search Parts")
-        self.resize(800, 600)
+        self.setBaseSize(800, 600)
         
         self.db_manager = DatabaseManager()
         self.imgProvider = ImagesProvider(AppConfig.PARTS_IMG_CACHE_DIR)
@@ -23,8 +24,17 @@ class SearchPartsDialog(QDialog):
         # Set icon size
         self.iconSize = 64
         
-        self.setup_ui()
-        self.populate_combos()
+        self.searchWidget = SearchManualWidget()
+        main_layout = QVBoxLayout(self)
+        main_layout.addWidget(self.searchWidget)
+        self.buttonBox = QDialogButtonBox(QDialogButtonBox.Close)
+        self.buttonBox.rejected.connect(self.reject)  # Close button will close the dialog
+        main_layout.addWidget(self.buttonBox)
+
+        self.setLayout(main_layout)
+
+        #self.setup_ui()
+        #self.populate_combos()
         
     def setup_ui(self):
         main_layout = QVBoxLayout(self)
@@ -121,21 +131,6 @@ class SearchPartsDialog(QDialog):
         part_name_completer.setCaseSensitivity(Qt.CaseInsensitive)
         part_name_completer.setFilterMode(Qt.MatchContains)
         self.part_name_edit.setCompleter(part_name_completer)
-        
-    def populate_combos(self):
-        # Add "Any" option to color combo
-        self.color_combo.addItem("Any", None)
-        self.color_type_combo.addItem("Any", None)
-        
-        # Get all colors
-        dbManager = DatabaseManager()
-
-        for color in dbManager.getColorsNames():
-            self.color_combo.addItem(color, color)
-        
-        # Get all color types
-        for type in dbManager.getColorsTypesNames():
-             self.color_type_combo.addItem(type, type)
 
         
     def on_part_id_changed(self, text):
