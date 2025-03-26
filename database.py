@@ -156,7 +156,8 @@ class DatabaseManager:
         return ret
         
     def searchIntoCollection(self, part_id: str = None, part_name: str = None, 
-                             color_name: str = None, color_type: str = None) -> list[dict]:
+                             color_name: str = None, color_type: str = None,
+                             color_id:int=None) -> list[dict]:
         # Build query based on search criteria
         query_str = """
             SELECT cp.id, p.id as part_id, p.name as part_name, 
@@ -194,8 +195,12 @@ class DatabaseManager:
         if color_type:
             query_str += " AND c.type = ?"
             params.append(color_type)
+    
+        if color_id:
+            query_str += " AND c.id = ?"
+            params.append(color_id)
             
-        query_str += " ORDER BY p.name, c.name, con.name"
+        query_str += " ORDER BY quantity DESC, p.name, c.name"
         
         # Execute query
         query = QSqlQuery()

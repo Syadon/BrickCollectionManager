@@ -7,7 +7,7 @@ from database import DatabaseManager, Container
 from utils import TransparentSelectionDelegate
 from imageProvider import ImagesProvider
 from config import AppConfig
-import xml.etree.ElementTree as ET
+from partsFileParser import XmlParser
 import logging
 
 
@@ -147,69 +147,72 @@ class AddFromFileWidget(QWidget):
         try:
             # Pulisci la tabella e i dati esistenti
             self.clear_table()
+
+            parser_result = XmlParser.parse_file(file_path)
             
-            # Carica il file XML
-            tree = ET.parse(file_path)
-            root = tree.getroot()
+            if not parser_result.success:
+                # Mostra gli errori all'utente
+                errors = "\n".join(parser_result.errors)
+                QMessageBox.critical(self, "XML Error", f"Could not parse the XML file:\n{errors}")
+                return
+            
+            if len(parser_result.warnings) > 0:
+                # Mostra avvisi non bloccanti
+                warnings = "\n".join(parser_result.warnings)
+                logging.warning(f"XML parsing warnings: {warnings}")
             
             # Prepara le query per il database
             db_manager = DatabaseManager()
             
-            # Processa gli elementi nel file XML
+            # Elabora le parti trovate nel file XML
             parts_to_add = []
+            missing_parts = []
             
-            for item in root.findall('ITEM'):
-                item_type = item.find('ITEMTYPE')
-                item_id = item.find('ITEMID')
-                color_id = item.find('COLOR')
-                quantity = item.find('MINQTY')
-                
-                # Salta se mancano informazioni essenziali
-                if None in (item_type, item_id, color_id, quantity):
-                    continue
-                
-                # Estrai i valori dagli elementi
-                item_type_text = item_type.text
-                item_id_text = item_id.text
-                color_id_text = color_id.text
-                quantity_value = int(quantity.text)
-                
-                # Verifica che sia un pezzo (P) e non un set (S) o altro
-                if item_type_text != 'P':
-                    continue
+            for part_info in parser_result.parts:
+                part_id = part_info['part_id']
+                color_id = part_info['color_id']
+                quantity = part_info['quantity']
                 
                 # Cerca il pezzo e il colore nel database
-                color_part = db_manager.searchColorsParts(part_id=item_id_text, color_id=int(color_id_text))
-                if len(color_part) == 1:
-                    part_data = color_part[0]
-                    part_data['quantity'] = quantity_value
+                color_parts = db_manager.searchColorsParts(part_id=part_id, color_id=color_id)
+                
+                if color_parts:
+                    # Aggiungi ai pezzi da visualizzare
+                    part_data = color_parts[0]
+                    part_data['quantity'] = quantity
                     parts_to_add.append(part_data)
                 else:
-                    # TODO: problem
-                    break
+                    # Registra i pezzi mancanti per informare l'utente
+                    missing_parts.append((part_id, color_id, quantity))
             
             # Aggiungi i pezzi alla tabella
             self.add_parts_to_table(parts_to_add)
             
-            # Mostra un messaggio di successo
+            # Mostra un messaggio di riepilogo
             if len(parts_to_add) > 0:
-                QMessageBox.information(
+                message = f"Loaded {len(parts_to_add)} parts from the file."
+                if missing_parts:
+                    message += f"\n{len(missing_parts)} parts were not found in the database."
+                QMessageBox.information(self, "File Loaded", message)
+            elif missing_parts:
+                part_list = "\n".join([f"{p[0]} (color {p[1]}): {p[2]} pcs" for p in missing_parts[:5]])
+                if len(missing_parts) > 5:
+                    part_list += f"\n... and {len(missing_parts) - 5} more"
+                QMessageBox.warning(
                     self, 
-                    "File Loaded", 
-                    f"Loaded {len(parts_to_add)} parts from the file."
+                    "No Parts Found", 
+                    f"None of the {len(missing_parts)} parts in the file were found in the database.\nExamples:\n{part_list}"
                 )
             else:
                 QMessageBox.warning(
                     self, 
                     "No Parts Found", 
-                    "No matching parts were found in the database."
+                    "No parts were found in the XML file or the file format is not supported."
                 )
                 
-        except ET.ParseError:
-            QMessageBox.critical(self, "XML Error", "Could not parse the XML file. Make sure it is a valid XML file.")
         except Exception as e:
             QMessageBox.critical(self, "Error", f"An error occurred while loading the file: {str(e)}")
-            logging.error(f"Error loading XML file: {str(e)}")
+            logging.error(f"Error loading XML file: {str(e)}", exc_info=True)
     
     def add_parts_to_table(self, parts_data):
         # Disconnetti il segnale cellChanged temporaneamente per evitare chiamate durante il popolamento
