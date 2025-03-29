@@ -125,8 +125,6 @@ class ImagesProvider(QObject):
         # Wait for all running tasks to complete
         # This timeout is optional - set to 0 to return immediately or a longer value to wait
         self.thread_pool.waitForDone(1000)  # Wait up to 1 second
-        
-        print("Image provider tasks cleaned up")
 
     def clear_cache(self):
         # Clear the image cache to free memory
