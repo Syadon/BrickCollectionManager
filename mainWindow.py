@@ -1,11 +1,12 @@
 from PySide6.QtWidgets import (QMainWindow, QWidget, QMenuBar, QStatusBar, 
-                              QMenu, QDialog)
+                              QMenu, QDialog, QMessageBox)
 from PySide6.QtCore import Qt, QAbstractTableModel, SIGNAL
 from ui.ui_mainwindow import Ui_MainWindow
 from addBricksDialog import AddBricksDialog
 from addContainerDialog import AddContainerDialog
 from containerDetailDialog import ContainerDetailDialog
 from searchPartsDialog import SearchPartsDialog
+from updateDBDialog import UpdateDBDialog
 from database import DatabaseManager
 import operator
 
@@ -69,6 +70,9 @@ class MainWindow(QMainWindow):
         # Enable context menu
         self.ui.containerView.setContextMenuPolicy(Qt.CustomContextMenu)
         self.ui.containerView.customContextMenuRequested.connect(self.show_context_menu)
+        
+        # Connect updateDBAction to openUpdateDBDialog method
+        self.ui.updateDBAction.triggered.connect(self.openUpdateDBDialog)
 
     def openAddBricksDialog(self):
         dialog = AddBricksDialog(targetContainer=None, parent=self)
@@ -83,6 +87,19 @@ class MainWindow(QMainWindow):
     def openFindDialog(self):
         dialog = SearchPartsDialog(self)
         dialog.exec()
+    
+    def openUpdateDBDialog(self):
+        """Open dialog to update the database"""
+        try:
+            dialog = UpdateDBDialog(self)
+            result = dialog.exec()
+            
+            # If database was updated, refresh the container view
+            if result == QDialog.Accepted:
+                self.updateContainerView()
+                QMessageBox.information(self, "Database Update", "Database has been successfully updated.")
+        except Exception as e:
+            QMessageBox.critical(self, "Error", f"Failed to open database update dialog: {str(e)}")
 
     def updateContainerView(self):
         dbManager = DatabaseManager()
@@ -119,3 +136,4 @@ class MainWindow(QMainWindow):
         dialog = ContainerDetailDialog(container, self)
         if dialog.exec() == QDialog.Accepted:
             self.updateContainerView()
+

@@ -79,8 +79,45 @@
      <height>33</height>
     </rect>
    </property>
+   <widget class="QMenu" name="menuDatabase">
+    <property name="title">
+     <string>Database</string>
+    </property>
+    <addaction name="updateDBAction"/>
+   </widget>
+   <addaction name="menuDatabase"/>
   </widget>
   <widget class="QStatusBar" name="statusbar"/>
+  <action name="bricklinkDBLinkAction">
+   <property name="text">
+    <string>Get Brlicklink XML Files</string>
+   </property>
+  </action>
+  <action name="updateDBColorAction">
+   <property name="text">
+    <string>Update Colors</string>
+   </property>
+  </action>
+  <action name="updateDBPartAction">
+   <property name="text">
+    <string>Update Parts</string>
+   </property>
+  </action>
+  <action name="updateDBColorPartAction">
+   <property name="text">
+    <string>Update Color Part</string>
+   </property>
+  </action>
+  <action name="updateDBCategoriesAction">
+   <property name="text">
+    <string>Update Categories</string>
+   </property>
+  </action>
+  <action name="updateDBAction">
+   <property name="text">
+    <string>Update</string>
+   </property>
+  </action>
  </widget>
  <resources/>
  <connections/>

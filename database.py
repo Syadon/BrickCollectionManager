@@ -2,6 +2,7 @@ import xml.etree.ElementTree as ET
 from PySide6.QtSql import QSqlDatabase, QSqlQuery
 from config import AppConfig
 import logging
+from pathlib import Path
 
 class BrickColor:
     def __init__(self, id: int, name: str, rgb: str, color_type: str):
@@ -45,19 +46,6 @@ class DatabaseManager:
         if colorsPartsCount > 0:
             logging.info("Database already populated, skipping import")
             return True
-
-        # Import reference data
-        if not self.import_colors_from_xml():
-            logging.warning("Failed to import colors data")
-            
-        if not self.import_categories_from_xml():
-            logging.warning("Failed to import categories data")
-
-        if not self.import_parts_from_xml():
-            logging.warning("Failed to import parts data")
-
-        if not self.import_color_parts_from_xml():
-            logging.warning("Failed to import colors_parts data")
             
         return True
 
@@ -471,10 +459,10 @@ class DatabaseManager:
             logging.error(f"Error creating tables: {str(e)}")
             return False
     
-    def import_colors_from_xml(self) -> bool:
+    def import_colors_from_xml(self, filepath:str) -> bool:
         """Import colors from the XML file into the colors table"""
         try:
-            xml_path = AppConfig.DATABASE_DIR / "bricklink_data" / "colors.xml"
+            xml_path = Path(filepath)
             if not xml_path.exists():
                 logging.error(f"Colors XML file not found at {xml_path}")
                 return False
@@ -487,16 +475,16 @@ class DatabaseManager:
             self.db.transaction()
 
             # Clear existing data
-            clear_query = QSqlQuery()
-            if not clear_query.exec("DELETE FROM colors"):
-                logging.error(f"Error clearing colors table: {clear_query.lastError().text()}")
-                self.db.rollback()
-                return False
+            # clear_query = QSqlQuery()
+            # if not clear_query.exec("DELETE FROM colors"):
+            #     logging.error(f"Error clearing colors table: {clear_query.lastError().text()}")
+            #     self.db.rollback()
+            #     return False
 
             # Prepare insert query
             query = QSqlQuery()
             query.prepare("""
-                INSERT INTO colors (id, name, rgb, type)
+                INSERT OR IGNORE INTO colors (id, name, rgb, type)
                 VALUES (?, ?, ?, ?)
             """)
 
@@ -543,10 +531,10 @@ class DatabaseManager:
             self.db.rollback()
             return False
 
-    def import_categories_from_xml(self) -> bool:
+    def import_categories_from_xml(self, filepath:str) -> bool:
         """Import categories from XML file into the categories table"""
         try:
-            xml_path = AppConfig.DATABASE_DIR / "bricklink_data" / "categories.xml"
+            xml_path = Path(filepath)
             if not xml_path.exists():
                 logging.error(f"Categories XML file not found at {xml_path}")
                 return False
@@ -559,16 +547,16 @@ class DatabaseManager:
             self.db.transaction()
 
             # Clear existing data
-            clear_query = QSqlQuery()
-            if not clear_query.exec("DELETE FROM categories"):
-                logging.error(f"Error clearing categories table: {clear_query.lastError().text()}")
-                self.db.rollback()
-                return False
+            # clear_query = QSqlQuery()
+            # if not clear_query.exec("DELETE FROM categories"):
+            #     logging.error(f"Error clearing categories table: {clear_query.lastError().text()}")
+            #     self.db.rollback()
+            #     return False
 
             # Prepare insert query
             query = QSqlQuery()
             query.prepare("""
-                INSERT INTO categories (id, name)
+                INSERT OR IGNORE INTO categories (id, name)
                 VALUES (?, ?)
             """)
 
@@ -609,10 +597,10 @@ class DatabaseManager:
             self.db.rollback()
             return False
 
-    def import_parts_from_xml(self) -> bool:
+    def import_parts_from_xml(self, filepath:str) -> bool:
         """Import parts from XML file into the parts table"""
         try:
-            xml_path = AppConfig.DATABASE_DIR / "bricklink_data" / "parts.xml"
+            xml_path = Path(filepath)
             if not xml_path.exists():
                 logging.error(f"Parts XML file not found at {xml_path}")
                 return False
@@ -625,16 +613,16 @@ class DatabaseManager:
             self.db.transaction()
 
             # Clear existing data
-            clear_query = QSqlQuery()
-            if not clear_query.exec("DELETE FROM parts"):
-                logging.error(f"Error clearing parts table: {clear_query.lastError().text()}")
-                self.db.rollback()
-                return False
+            # clear_query = QSqlQuery()
+            # if not clear_query.exec("DELETE FROM parts"):
+            #     logging.error(f"Error clearing parts table: {clear_query.lastError().text()}")
+            #     self.db.rollback()
+            #     return False
 
             # Prepare insert query
             query = QSqlQuery()
             query.prepare("""
-                INSERT INTO parts (id, name, category, altid)
+                INSERT OR IGNORE INTO parts (id, name, category, altid)
                 VALUES (?, ?, ?, ?)
             """)
 
@@ -688,10 +676,10 @@ class DatabaseManager:
             self.db.rollback()
             return False
         
-    def import_color_parts_from_xml(self) -> bool:
+    def import_color_parts_from_xml(self, filepath:str) -> bool:
         """Import codes from XML file into the color parts table"""
         try:
-            xml_path = AppConfig.DATABASE_DIR / "bricklink_data" / "codes.xml"
+            xml_path = Path(filepath)
             if not xml_path.exists():
                 logging.error(f"Parts XML file not found at {xml_path}")
                 return False
@@ -704,17 +692,17 @@ class DatabaseManager:
             self.db.transaction()
 
             # Clear existing data
-            clear_query = QSqlQuery()
-            if not clear_query.exec("DELETE FROM colors_parts"):
-                logging.error(f"Error clearing colors_parts table: {clear_query.lastError().text()}")
-                self.db.rollback()
-                return False
+            # clear_query = QSqlQuery()
+            # if not clear_query.exec("DELETE FROM colors_parts"):
+            #     logging.error(f"Error clearing colors_parts table: {clear_query.lastError().text()}")
+            #     self.db.rollback()
+            #     return False
             
-            clear_query = QSqlQuery()
-            if not clear_query.exec("DELETE FROM colors_parts_codenames"):
-                logging.error(f"Error clearing colors_parts table: {clear_query.lastError().text()}")
-                self.db.rollback()
-                return False
+            # clear_query = QSqlQuery()
+            # if not clear_query.exec("DELETE FROM colors_parts_codenames"):
+            #     logging.error(f"Error clearing colors_parts table: {clear_query.lastError().text()}")
+            #     self.db.rollback()
+            #     return False
 
             # Prepare insert query
             query = QSqlQuery()
