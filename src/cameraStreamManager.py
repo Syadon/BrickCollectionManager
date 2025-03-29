@@ -1,7 +1,7 @@
 from PySide6.QtWidgets import (QGraphicsRectItem, QGraphicsView, QGraphicsScene)
 from PySide6.QtGui import QImage, QPixmap, QColor, QPainter, QPen
 from PySide6.QtCore import QTimer, Qt, Signal, QRect, QObject
-from utils import opencvToPixmap, opencvToQImage
+from src.utils import opencvToPixmap, opencvToQImage
 import cv2
 import logging
 

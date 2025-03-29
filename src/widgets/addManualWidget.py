@@ -1,11 +1,10 @@
 from PySide6.QtWidgets import QWidget, QTableWidgetItem, QTableWidget, QSizePolicy, QMessageBox, QCompleter
 from PySide6.QtGui import QIcon, QColor
 from PySide6.QtCore import Qt, QStringListModel
-from utils import TransparentSelectionDelegate
+from src.utils import TransparentSelectionDelegate
 from ui.ui_addManualWidget import Ui_AddManualWidget
-from database import Container
-from database import DatabaseManager
-from imageProvider import ImagesProvider
+from src.database import Container, DatabaseManager
+from src.imageProvider import ImagesProvider
 from config import AppConfig
 
 class AddManualWidget(QWidget):

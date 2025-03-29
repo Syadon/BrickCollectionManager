@@ -1,16 +1,16 @@
 from PySide6.QtWidgets import QWidget, QListWidgetItem, QTableWidgetItem, QMessageBox
 from PySide6.QtGui import QImage, QIcon, QColor, QKeyEvent
 from PySide6.QtCore import QByteArray, Qt, QRect, QBuffer, QEvent
-from database import DatabaseManager, Container, BrickColor
-from cameraStreamManager import CameraStreamManager
-from timedMessageBox import TimedMessageBox
-from imageProvider import ImagesProvider
-from utils import TransparentSelectionDelegate, qImageToOpenCV, rgb_to_hsv, calculate_hsv_similarity
+from src.database import DatabaseManager, Container, BrickColor
+from src.cameraStreamManager import CameraStreamManager
+from src.timedMessageBox import TimedMessageBox
+from src.imageProvider import ImagesProvider
+from src.utils import TransparentSelectionDelegate, qImageToOpenCV, rgb_to_hsv, calculate_hsv_similarity
 from config import AppConfig
 import cv2
 import numpy as np
 import logging
-from brickRecongnition import BrickRecognition
+from src.brickRecongnition import BrickRecognition
 from ui.ui_addFromCameraWidget import Ui_AddFromCameraWidget
 
 class AddFromCameraWidget(QWidget):

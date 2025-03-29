@@ -1,12 +1,12 @@
 from PySide6.QtWidgets import QWidget, QMessageBox, QTableWidgetItem, QTableWidget, QDialog, QCompleter, QFileDialog
 from PySide6.QtGui import QIcon, QPixmap, QColor
 from PySide6.QtCore import Qt, QStringListModel, QDir, QFile
-from database import DatabaseManager, Container
-from imageProvider import ImagesProvider
+from src.database import DatabaseManager, Container
+from src.imageProvider import ImagesProvider
 from config import AppConfig
-from utils import TransparentSelectionDelegate
-from partDetailDialog import PartDetailDialog
-from partsFileParser import XmlParser
+from src.utils import TransparentSelectionDelegate
+from src.partDetailDialog import PartDetailDialog
+from src.partsFileParser import XmlParser
 import logging
 from ui.ui_searchManualWidget import Ui_SearchManualWidget
 

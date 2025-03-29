@@ -2,7 +2,9 @@ import xml.etree.ElementTree as ET
 from PySide6.QtSql import QSqlDatabase, QSqlQuery
 from config import AppConfig
 import logging
+from PySide6.QtCore import QFile, QIODevice
 from pathlib import Path
+import resources_rc as resources_rc
 
 class BrickColor:
     def __init__(self, id: int, name: str, rgb: str, color_type: str):
@@ -441,10 +443,16 @@ class DatabaseManager:
 
     def _create_tables(self) -> bool:
         try:
-            if AppConfig.DATABASE_SCHEMA_PATH.exists():
+            # if QFile.exists(AppConfig.DATABASE_SCHEMA_RESOURCE_PATH):
                 query = QSqlQuery()
-                schema_sql = AppConfig.DATABASE_SCHEMA_PATH.read_text()
-                
+                schema_sql_file = QFile(AppConfig.DATABASE_SCHEMA_RESOURCE_PATH)
+                if not schema_sql_file.open(QIODevice.ReadOnly | QIODevice.Text):
+                    logging.error(f"Error opening schema file: {schema_sql_file.errorString()}")
+                    return False
+
+                schema_sql = schema_sql_file.readAll().data().decode('utf-8')
+                schema_sql_file.close()
+
                 # Split and execute multiple SQL statements
                 for statement in schema_sql.split(';'):
                     if statement.strip():
@@ -452,9 +460,9 @@ class DatabaseManager:
                             logging.error(f"Query Error: {query.lastError().text()}")
                             return False
                 return True
-            else:
-                logging.error("Schema file not found")
-                return False
+            # else:
+            #     logging.error("Schema file not found")
+            #     return False
         except Exception as e:
             logging.error(f"Error creating tables: {str(e)}")
             return False

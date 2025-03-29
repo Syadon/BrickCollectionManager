@@ -2,12 +2,12 @@ from PySide6.QtWidgets import (QMainWindow, QWidget, QMenuBar, QStatusBar,
                               QMenu, QDialog, QMessageBox)
 from PySide6.QtCore import Qt, QAbstractTableModel, SIGNAL
 from ui.ui_mainwindow import Ui_MainWindow
-from addBricksDialog import AddBricksDialog
-from addContainerDialog import AddContainerDialog
-from containerDetailDialog import ContainerDetailDialog
-from searchPartsDialog import SearchPartsDialog
-from updateDBDialog import UpdateDBDialog
-from database import DatabaseManager
+from src.addBricksDialog import AddBricksDialog
+from src.addContainerDialog import AddContainerDialog
+from src.containerDetailDialog import ContainerDetailDialog
+from src.searchPartsDialog import SearchPartsDialog
+from src.updateDBDialog import UpdateDBDialog
+from src.database import DatabaseManager
 import operator
 
 class ContainerTableModel(QAbstractTableModel):

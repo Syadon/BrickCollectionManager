@@ -1,6 +1,6 @@
 from PySide6.QtWidgets import QDialog
 from ui.ui_addcontainerdialog import Ui_AddContainerDialog
-from database import DatabaseManager
+from src.database import DatabaseManager
 
 class AddContainerDialog(QDialog):
     def __init__(self, parent=None):

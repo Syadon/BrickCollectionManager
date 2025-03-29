@@ -4,10 +4,10 @@ from PySide6.QtWidgets import (QDialog, QTableView, QHeaderView, QComboBox,
                              QGroupBox, QFormLayout, QSizePolicy)
 from PySide6.QtCore import Qt
 from PySide6.QtSql import QSqlQuery
-from containerPartsModel import ContainerPartsModel
-from database import DatabaseManager
-from utils import TransparentSelectionDelegate
-from partDetailDialog import PartDetailDialog
+from src.containerPartsModel import ContainerPartsModel
+from src.database import DatabaseManager
+from src.utils import TransparentSelectionDelegate
+from src.partDetailDialog import PartDetailDialog
 from ui.ui_containerDetailDialog import Ui_containerDetailDialog
 
 class ContainerDetailDialog(QDialog):
@@ -85,7 +85,7 @@ class ContainerDetailDialog(QDialog):
     def on_part_double_clicked(self, index):
         row_index = index.row()
         part_data = self.parts_model.parts_data[row_index]
-        dialog = PartDetailDialog(part_data, self.container, self)
+        dialog = PartDetailDialog(part_data, self.container, parent=self)
         if dialog.exec() == QDialog.Accepted:
             # Refresh the parts list
             self.refresh_parts_table()

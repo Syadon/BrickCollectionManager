@@ -4,12 +4,12 @@ from PySide6.QtWidgets import (QDialog, QVBoxLayout, QHBoxLayout, QLabel,
                               QMessageBox, QCompleter, QSizePolicy, QDialogButtonBox)
 from PySide6.QtGui import QColor, QIcon
 from PySide6.QtCore import Qt, QStringListModel
-from widgets.searchManualWidget import SearchManualWidget
-from database import DatabaseManager
-from utils import TransparentSelectionDelegate
-from imageProvider import ImagesProvider
+from src.widgets.searchManualWidget import SearchManualWidget
+from src.database import DatabaseManager
+from src.utils import TransparentSelectionDelegate
+from src.imageProvider import ImagesProvider
 from config import AppConfig
-from partDetailDialog import PartDetailDialog
+from src.partDetailDialog import PartDetailDialog
 
 class SearchPartsDialog(QDialog):
     def __init__(self, parent=None):

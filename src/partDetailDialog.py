@@ -1,8 +1,8 @@
 from PySide6.QtWidgets import (QDialog, QMessageBox)
 from PySide6.QtGui import QColor, QPixmap
 from PySide6.QtCore import Qt
-from database import DatabaseManager
-from imageProvider import ImagesProvider
+from src.database import DatabaseManager
+from src.imageProvider import ImagesProvider
 from config import AppConfig
 from ui.ui_detailPartDialog import Ui_DeatilPartDialog
 

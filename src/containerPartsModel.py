@@ -1,7 +1,7 @@
 from PySide6.QtCore import QAbstractTableModel, Qt, QSize
 from PySide6.QtGui import QColor, QBrush, QPixmap
 from config import AppConfig
-from imageProvider import ImagesProvider
+from src.imageProvider import ImagesProvider
 
 class ContainerPartsModel(QAbstractTableModel):
     def __init__(self, parts_data=None):

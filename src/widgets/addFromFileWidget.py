@@ -3,11 +3,11 @@ from PySide6.QtWidgets import (QWidget, QFileDialog, QTableWidgetItem, QMessageB
 from PySide6.QtCore import Qt, QDir, Signal, QSize, QModelIndex
 from PySide6.QtGui import QColor, QIcon
 from ui.ui_addFromFileWidget import Ui_AddFromFileWidget
-from database import DatabaseManager, Container
-from utils import TransparentSelectionDelegate
-from imageProvider import ImagesProvider
+from src.database import DatabaseManager, Container
+from src.utils import TransparentSelectionDelegate
+from src.imageProvider import ImagesProvider
 from config import AppConfig
-from partsFileParser import XmlParser
+from src.partsFileParser import XmlParser
 import logging
 
 

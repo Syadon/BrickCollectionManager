@@ -1,7 +1,7 @@
 from PySide6.QtWidgets import (QDialog, QFileDialog, QMessageBox, QDialogButtonBox)
 from PySide6.QtCore import Qt, QDir, QFile
 from ui.ui_updateDBDialog import Ui_UpdateDBDialog
-from database import DatabaseManager
+from src.database import DatabaseManager
 import os
 import logging
 import xml.etree.ElementTree as ET

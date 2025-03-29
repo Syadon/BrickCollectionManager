@@ -6,4 +6,7 @@
     <qresource prefix="/styles">
         <file>style.qss</file>
     </qresource>
+    <qresource prefix="/database">
+        <file>schema.sql</file>
+    </qresource>
 </RCC>
