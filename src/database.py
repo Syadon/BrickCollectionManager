@@ -492,8 +492,8 @@ class DatabaseManager:
             # Prepare insert query
             query = QSqlQuery()
             query.prepare("""
-                INSERT OR IGNORE INTO colors (id, name, rgb, type)
-                VALUES (?, ?, ?, ?)
+                INSERT OR REPLACE INTO colors (id, name, rgb, type, year_from, year_to)
+                VALUES (?, ?, ?, ?, ?, ?)
             """)
 
             # Process each color
@@ -511,6 +511,12 @@ class DatabaseManager:
                 rgb = item.find('COLORRGB').text if item.find('COLORRGB').text is not None else ''
                 color_type = item.find('COLORTYPE').text if item.find('COLORTYPE').text is not None else ''
 
+                year_from = item.find('COLORYEARFROM').text
+                year_to = item.find('COLORYEARTO').text
+
+                year_from = int(year_from) if year_from else None
+                year_to = int(year_to) if year_to else None
+
                 # if color_id == 0:
                 #     continue
 
@@ -519,6 +525,8 @@ class DatabaseManager:
                 query.addBindValue(name)
                 query.addBindValue(rgb)
                 query.addBindValue(color_type)
+                query.addBindValue(year_from)
+                query.addBindValue(year_to)
 
                 # Execute insert
                 if not query.exec():
@@ -564,7 +572,7 @@ class DatabaseManager:
             # Prepare insert query
             query = QSqlQuery()
             query.prepare("""
-                INSERT OR IGNORE INTO categories (id, name)
+                INSERT OR REPLACE INTO categories (id, name)
                 VALUES (?, ?)
             """)
 
@@ -630,7 +638,7 @@ class DatabaseManager:
             # Prepare insert query
             query = QSqlQuery()
             query.prepare("""
-                INSERT OR IGNORE INTO parts (id, name, category, altid)
+                INSERT OR REPLACE INTO parts (id, name, category, altid)
                 VALUES (?, ?, ?, ?)
             """)
 
@@ -715,13 +723,13 @@ class DatabaseManager:
             # Prepare insert query
             query = QSqlQuery()
             query.prepare("""
-                INSERT OR IGNORE INTO colors_parts (color_id, part_id)
+                INSERT OR REPLACE INTO colors_parts (color_id, part_id)
                 VALUES (?, ?)
             """)
 
             queryCodename = QSqlQuery()
             queryCodename.prepare("""
-                INSERT OR IGNORE INTO colors_parts_codenames (codename, color_part)
+                INSERT OR REPLACE INTO colors_parts_codenames (codename, color_part)
                 VALUES (?, ?)
             """)
 

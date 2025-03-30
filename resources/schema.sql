@@ -2,7 +2,9 @@ CREATE TABLE IF NOT EXISTS colors (
     id INTEGER PRIMARY KEY,
     name TEXT NOT NULL UNIQUE,
     rgb TEXT NOT NULL,
-    type TEXT NOT NULL
+    type TEXT NOT NULL,
+    year_from INTEGER,
+    year_to INTEGER
 );
 
 CREATE TABLE IF NOT EXISTS categories (
