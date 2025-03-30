@@ -177,3 +177,4 @@ ui/ui_*.py
 database/bricklink_data
 cache
 resources_rc.py
+*.exe
