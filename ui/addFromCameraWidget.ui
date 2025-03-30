@@ -244,6 +244,11 @@
            </column>
            <column>
             <property name="text">
+             <string>Year To</string>
+            </property>
+           </column>
+           <column>
+            <property name="text">
              <string>ID</string>
             </property>
            </column>

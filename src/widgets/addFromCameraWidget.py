@@ -329,6 +329,7 @@ class AddFromCameraWidget(QWidget):
         score_item = QTableWidgetItem()
         score_item.setData(Qt.EditRole, round(score*100, 2) if score is not None else 0)
         id_item = QTableWidgetItem(str(color.id))
+        year_item = QTableWidgetItem(str(color.year_to) if color.year_to else "")
 
         # Set background color
         if color.rgb:
@@ -347,7 +348,8 @@ class AddFromCameraWidget(QWidget):
         self.ui.colors_list.setItem(row, 0, name_item)
         self.ui.colors_list.setItem(row, 1, type_item)
         self.ui.colors_list.setItem(row, 2, score_item)
-        self.ui.colors_list.setItem(row, 3, id_item)
+        self.ui.colors_list.setItem(row, 3, year_item)
+        self.ui.colors_list.setItem(row, 4, id_item)
 
     def create_color_list_item(self, color:BrickColor, score:float = None) -> QListWidgetItem:
         item = QListWidgetItem()

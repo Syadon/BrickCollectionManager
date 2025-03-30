@@ -7,11 +7,13 @@ from pathlib import Path
 import resources_rc as resources_rc
 
 class BrickColor:
-    def __init__(self, id: int, name: str, rgb: str, color_type: str):
+    def __init__(self, id: int, name: str, rgb: str, color_type: str, year_from: int = None, year_to: int = None):
         self.id = id
         self.name = name
         self.rgb = rgb
         self.type = color_type
+        self.year_from = year_from
+        self.year_to = year_to
 
 class Container:
     def __init__(self, id: int, name: str, description: str, part_count: int = 0, lot_count:int = 0):
@@ -57,10 +59,11 @@ class DatabaseManager:
 
     def getColorFromName(self, colorName: str) -> BrickColor:
         query = QSqlQuery()
-        query.prepare("SELECT id,name,rgb,type FROM colors WHERE name = ?")
+        query.prepare("SELECT id,name,rgb,type,year_from,year_to FROM colors WHERE name = ?")
         query.addBindValue(colorName)
         if query.exec() and query.next():
-            ret = BrickColor(query.value("id"), query.value("name"), query.value("rgb"), query.value("type"))
+            ret = BrickColor(query.value("id"), query.value("name"), query.value("rgb"), 
+                             query.value("type"), query.value("year_from"), query.value("year_to"))
             return ret
 
         return None
@@ -94,7 +97,9 @@ class DatabaseManager:
                 query.value("id"),
                 query.value("name"),
                 query.value("rgb"),
-                query.value("type")
+                query.value("type"),
+                query.value("year_from"),
+                query.value("year_to")
             )
             colors.append(color)
         return colors
@@ -226,7 +231,7 @@ class DatabaseManager:
         # Create SQL query to get colors for part
         query = QSqlQuery()
         query.prepare("""
-            SELECT DISTINCT c.id, c.name, c.rgb, c.type
+            SELECT DISTINCT c.id, c.name, c.rgb, c.type, c.year_from, c.year_to
             FROM colors c
             JOIN colors_parts cp ON c.id = cp.color_id
             WHERE cp.part_id = ?
@@ -241,7 +246,9 @@ class DatabaseManager:
                     query.value("id"),
                     query.value("name"),
                     query.value("rgb"),
-                    query.value("type")
+                    query.value("type"),
+                    query.value("year_from"),
+                    query.value("year_to")
                 )
                 colors.append(color)
             return colors
