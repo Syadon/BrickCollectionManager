@@ -499,8 +499,13 @@ class DatabaseManager:
             # Prepare insert query
             query = QSqlQuery()
             query.prepare("""
-                INSERT OR REPLACE INTO colors (id, name, rgb, type, year_from, year_to)
+                INSERT OR IGNORE INTO colors (id, name, rgb, type, year_from, year_to)
                 VALUES (?, ?, ?, ?, ?, ?)
+            """)
+
+            updateQuery = QSqlQuery()
+            updateQuery.prepare("""
+                UPDATE colors SET rgb = ?, type = ?, year_from = ?, year_to = ? WHERE id = ?
             """)
 
             # Process each color
@@ -538,6 +543,16 @@ class DatabaseManager:
                 # Execute insert
                 if not query.exec():
                     logging.error(f"Error inserting color {name}: {query.lastError().text()}")
+                    self.db.rollback()
+                    return False
+                
+                updateQuery.addBindValue(rgb)
+                updateQuery.addBindValue(color_type)
+                updateQuery.addBindValue(year_from)
+                updateQuery.addBindValue(year_to)
+                updateQuery.addBindValue(color_id)
+                if not updateQuery.exec():
+                    logging.error(f"Error updating color {name}: {updateQuery.lastError().text()}")
                     self.db.rollback()
                     return False
 
@@ -579,7 +594,7 @@ class DatabaseManager:
             # Prepare insert query
             query = QSqlQuery()
             query.prepare("""
-                INSERT OR REPLACE INTO categories (id, name)
+                INSERT OR IGNORE INTO categories (id, name)
                 VALUES (?, ?)
             """)
 
@@ -645,7 +660,7 @@ class DatabaseManager:
             # Prepare insert query
             query = QSqlQuery()
             query.prepare("""
-                INSERT OR REPLACE INTO parts (id, name, category, altid)
+                INSERT OR IGNORE INTO parts (id, name, category, altid)
                 VALUES (?, ?, ?, ?)
             """)
 
@@ -730,13 +745,13 @@ class DatabaseManager:
             # Prepare insert query
             query = QSqlQuery()
             query.prepare("""
-                INSERT OR REPLACE INTO colors_parts (color_id, part_id)
+                INSERT OR IGNORE INTO colors_parts (color_id, part_id)
                 VALUES (?, ?)
             """)
 
             queryCodename = QSqlQuery()
             queryCodename.prepare("""
-                INSERT OR REPLACE INTO colors_parts_codenames (codename, color_part)
+                INSERT OR IGNORE INTO colors_parts_codenames (codename, color_part)
                 VALUES (?, ?)
             """)
 
