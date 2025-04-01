@@ -308,7 +308,7 @@ class AddFromCameraWidget(QWidget):
             scored_colors.append((color, max_score))
 
         # Sort colors by score (highest first)
-        scored_colors.sort(key=lambda x: x[1], reverse=True)
+        scored_colors.sort(key=lambda x: (x[0].year_to, x[1]), reverse=True)
 
         # Add sorted colors to table
         for color, score in scored_colors:
