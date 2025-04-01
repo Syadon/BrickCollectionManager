@@ -142,7 +142,7 @@
         </layout>
        </item>
        <item>
-        <layout class="QVBoxLayout" name="partsColorsLayout">
+        <layout class="QVBoxLayout" name="partsColorsLayout" stretch="0,3,5">
          <item>
           <widget class="QLabel" name="detactionResultLabel">
            <property name="text">
