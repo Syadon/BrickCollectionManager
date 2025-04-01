@@ -150,7 +150,7 @@ class AddFromCameraWidget(QWidget):
         self.imageCaputured = True
 
         recongnition = BrickRecognition()
-        recognition_result = recongnition.recognize(byte_array)
+        recognition_result = recongnition.recognize(byte_array, image_width=image.width(), image_height=image.height())
         if recognition_result:
             self.on_part_detected(image, recognition_result)
 
