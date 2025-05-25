@@ -1,7 +1,7 @@
 from PySide6.QtWidgets import QWidget, QMessageBox, QTableWidgetItem, QTableWidget, QDialog, QCompleter, QFileDialog
 from PySide6.QtGui import QIcon, QPixmap, QColor
 from PySide6.QtCore import Qt, QStringListModel, QDir, QFile
-from src.database import DatabaseManager, Container
+from src.database import DatabaseManager, Container, CollectionPart
 from src.imageProvider import ImagesProvider
 from config import AppConfig
 from src.utils import TransparentSelectionDelegate
@@ -120,7 +120,8 @@ class SearchManualWidget(QWidget):
                 continue
                 
             data = item.data(Qt.UserRole)
-            if data['id'] == part_id and str(data['color_id']) == color_id:
+            part = data[0]
+            if part.id == part_id and str(part.color_id) == color_id:
                 # Update the icon
                 scaled = pixmap.scaled(self.iconSize, self.iconSize, Qt.KeepAspectRatio, Qt.SmoothTransformation)
                 item.setIcon(QIcon(scaled))
@@ -182,82 +183,82 @@ class SearchManualWidget(QWidget):
                 matching_parts = dbManager.searchIntoCollection(part_id=part_id, color_id=color_id)
 
                 part_data = None
-                if not matching_parts and partNameEdit and colorTypeEdit:
+                if len(matching_parts) < 1:
                     # Cerca informazioni sul pezzo anche se non è nella collezione
                     color_part_info = dbManager.searchColorsParts(part_id=part_id, color_id=color_id)
                     
-                    if color_part_info:
+                    if color_part_info and len(color_part_info) > 0:
                         # Abbiamo trovato il pezzo ma non è nella collezione
-                        part_data = color_part_info[0]
-                        part_data['quantity'] = 0
-                        part_data['container_name'] = "Not in collection"
-                        part_data['container_id'] = None
-                        part_data['required_quantity'] = required_qty
-                        part_data['part_category'] = "Unknown"  # Potrebbe essere aggiunto con una query aggiuntiva
-                        missing_parts.append(part_data)
+                        part_data = CollectionPart(
+                            id=color_part_info[0]['id'],
+                            part_id=color_part_info[0]['part_id'],
+                            part_name=color_part_info[0]['part_name'],
+                            part_category="Unknown",
+                            color_id=color_part_info[0]['color_id'],
+                            color_name=color_part_info[0]['color_name'],
+                            rgb=color_part_info[0]['rgb'],
+                            color_type=color_part_info[0]['color_type'],
+                            container_name="Not in collection",
+                            quantity=0,
+                            container_id=None
+                        )
+                        missing_parts.append((part_data, required_qty))
                     else:
                         # Il pezzo non è proprio nel database
-                        missing_parts.append({
-                            'part_id': part_id,
-                            'color_id': color_id,
-                            'part_name': "Unknown",
-                            'color_name': "Unknown",
-                            'color_type': "Unknown",
-                            'rgb': None,
-                            'quantity': 0,
-                            'container_name': "Not in database",
-                            'container_id': None,
-                            'required_quantity': required_qty,
-                            'part_category': "Unknown"
-                        })
-
+                        part_data = CollectionPart(
+                            id=0,
+                            part_id=part_id,
+                            part_name="Unknown",
+                            part_category="Unknown",
+                            color_id=color_id,
+                            color_name="Unknown",
+                            rgb=None,
+                            color_type="Unknown",
+                            container_name="Not in database",
+                            quantity=0,
+                            container_id=None
+                        )
+                        missing_parts.append((part_data, required_qty))
                     continue
                 else:
-                    part_data = matching_parts[0]
+                    part_data = matching_parts[0].copy()
+                    part_data.container_name="",
+                    part_data.quantity=0,
+                    part_data.container_id=None
 
-                if colorTypeEdit and part_data["color_type"] != colorTypeEdit:
+                if colorTypeEdit and part_data.color_type != colorTypeEdit:
                     continue
 
-                if partNameEdit and partNameEdit.lower() not in part_data["part_name"].lower():
+                if partNameEdit and partNameEdit.lower() not in part_data.part_name.lower():
                     continue
                 
                 # Aggiungi ogni container che contiene il pezzo                   
                 required_qty_count = required_qty
                 for part in matching_parts:
-                    if required_qty_count <= part['quantity']:
-                        part['required_quantity'] = required_qty_count
-                        required_qty_count -= part['quantity']
-                        display_results.append(part)
+                    if required_qty_count <= part.quantity:
+                        display_results.append((part, required_qty_count))
+                        required_qty_count -= part.quantity
                         break
                     else:
-                        part['required_quantity'] = part['quantity']
-                        required_qty_count -= part['quantity']
-                        display_results.append(part)
+                        display_results.append((part, part.quantity))
+                        required_qty_count -= part.quantity
 
                 if required_qty_count > 0:
-                    display_results.append({
-                        'part_id': part_id,
-                        'color_id': color_id,
-                        'part_name': part_data['part_name'],
-                        'color_name': part_data['color_name'],
-                        'color_type': part_data['color_type'],
-                        'rgb': part_data['rgb'],
-                        'quantity': 0,
-                        'container_name': "Not enough parts",
-                        'container_id': None,
-                        'required_quantity': required_qty_count,
-                        'part_category': part_data['part_category']
-                    })
+                    not_enough_part = part_data.copy()
+                    not_enough_part.quantity = 0
+                    not_enough_part.container_name = "Not enough parts"
+                    not_enough_part.container_id = None
+                    display_results.append((not_enough_part, required_qty_count))
 
             # Aggiungi anche i pezzi mancanti
-            for part in missing_parts:
-                display_results.append(part)
+            for part, req_qty in missing_parts:
+                display_results.append((part, req_qty))
             
             # Mostra i risultati nella tabella
             self.ui.search_results_table.setRowCount(len(display_results))
             
-            for row, data in enumerate(display_results):
-                self.addItemToTable(row, data)
+            for row, (part, req_qty) in enumerate(display_results):
+                self.addItemToTable(row, part, req_qty)
             
             # Adjust column widths
             self.ui.search_results_table.setColumnWidth(0, self.iconSize + 8)  # Set fixed width for image column
@@ -287,7 +288,7 @@ class SearchManualWidget(QWidget):
         colorName = self.ui.search_color_combo.currentData().name if self.ui.search_color_combo.currentData() else None 
 
         dbManager = DatabaseManager()
-        results =dbManager.searchIntoCollection(part_id=self.ui.search_part_id_edit.text(), 
+        results = dbManager.searchIntoCollection(part_id=self.ui.search_part_id_edit.text(), 
                                                part_name=self.ui.search_part_name_edit.text(),
                                                color_name=colorName,
                                                color_type=self.ui.search_color_type_combo.currentData())
@@ -306,15 +307,13 @@ class SearchManualWidget(QWidget):
         self.ui.search_results_table.setColumnWidth(0, self.iconSize + 8)  # Set fixed width for image column
         self.ui.search_results_table.resizeColumnsToContents()
 
-    def addItemToTable(self, row, data):
+    def addItemToTable(self, row, part: CollectionPart, required_quantity: int = None):
         # Image column
         image_item = QTableWidgetItem()
-        image_item.setData(Qt.UserRole, data)  # Store full data for later use
+        image_item.setData(Qt.UserRole, (part, required_quantity))  # Store full data for later use
         
         # Try to get image
-        part_id = data['part_id']
-        color_id = data['color_id']
-        img = self.imgProvider.get_part_image(part_id, color_id)
+        img = self.imgProvider.get_part_image(part.part_id, part.color_id)
         if img is not None:
             scaled = img.scaled(self.iconSize, self.iconSize, Qt.KeepAspectRatio, Qt.SmoothTransformation)
             image_item.setIcon(QIcon(scaled))
@@ -322,18 +321,18 @@ class SearchManualWidget(QWidget):
         self.ui.search_results_table.setItem(row, 0, image_item)
         
         # Part ID
-        self.ui.search_results_table.setItem(row, 1, QTableWidgetItem(data['part_id']))
+        self.ui.search_results_table.setItem(row, 1, QTableWidgetItem(part.part_id))
         
         # Part Name
-        self.ui.search_results_table.setItem(row, 2, QTableWidgetItem(data.get('part_name', 'Unknown')))
+        self.ui.search_results_table.setItem(row, 2, QTableWidgetItem(part.part_name))
 
         # Part Category
-        self.ui.search_results_table.setItem(row, 3, QTableWidgetItem(data.get('part_category', 'Unknown')))
+        self.ui.search_results_table.setItem(row, 3, QTableWidgetItem(part.part_category))
         
         # Color with background color
-        color_item = QTableWidgetItem(data.get('color_name', 'Unknown'))
-        if data.get('rgb'):
-            bg_color = QColor(f"#{data['rgb']}")
+        color_item = QTableWidgetItem(part.color_name)
+        if part.rgb:
+            bg_color = QColor(f"#{part.rgb}")
             color_item.setBackground(bg_color)
             
             # Set text color for better visibility
@@ -344,28 +343,28 @@ class SearchManualWidget(QWidget):
         self.ui.search_results_table.setItem(row, 4, color_item)
         
         # Color Type
-        self.ui.search_results_table.setItem(row, 5, QTableWidgetItem(data.get('color_type', 'Unknown')))
+        self.ui.search_results_table.setItem(row, 5, QTableWidgetItem(part.color_type))
         
         # Container
-        container_item = QTableWidgetItem(data['container_name'])
+        container_item = QTableWidgetItem(part.container_name)
         self.ui.search_results_table.setItem(row, 6, container_item)
 
         # Quantity
-        if "required_quantity" in data:
-            # Evidenzia in rosso i container che non hanno abbastanza pezzi
-            if data['quantity'] < data['required_quantity']:
+        if required_quantity is not None:
+            # Highlight containers that don't have enough parts in red
+            if part.quantity < required_quantity:
                 container_item.setForeground(QColor(255, 0, 0))
             
-            # Quantity - Mostra "X / Y" dove X è la quantità disponibile e Y la quantità richiesta
-            qty_text = f"{data['quantity']} / {data['required_quantity']}"
+            # Quantity - Show "X / Y" where X is available quantity and Y is required quantity
+            qty_text = f"{part.quantity} / {required_quantity}"
             quantity_item = QTableWidgetItem(qty_text)
-            # Colora in rosso se non ci sono abbastanza pezzi
-            if data['quantity'] < data['required_quantity']:
+            # Color in red if there aren't enough parts
+            if part.quantity < required_quantity:
                 quantity_item.setForeground(QColor(255, 0, 0))
             self.ui.search_results_table.setItem(row, 7, quantity_item)
         else:
             quantity_item = QTableWidgetItem()
-            quantity_item.setData(Qt.DisplayRole, data['quantity'])
+            quantity_item.setData(Qt.DisplayRole, part.quantity)
             self.ui.search_results_table.setItem(row, 7, quantity_item)
 
 
@@ -387,17 +386,18 @@ class SearchManualWidget(QWidget):
         if not part_data:
             return
         
-        container_id = part_data.get('container_id')
-        container_name = part_data.get('container_name')
-        qty = part_data.get('quantity')
-        required_qty = part_data.get('required_quantity')
+        part = part_data[0]
+        container_id = part.container_id
+        container_name = part.container_name
+        qty = part.quantity
+        required_qty = part_data[1]
             
         # Create container object
         container = Container(container_id, container_name, "", 0, 0)
         
         # Open part detail dialog
         defaultQty = required_qty if required_qty and required_qty > 0 else qty
-        dialog = PartDetailDialog(part_data, container, qty=defaultQty, outsideDefault=True, parent = self)
+        dialog = PartDetailDialog(part, container, qty=defaultQty, outsideDefault=True, parent = self)
         result = dialog.exec()
         
         # If the dialog was accepted (changed were made), refresh the search results

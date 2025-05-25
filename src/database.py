@@ -168,7 +168,7 @@ class DatabaseManager:
         
     def searchIntoCollection(self, part_id: str = None, part_name: str = None, 
                              color_name: str = None, color_type: str = None,
-                             color_id:int=None) -> list[dict]:
+                             color_id:int=None) -> list[CollectionPart]:
         # Build query based on search criteria
         query_str = """
             SELECT cp.id, p.id as part_id, p.name as part_name, 
@@ -227,19 +227,19 @@ class DatabaseManager:
         # Process results
         results = []
         while query.next():
-            results.append({
-                'id': query.value('id'),
-                'part_id': query.value('part_id'),
-                'part_name': query.value('part_name'),
-                'part_category': query.value('part_category'),
-                'color_id': query.value('color_id'),
-                'color_name': query.value('color_name'),
-                'rgb': query.value('color_rgb'),
-                'color_type': query.value('color_type'),
-                'container_name': query.value('container_name'),
-                'quantity': query.value('quantity'),
-                'container_id': query.value('container_id')
-            })
+            results.append(CollectionPart(
+                id=query.value('id'),
+                part_id=query.value('part_id'),
+                part_name=query.value('part_name'),
+                part_category=query.value('part_category'),
+                color_id=query.value('color_id'),
+                color_name=query.value('color_name'),
+                rgb=query.value('color_rgb'),
+                color_type=query.value('color_type'),
+                container_name=query.value('container_name'),
+                quantity=query.value('quantity'),
+                container_id=query.value('container_id')
+            ))
 
         return results
 
