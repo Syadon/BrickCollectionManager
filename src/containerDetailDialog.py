@@ -1,9 +1,7 @@
-from PySide6.QtWidgets import (QDialog, QTableView, QHeaderView, QComboBox, 
+from PySide6.QtWidgets import (QDialog, QTableView, QComboBox, 
                              QPushButton, QVBoxLayout, QHBoxLayout, QLabel, 
                              QDialogButtonBox, QMessageBox, QRadioButton, 
-                             QGroupBox, QFormLayout, QSizePolicy)
-from PySide6.QtCore import Qt
-from PySide6.QtSql import QSqlQuery
+                             QGroupBox)
 from src.containerPartsModel import ContainerPartsModel
 from src.database import DatabaseManager
 from src.utils import TransparentSelectionDelegate

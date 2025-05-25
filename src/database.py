@@ -28,6 +28,22 @@ class ColorPart:
         self.id = id
         self.part_id = part_id
         self.color_id = color_id
+        
+class CollectionPart:
+    def __init__(self, id: int, part_id: str, part_name: str, part_category: str,
+                    color_id: int, color_name: str, rgb: str, color_type: str,
+                    container_name: str, quantity: int, container_id: int):
+        self.id = id
+        self.part_id = part_id
+        self.part_name = part_name
+        self.part_category = part_category
+        self.color_id = color_id
+        self.color_name = color_name
+        self.rgb = rgb
+        self.color_type = color_type
+        self.container_name = container_name
+        self.quantity = quantity
+        self.container_id = container_id
 
 class DatabaseManager:
     def __init__(self):
@@ -410,7 +426,7 @@ class DatabaseManager:
             logging.error(f"Error updating container: {str(e)}")
             return False
         
-    def getContainersParts(self, container_id):
+    def getContainersParts(self, container_id: int) -> list[CollectionPart]:
         parts_data = []
         try:
             query = QSqlQuery()
@@ -418,12 +434,13 @@ class DatabaseManager:
                 SELECT cp.id, p.id as part_id, p.name as part_name, 
                     c.name as color_name, pc.count as quantity,
                     c.id as color_id, cat.name as part_category,
-                    c.rgb as rgb, c.type as color_type
+                    c.rgb as rgb, c.type as color_type, con.name as container_name
                 FROM parts_collection pc
                 JOIN colors_parts cp ON pc.item = cp.id
                 JOIN parts p ON cp.part_id = p.id
                 JOIN colors c ON cp.color_id = c.id
 				JOIN categories cat ON p.category = cat.id
+                JOIN containers con ON pc.container_id = con.id
                 WHERE pc.container_id = ?
                 ORDER BY p.name, c.name
             """)
@@ -431,17 +448,20 @@ class DatabaseManager:
 
             if query.exec():
                 while query.next():
-                    parts_data.append({
-                        'id': query.value('id'),
-                        'part_id': query.value('part_id'),
-                        'part_name': query.value('part_name'),
-                        'part_category': query.value('part_category'),
-                        'color_name': query.value('color_name'),
-                        'quantity': query.value('quantity'),
-                        'color_id': query.value('color_id'),
-                        'rgb': query.value('rgb'),
-                        'color_type': query.value('color_type')
-                    })
+                    parts_data.append(
+                        CollectionPart(
+                            id=query.value('id'),
+                            part_id=query.value('part_id'),
+                            part_name=query.value('part_name'),
+                            part_category=query.value('part_category'),
+                            color_name=query.value('color_name'),
+                            quantity=query.value('quantity'),
+                            container_name=query.value('container_name'),
+                            container_id=container_id,
+                            color_id=query.value('color_id'),
+                            rgb=query.value('rgb'),
+                            color_type=query.value('color_type')
+                        ))
         except Exception as e:
             logging.error(f"Error updating container: {str(e)}")
             return []

@@ -1,13 +1,13 @@
 from PySide6.QtWidgets import (QDialog, QMessageBox)
 from PySide6.QtGui import QColor, QPixmap
 from PySide6.QtCore import Qt
-from src.database import DatabaseManager
+from src.database import DatabaseManager, Container, CollectionPart
 from src.imageProvider import ImagesProvider
 from config import AppConfig
 from ui.ui_detailPartDialog import Ui_DeatilPartDialog
 
 class PartDetailDialog(QDialog):
-    def __init__(self, part_data, container, qty = 1, outsideDefault = False, parent=None):
+    def __init__(self, part_data: CollectionPart, container: Container, qty = 1, outsideDefault = False, parent=None):
         super().__init__(parent)
 
         self.imgSize = 256
@@ -29,33 +29,33 @@ class PartDetailDialog(QDialog):
         
     def setup_ui(self):
         
-        image = self.imgProvider.get_part_image(self.part_data['part_id'], self.part_data['color_id'])
+        image = self.imgProvider.get_part_image(self.part_data.part_id, self.part_data.color_id)
         if image is not None:
             self.setup_image("", image)
 
         # Part ID and Name
-        self.ui.idValLabel.setText(self.part_data['part_id'])
-        self.ui.nameValLabel.setText(self.part_data['part_name'])
-        self.ui.categoryValLabel.setText(self.part_data['part_category'])
+        self.ui.idValLabel.setText(self.part_data.part_id)
+        self.ui.nameValLabel.setText(self.part_data.part_name)
+        self.ui.categoryValLabel.setText(self.part_data.part_category)
         
         # Color information with colored background
-        self.ui.colorValLabel.setText(self.part_data['color_name'])
-        rgb = QColor(f"#{self.part_data['rgb']}")
+        self.ui.colorValLabel.setText(self.part_data.color_name)
+        rgb = QColor(f"#{self.part_data.rgb}")
         luminance = (0.299 * rgb.red() + 0.587 * rgb.green() + 0.114 * rgb.blue())
         
         # Set stylesheet for colored background
         self.ui.colorValLabel.setStyleSheet(
-            f"background-color: #{self.part_data['rgb']}; "
+            f"background-color: #{self.part_data.rgb}; "
             f"color: {'white' if luminance < 128 else 'black'}; "
             f"padding: 4px; border-radius: 4px;"
         )
 
-        self.ui.colorTypeValLabel.setText(self.part_data['color_type'])
+        self.ui.colorTypeValLabel.setText(self.part_data.color_type)
 
         self.ui.currentContainerValue.setText(self.container.name)
         
         # Current quantity
-        self.current_quantity = self.part_data['quantity']
+        self.current_quantity = self.part_data.quantity
         self.ui.currentQtyValLabel.setText(str(self.current_quantity))
     
         self.ui.qtySpinBox.setRange(1, self.current_quantity)
@@ -128,10 +128,10 @@ class PartDetailDialog(QDialog):
             
     def update_part_quantity(self, delta):
         dbManager = DatabaseManager()
-        result = dbManager.addColorPartIDToContainer(self.part_data['id'], self.container.id, delta)
+        result = dbManager.addColorPartIDToContainer(self.part_data.id, self.container.id, delta)
         return result
 
     def move_parts_to_container(self, quantity, target_container_id):
         dbManager = DatabaseManager()
-        result = dbManager.movePartsBetweenContainers(self.part_data['id'], self.container.id, target_container_id, quantity)
+        result = dbManager.movePartsBetweenContainers(self.part_data.id, self.container.id, target_container_id, quantity)
         return result

@@ -2,6 +2,7 @@ from PySide6.QtCore import QAbstractTableModel, Qt, QSize
 from PySide6.QtGui import QColor, QBrush, QPixmap
 from config import AppConfig
 from src.imageProvider import ImagesProvider
+from src.database import CollectionPart
 
 class ContainerPartsModel(QAbstractTableModel):
     def __init__(self, parts_data=None):
@@ -23,22 +24,25 @@ class ContainerPartsModel(QAbstractTableModel):
         self.load_part_images()
 
     def load_part_images(self):
-        for row in self.parts_data:
-            color_id = row.get('color_id')
-            part_id = row.get('part_id')
-            if color_id and part_id:
-                image = self.imgProvider.get_part_image(part_id, color_id)
+        for loot in self.parts_data:
+            if hasattr(loot, 'color_id') and hasattr(loot, 'part_id'):
+                image = self.imgProvider.get_part_image(loot.part_id, loot.color_id)
                 if image != None:
-                    row['image'] = image.scaled(self.imageSizes, Qt.KeepAspectRatio, Qt.SmoothTransformation)
+                    # Store image in a temporary dictionary since it's not part of Loot class
+                    if not hasattr(loot, '_temp_data'):
+                        loot._temp_data = {}
+                    loot._temp_data['image'] = image.scaled(self.imageSizes, Qt.KeepAspectRatio, Qt.SmoothTransformation)
     
     def _update_image(self, key, pixmap):
         part_id, color_id = key.split('_')
         
         # Find all rows with this part_id and color_id
-        for row_idx, row_data in enumerate(self.parts_data):
-            if (row_data.get('part_id') == part_id and 
-                str(row_data.get('color_id')) == color_id):
-                row_data['image'] = pixmap.scaled(self.imageSizes, Qt.KeepAspectRatio, Qt.SmoothTransformation)
+        for row_idx, loot in enumerate(self.parts_data):
+            if (loot.part_id == part_id and 
+                str(loot.color_id) == color_id):
+                if not hasattr(loot, '_temp_data'):
+                    loot._temp_data = {}
+                loot._temp_data['image'] = pixmap.scaled(self.imageSizes, Qt.KeepAspectRatio, Qt.SmoothTransformation)
                 # Notify view that data has changed
                 model_idx = self.index(row_idx, self.imageColumnIndex)
                 self.dataChanged.emit(model_idx, model_idx)
@@ -53,25 +57,29 @@ class ContainerPartsModel(QAbstractTableModel):
         if not index.isValid():
             return None
 
+        loot = self.parts_data[index.row()]
+        col = index.column()
+        attr = self.attrCols[col]
+
         if role == Qt.DisplayRole:
             if index.column() != self.imageColumnIndex:  # Don't show text in image column
-                row = self.parts_data[index.row()]
-                col = index.column()
-                return row[self.attrCols[col]]
+                if attr == 'image':
+                    return None
+                return getattr(loot, attr)
             return None
             
         elif role == Qt.DecorationRole and index.column() == self.imageColumnIndex:
-            return self.parts_data[index.row()].get('image')
+            if hasattr(loot, '_temp_data'):
+                return loot._temp_data.get('image')
+            return None
         
         elif role == Qt.BackgroundRole and index.column() == self.colorColumnIndex:
-            row = self.parts_data[index.row()]
-            rgb_values = QColor(f"#{row['rgb']}")
+            rgb_values = QColor(f"#{loot.rgb}")
             return QBrush(rgb_values)
 
         elif role == Qt.ForegroundRole and index.column() == self.colorColumnIndex:
-            row = self.parts_data[index.row()]
             # Calculate luminance to determine text color
-            rgb_values = QColor(f"#{row['rgb']}")
+            rgb_values = QColor(f"#{loot.rgb}")
             luminance = (0.299 * rgb_values.red() + 
                         0.587 * rgb_values.green() + 
                         0.114 * rgb_values.blue())
