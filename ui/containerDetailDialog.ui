@@ -15,7 +15,17 @@
   </property>
   <layout class="QVBoxLayout" name="verticalLayout">
    <item>
-    <layout class="QFormLayout" name="infoLayout">
+    <layout class="QGridLayout" name="gridLayout" columnstretch="0,1,0,2">
+     <item row="0" column="1">
+      <widget class="QLineEdit" name="name_edit"/>
+     </item>
+     <item row="0" column="2">
+      <widget class="QLabel" name="descriptionLabel">
+       <property name="text">
+        <string>Description</string>
+       </property>
+      </widget>
+     </item>
      <item row="0" column="0">
       <widget class="QLabel" name="nameLabel">
        <property name="text">
@@ -23,51 +33,52 @@
        </property>
       </widget>
      </item>
-     <item row="0" column="1">
-      <widget class="QLineEdit" name="name_edit"/>
-     </item>
-     <item row="1" column="0">
-      <widget class="QLabel" name="descriptionLabel">
-       <property name="text">
-        <string>Description</string>
-       </property>
-      </widget>
-     </item>
-     <item row="2" column="0">
-      <widget class="QLabel" name="partsLabel">
-       <property name="text">
-        <string>Parts</string>
-       </property>
-      </widget>
-     </item>
-     <item row="2" column="1">
-      <widget class="QLabel" name="part_count_label">
-       <property name="text">
-        <string>0</string>
-       </property>
-      </widget>
-     </item>
-     <item row="3" column="0">
-      <widget class="QLabel" name="lotsLabel">
-       <property name="text">
-        <string>Lots</string>
-       </property>
-      </widget>
-     </item>
-     <item row="3" column="1">
-      <widget class="QLabel" name="lots_count_label">
-       <property name="text">
-        <string>0</string>
-       </property>
-      </widget>
-     </item>
-     <item row="1" column="1">
+     <item row="0" column="3">
       <widget class="QLineEdit" name="description_edit"/>
      </item>
     </layout>
    </item>
    <item>
+    <widget class="Line" name="line">
+     <property name="orientation">
+      <enum>Qt::Orientation::Horizontal</enum>
+     </property>
+    </widget>
+   </item>
+   <item>
     <layout class="QVBoxLayout" name="partsLayout">
+     <item>
+      <layout class="QHBoxLayout" name="horizontalLayout" stretch="0,1,0,1">
+       <item>
+        <widget class="QLabel" name="partsLabel">
+         <property name="text">
+          <string>Parts Count</string>
+         </property>
+        </widget>
+       </item>
+       <item>
+        <widget class="QLabel" name="part_count_label">
+         <property name="text">
+          <string>0</string>
+         </property>
+        </widget>
+       </item>
+       <item>
+        <widget class="QLabel" name="lotsLabel">
+         <property name="text">
+          <string>Lots Count</string>
+         </property>
+        </widget>
+       </item>
+       <item>
+        <widget class="QLabel" name="lots_count_label">
+         <property name="text">
+          <string>0</string>
+         </property>
+        </widget>
+       </item>
+      </layout>
+     </item>
      <item>
       <widget class="QTableView" name="partsView">
        <property name="selectionMode">
