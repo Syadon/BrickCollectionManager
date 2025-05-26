@@ -214,6 +214,8 @@ class AddFromFileWidget(QWidget):
         except Exception as e:
             QMessageBox.critical(self, "Error", f"An error occurred while loading the file: {str(e)}")
             logging.error(f"Error loading XML file: {str(e)}", exc_info=True)
+            
+        self.update_add_button_state()
     
     def add_parts_to_table(self, parts_data):
         # Disconnetti il segnale cellChanged temporaneamente per evitare chiamate durante il popolamento
@@ -279,10 +281,14 @@ class AddFromFileWidget(QWidget):
         self.ui.tableWidget.setRowCount(0)
         self.parts_data = []
         self.imgProvider.cleanup_tasks()
+        self.update_add_button_state()
     
     def populate_container_combo(self):
         """Popola il combobox dei container"""
         self.ui.containerCombo.clear()
+        
+        # Add dummy container as first option
+        self.ui.containerCombo.addItem("Select Container...", None)
         
         # Ottieni i container dal database
         db_manager = DatabaseManager()
@@ -296,7 +302,32 @@ class AddFromFileWidget(QWidget):
                 self.ui.containerCombo.addItem(display_text, (container.id, container.name))
 
         self.ui.containerCombo.setEnabled(self.targetContainer == None)
-    
+        
+        # Connect to selection change event if not already connected
+        try:
+            self.ui.containerCombo.currentIndexChanged.disconnect(self.on_container_selection_changed)
+        except:
+            pass
+        self.ui.containerCombo.currentIndexChanged.connect(self.on_container_selection_changed)
+        
+        # Update add button state
+        self.on_container_selection_changed(self.ui.containerCombo.currentIndex())
+
+    def hideEvent(self, event):
+        # Reset to dummy container
+        self.ui.containerCombo.setCurrentIndex(0)
+        self.clear_table()
+        self.ui.fileEdit.clear()
+        super().hideEvent(event)
+
+    def on_container_selection_changed(self, index):
+        self.update_add_button_state()
+
+    def update_add_button_state(self):
+        # Disable add button if dummy container is selected
+        container_data = self.ui.containerCombo.currentData()
+        self.ui.pushButton.setEnabled(container_data is not None and self.ui.tableWidget.rowCount() > 0)
+
     def add_to_container(self):
         """Aggiunge i pezzi selezionati al container selezionato"""
         # Verifica che sia selezionato un containers

@@ -72,6 +72,8 @@ class AddFromCameraWidget(QWidget):
         # Attributo per tenere traccia dell'immagine catturata e del rettangolo di rilevamento
         self.captured_image = None
         self.detection_rect = None
+        
+        self.update_add_button_state()
 
     def resizeEvent(self, event):
         super().resizeEvent(event)
@@ -104,11 +106,16 @@ class AddFromCameraWidget(QWidget):
     def hideEvent(self, event):
         self.close_stream()
         self.ui.acquisition_combo.setCurrentIndex(0)
+        # Reset to dummy container
+        self.ui.containerCombobox.setCurrentIndex(0)
         self.imgProvider.cleanup_tasks()
         super().hideEvent(event)
 
     def populate_container_list(self):
         self.ui.containerCombobox.clear()
+        
+        # Add dummy container as first option
+        self.ui.containerCombobox.addItem("Select Container...", None)
         
         # Get containers from database
         db_manager = DatabaseManager()
@@ -124,6 +131,16 @@ class AddFromCameraWidget(QWidget):
             self.ui.containerCombobox.addItem(display_text, (container.id, container.name))
 
         self.ui.containerCombobox.setEnabled(self.targetContainer == None)
+        
+        # Connect to selection change event if not already connected
+        try:
+            self.ui.containerCombobox.currentIndexChanged.disconnect(self.on_container_selection_changed)
+        except:
+            pass
+        self.ui.containerCombobox.currentIndexChanged.connect(self.on_container_selection_changed)
+        
+        # Update add button state
+        self.on_container_selection_changed(self.ui.containerCombobox.currentIndex())
 
     def populate_camera_list(self):
         self.ui.acquisition_combo.clear()
@@ -400,6 +417,8 @@ class AddFromCameraWidget(QWidget):
                 logging.info(f"Selected part: {part_data['id']} - {part_data['name']}")
                 self.update_colors_list(part_data['id'])
                 
+        self.update_add_button_state()
+                
     def on_add_part_clicked(self):
         try:
             # Get selected part
@@ -636,3 +655,13 @@ class AddFromCameraWidget(QWidget):
         except Exception as e:
             logging.error(f"Error detecting colors: {str(e)}")
             return []
+
+    def on_container_selection_changed(self, index):
+        self.update_add_button_state()
+        
+    def update_add_button_state(self):
+        # Disable add button if dummy container is selected
+        container_data = self.ui.containerCombobox.currentData()
+        has_selection = (self.ui.parts_list.currentRow() >= 0 and 
+                        self.ui.colors_list.currentRow() >= 0)
+        self.ui.addToContainerButton.setEnabled(container_data is not None and has_selection)

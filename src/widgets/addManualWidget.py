@@ -31,6 +31,8 @@ class AddManualWidget(QWidget):
         super().showEvent(event)
 
     def hideEvent(self, event):
+        # Reset to dummy container
+        self.ui.searchContainerComboBox.setCurrentIndex(0)
         self.clear_search()
         self.imgProvider.cleanup_tasks()
         super().hideEvent(event)
@@ -87,6 +89,9 @@ class AddManualWidget(QWidget):
     def populate_container_list(self):
         self.ui.searchContainerComboBox.clear()
         
+        # Add dummy container as first option
+        self.ui.searchContainerComboBox.addItem("Select Container...", None)
+        
         # Get containers from database
         db_manager = DatabaseManager()
         containers = db_manager.getContainers()
@@ -101,6 +106,16 @@ class AddManualWidget(QWidget):
             self.ui.searchContainerComboBox.addItem(display_text, (container.id, container.name))
 
         self.ui.searchContainerComboBox.setEnabled(self.targetContainer == None)
+        
+        # Connect to selection change event if not already connected
+        try:
+            self.ui.searchContainerComboBox.currentIndexChanged.disconnect(self.on_container_selection_changed)
+        except:
+            pass
+        self.ui.searchContainerComboBox.currentIndexChanged.connect(self.on_container_selection_changed)
+        
+        # Update add button state
+        self.on_container_selection_changed(self.ui.searchContainerComboBox.currentIndex())
 
     def populate_search_combos(self):
         # Aggiungi opzione "Any" ai combobox dei colori
@@ -225,7 +240,7 @@ class AddManualWidget(QWidget):
         self.ui.search_results_table.resizeColumnsToContents()
 
     def on_search_selection_changed(self):
-        self.ui.search_add_button.setEnabled(self.ui.search_results_table.currentRow() >= 0)
+        self.update_add_button_state()
 
     def on_search_add_clicked(self):
         try:
@@ -297,7 +312,6 @@ class AddManualWidget(QWidget):
             if part_count is not None:
                 self.ui.searchContainerComboBox.setItemText(current_index, f"{container_name} ({part_count} parts)")
 
-
     def on_image_loaded(self, key, pixmap):
         # Parse key to get part_id and color_id
         try:
@@ -331,3 +345,13 @@ class AddManualWidget(QWidget):
             image_item.setIcon(QIcon(scaled))
             self.ui.search_results_table.viewport().update()  # Force repaint
             self.ui.search_results_table.resizeColumnsToContents()
+
+    def on_container_selection_changed(self, index):
+        self.update_add_button_state()
+
+    def update_add_button_state(self):
+        # Disable add button if dummy container is selected
+        container_data = self.ui.searchContainerComboBox.currentData()
+        self.ui.search_add_button.setEnabled(container_data is not None and self.ui.search_results_table.currentRow() >= 0)
+
+      
