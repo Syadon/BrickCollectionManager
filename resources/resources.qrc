@@ -9,4 +9,12 @@
     <qresource prefix="/database">
         <file>schema.sql</file>
     </qresource>
+    <qresource prefix="/icons">
+        <file>container.png</file>
+        <file>search.png</file>
+        <file>addManually.png</file>
+        <file>addCamera.png</file>
+        <file>addFile.png</file>
+        <file>database.png</file>
+    </qresource>
 </RCC>

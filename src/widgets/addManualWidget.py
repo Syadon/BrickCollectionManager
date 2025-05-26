@@ -1,4 +1,5 @@
-from PySide6.QtWidgets import QWidget, QTableWidgetItem, QTableWidget, QSizePolicy, QMessageBox, QCompleter
+from PySide6.QtWidgets import (QWidget, QVBoxLayout, QHBoxLayout, QPushButton, 
+                              QLabel, QComboBox, QSpinBox, QMessageBox, QTableWidget, QTableWidgetItem, QSizePolicy)
 from PySide6.QtGui import QIcon, QColor
 from PySide6.QtCore import Qt, QStringListModel
 from src.utils import TransparentSelectionDelegate

@@ -1,5 +1,6 @@
 from PySide6.QtWidgets import (QWidget, QFileDialog, QTableWidgetItem, QMessageBox, 
-                              QMenu, QSpinBox, QStyledItemDelegate, QTableWidget)
+                              QMenu, QSpinBox, QStyledItemDelegate, QTableWidget, QVBoxLayout, QHBoxLayout, QPushButton, 
+                              QLabel, QLineEdit)
 from PySide6.QtCore import Qt, QDir, Signal, QSize, QModelIndex
 from PySide6.QtGui import QColor, QIcon
 from ui.ui_addFromFileWidget import Ui_AddFromFileWidget
@@ -54,7 +55,7 @@ class AddFromFileWidget(QWidget):
     part_added = Signal()
     
     def __init__(self, container:Container = None, parent=None):
-        super(AddFromFileWidget, self).__init__(parent)
+        super().__init__(parent)
 
         self.ui = Ui_AddFromFileWidget()
         self.ui.setupUi(self)

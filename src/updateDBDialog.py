@@ -1,5 +1,5 @@
 from PySide6.QtWidgets import (QDialog, QFileDialog, QMessageBox, QDialogButtonBox)
-from PySide6.QtCore import Qt, QDir, QFile
+from PySide6.QtCore import QDir
 from ui.ui_updateDBDialog import Ui_UpdateDBDialog
 from src.database import DatabaseManager
 import os

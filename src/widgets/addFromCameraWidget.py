@@ -17,7 +17,7 @@ from ui.ui_addFromCameraWidget import Ui_AddFromCameraWidget
 class AddFromCameraWidget(QWidget):
 
     def __init__(self, container:Container = None, parent=None):
-        super(AddFromCameraWidget, self).__init__(parent)
+        super().__init__(parent)
 
         self.ui = Ui_AddFromCameraWidget()
         self.ui.setupUi(self)
@@ -40,10 +40,6 @@ class AddFromCameraWidget(QWidget):
         self.media_capture_session.setImageCapture(self.image_capture)
 
         self.image_capture.imageCaptured.connect(self.on_image_captured)
-
-        self.resize_timer = QTimer(self)
-        self.resize_timer.setSingleShot(True)
-        self.resize_timer.timeout.connect(self.update_video_widget_geometry)
 
         self.imgProvider = ImagesProvider(AppConfig.PARTS_IMG_CACHE_DIR)
         self.imgProvider.image_loaded.connect(self.on_image_loaded)
@@ -79,27 +75,35 @@ class AddFromCameraWidget(QWidget):
 
     def resizeEvent(self, event):
         super().resizeEvent(event)
-        self.resize_timer.start(100)  # Aggiorna la geometria dopo un breve ritardo
+        # Update geometry immediately
+        self.update_video_widget_geometry()
+        # And schedule another update after a short delay to ensure proper sizing
+        QTimer.singleShot(100, self.update_video_widget_geometry)
 
     def update_video_widget_geometry(self):
-        if self.video_widget:
-            self.video_widget.setGeometry(self.ui.cameraView.rect())
+        if self.video_widget and self.video_widget.isVisible():
+            # Get the current geometry of the camera view
+            view_rect = self.ui.cameraView.rect()
+            # Update video widget geometry
+            self.video_widget.setGeometry(view_rect)
+            # Force update
+            self.video_widget.update()
+            self.ui.cameraView.update()
 
     def showEvent(self, event):
         if self.ui.acquisition_combo.count() == 0:
             # Create camera selection combobox
             self.populate_camera_list()
 
-        current_index = self.ui.acquisition_combo.currentIndex()
-        if current_index >= 0:
-            self.switch_camera(current_index)
-
+        # Don't automatically start camera on show
+        # Let user explicitly select a camera
         self.populate_container_list()
 
         super().showEvent(event)
 
     def hideEvent(self, event):
         self.close_stream()
+        self.ui.acquisition_combo.setCurrentIndex(0)
         self.imgProvider.cleanup_tasks()
         super().hideEvent(event)
 
@@ -124,8 +128,11 @@ class AddFromCameraWidget(QWidget):
     def populate_camera_list(self):
         self.ui.acquisition_combo.clear()
 
+        # Add "Camera Off" as first option
+        self.ui.acquisition_combo.addItem("Camera Off", None)
+
+        # Add available cameras
         camera_devices = QMediaDevices.videoInputs()
-        
         for device in camera_devices:
             self.ui.acquisition_combo.addItem(device.description(), device)
     
@@ -137,10 +144,12 @@ class AddFromCameraWidget(QWidget):
         
         camera_device = self.ui.acquisition_combo.itemData(index)
         if not camera_device:
+            # If "Camera Off" is selected, just return after closing the stream
             return
             
         self.camera = QCamera(camera_device)
         self.media_capture_session.setCamera(self.camera)
+        self.update()
 
         self.startStream()
     
@@ -148,10 +157,15 @@ class AddFromCameraWidget(QWidget):
         if self.camera:
             self.camera.start()
             self.video_widget.show()
+            # Force geometry update
+            self.update_video_widget_geometry()
+            # Use a short timer to ensure the widget is properly sized after the layout is updated
+            QTimer.singleShot(100, self.update_video_widget_geometry)
             
     def close_stream(self):
         if self.camera:
             self.camera.stop()
+            self.camera = None  # Reset camera to None when closing stream
         self.video_widget.hide()
     
     def capture_image(self):

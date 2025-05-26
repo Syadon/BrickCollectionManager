@@ -1,139 +1,119 @@
-from PySide6.QtWidgets import (QMainWindow, QWidget, QMenuBar, QStatusBar, 
-                              QMenu, QDialog, QMessageBox)
-from PySide6.QtCore import Qt, QAbstractTableModel, SIGNAL
-from ui.ui_mainwindow import Ui_MainWindow
-from src.addBricksDialog import AddBricksDialog
-from src.addContainerDialog import AddContainerDialog
-from src.containerDetailDialog import ContainerDetailDialog
-from src.searchPartsDialog import SearchPartsDialog
+from PySide6.QtWidgets import (QMainWindow, QWidget, QVBoxLayout, QHBoxLayout, 
+                              QToolBar, QStackedLayout, QDialog, QPushButton, QMessageBox)
+from PySide6.QtGui import QIcon, QAction
+from PySide6.QtCore import Qt, QSize
+from src.widgets import (ContainerListWidget, SearchManualWidget, AddManualWidget,
+                        AddFromCameraWidget, AddFromFileWidget)
 from src.updateDBDialog import UpdateDBDialog
-from src.database import DatabaseManager
-import operator
-
-class ContainerTableModel(QAbstractTableModel):
-    def __init__(self, containers, parent=None):
-        super().__init__(parent)
-        self.containers = containers
-        self.attrOrder = ["id", "name", "part_count", "lot_count", "description"]
-        self.headetList = ["ID", "Name", "Part Count", "Lot Count", "Description"]
-
-    def rowCount(self, parent):
-        return len(self.containers)
-
-    def columnCount(self, parent):
-        return len(self.headetList)
-
-    def data(self, index, role):
-        if not index.isValid():
-            return None
-        elif role != Qt.DisplayRole:
-            return None
-        else:
-            c = self.containers[index.row()]
-            attr = self.attrOrder[index.column()]
-            return getattr(c, attr)
-        
-    def headerData(self, col, orientation, role):
-        if orientation == Qt.Horizontal and role == Qt.DisplayRole:
-            return self.headetList[col]
-        return None
-
-    def sort(self, col, order):
-        attr = self.attrOrder[col]
-        self.emit(SIGNAL("layoutAboutToBeChanged()"))
-        self.containers = sorted(self.containers,
-            key=operator.attrgetter(attr))
-        if order == Qt.DescendingOrder:
-            self.mylist.reverse()
-        self.emit(SIGNAL("layoutChanged()"))
+from config import AppConfig
+import resources_rc
 
 class MainWindow(QMainWindow):
     def __init__(self):
         super().__init__()
+        self.setWindowTitle("Brick Collection Manager")
+        self.setMinimumSize(1024, 768)
+
+        # Create central widget and main layout
+        central_widget = QWidget()
+        self.setCentralWidget(central_widget)
+        main_layout = QHBoxLayout(central_widget)
+
+        # Create left toolbar
+        self.toolbar = QToolBar()
+        self.toolbar.setOrientation(Qt.Vertical)
+        self.toolbar.setIconSize(QSize(32, 32))
+        self.toolbar.setToolButtonStyle(Qt.ToolButtonTextUnderIcon)
+        main_layout.addWidget(self.toolbar)
+
+        # Create stacked layout for different pages
+        self.stack_layout = QStackedLayout()
+        main_layout.addLayout(self.stack_layout)
+        main_layout.setStretch(1, 1)  # Make the stacked layout take more space
+
+        # Create all widgets
+        self.container_list = ContainerListWidget()
+        self.search_widget = SearchManualWidget()
+        self.add_manual_widget = AddManualWidget()
+        self.add_camera_widget = AddFromCameraWidget()
+        self.add_file_widget = AddFromFileWidget()
+
+        # Add widgets to stack
+        self.stack_layout.addWidget(self.container_list)
+        self.stack_layout.addWidget(self.search_widget)
+        self.stack_layout.addWidget(self.add_manual_widget)
+        self.stack_layout.addWidget(self.add_camera_widget)
+        self.stack_layout.addWidget(self.add_file_widget)
+
+        # Create toolbar actions
+        self.setup_toolbar()
+
+    def setup_toolbar(self):
+        # Containers action
+        containers_action = QAction(QIcon(":/icons/container.png"), "Containers", self)
+        containers_action.setCheckable(True)
+        containers_action.triggered.connect(lambda: self.switch_page(0))
+        self.toolbar.addAction(containers_action)
+
+        # Search action
+        search_action = QAction(QIcon(":/icons/search.png"), "Search Parts", self)
+        search_action.setCheckable(True)
+        search_action.triggered.connect(lambda: self.switch_page(1))
+        self.toolbar.addAction(search_action)
+
+        # Add Manual action
+        add_manual_action = QAction(QIcon(":/icons/addManually.png"), "Add Manually", self)
+        add_manual_action.setCheckable(True)
+        add_manual_action.triggered.connect(lambda: self.switch_page(2))
+        self.toolbar.addAction(add_manual_action)
+
+        # Add Camera action
+        add_camera_action = QAction(QIcon(":/icons/addCamera.png"), "Add From Camera", self)
+        add_camera_action.setCheckable(True)
+        add_camera_action.triggered.connect(lambda: self.switch_page(3))
+        self.toolbar.addAction(add_camera_action)
+
+        # Add File action
+        add_file_action = QAction(QIcon(":/icons/addFile.png"), "Add From File", self)
+        add_file_action.setCheckable(True)
+        add_file_action.triggered.connect(lambda: self.switch_page(4))
+        self.toolbar.addAction(add_file_action)
+
+        # Add separator before database action
+        self.toolbar.addSeparator()
+
+        # Database action
+        database_action = QAction(QIcon(":/icons/database.png"), "Update Database", self)
+        database_action.triggered.connect(self.open_update_db_dialog)
+        self.toolbar.addAction(database_action)
+
+        # Set containers as default selected
+        containers_action.setChecked(True)
+        self.toolbar.actions()[0].setChecked(True)
+
+    def switch_page(self, index):
+        # Uncheck all actions except the selected one
+        for i, action in enumerate(self.toolbar.actions()):
+            if action.isCheckable():  # Only modify checkable actions
+                action.setChecked(i == index)
         
-        # Create and setup UI
-        self.ui = Ui_MainWindow()
-        self.ui.setupUi(self)
+        # Switch to the selected page
+        self.stack_layout.setCurrentIndex(index)
 
-        self.containersModel = ContainerTableModel([])
-        self.updateContainerView()
-
-        # Connect button to dialog
-        self.ui.addBricksButton.clicked.connect(self.openAddBricksDialog)
-        self.ui.addNewContainerButton.clicked.connect(self.openAddContainerDialog)
-
-        self.ui.findBricksButton.clicked.connect(self.openFindDialog)
-
-        # Connect double click signal
-        self.ui.containerView.doubleClicked.connect(self.on_container_double_clicked)
-        
-        # Enable context menu
-        self.ui.containerView.setContextMenuPolicy(Qt.CustomContextMenu)
-        self.ui.containerView.customContextMenuRequested.connect(self.show_context_menu)
-        
-        # Connect updateDBAction to openUpdateDBDialog method
-        self.ui.updateDBAction.triggered.connect(self.openUpdateDBDialog)
-
-    def openAddBricksDialog(self):
-        dialog = AddBricksDialog(targetContainer=None, parent=self)
-        dialog.exec()
-        self.updateContainerView()
-
-    def openAddContainerDialog(self):
-        dialog = AddContainerDialog(self)
-        if dialog.exec() == AddContainerDialog.Accepted:
-            self.updateContainerView()
-
-    def openFindDialog(self):
-        dialog = SearchPartsDialog(self)
-        dialog.exec()
-    
-    def openUpdateDBDialog(self):
-        """Open dialog to update the database"""
+    def open_update_db_dialog(self):
         try:
             dialog = UpdateDBDialog(self)
             result = dialog.exec()
             
-            # If database was updated, refresh the container view
+            # If database was updated, refresh all widgets
             if result == QDialog.Accepted:
-                self.updateContainerView()
-                QMessageBox.information(self, "Database Update", "Database has been successfully updated.")
+                # Refresh container list
+                self.container_list.update_view()
+                
+                # Show success message
+                QMessageBox.information(self, "Database Update", 
+                                     "Database has been successfully updated.")
         except Exception as e:
-            QMessageBox.critical(self, "Error", f"Failed to open database update dialog: {str(e)}")
-
-    def updateContainerView(self):
-        dbManager = DatabaseManager()
-        containers = dbManager.getContainers()
-        self.containersModel = ContainerTableModel(containers)
-
-        self.ui.containerView.setModel(self.containersModel)
-
-    def on_container_double_clicked(self, index):
-        container = self.containersModel.containers[index.row()]
-        self.open_container_dialog(container)
-
-    def show_context_menu(self, position):
-        index = self.ui.containerView.indexAt(position)
-        
-        if index.isValid():
-            context_menu = QMenu(self)
-            add_bricks_action = context_menu.addAction("Add Bricks")
-            edit_action = context_menu.addAction("Edit")
-            
-            # Show context menu at cursor position
-            action = context_menu.exec(self.ui.containerView.viewport().mapToGlobal(position))
-            
-            if action == edit_action:
-                container = self.containersModel.containers[index.row()]
-                self.open_container_dialog(container)
-            elif action == add_bricks_action:
-                container = self.containersModel.containers[index.row()]
-                dialog = AddBricksDialog(targetContainer=container, parent=self)
-                dialog.exec()
-                self.updateContainerView()
-
-    def open_container_dialog(self, container):
-        dialog = ContainerDetailDialog(container, self)
-        if dialog.exec() == QDialog.Accepted:
-            self.updateContainerView()
+            QMessageBox.critical(self, "Database Update Error", 
+                                 f"An error occurred while updating the database: {e}")
 
