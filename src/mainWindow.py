@@ -24,6 +24,7 @@ class MainWindow(QMainWindow):
         self.toolbar.setOrientation(Qt.Vertical)
         self.toolbar.setIconSize(QSize(32, 32))
         self.toolbar.setToolButtonStyle(Qt.ToolButtonTextUnderIcon)
+        
         main_layout.addWidget(self.toolbar)
 
         # Create stacked layout for different pages

@@ -54,7 +54,7 @@ class ContainerListWidget(QWidget):
         button_layout = QHBoxLayout()
         
         # Add Container button
-        self.add_container_btn = QPushButton("Add Container")
+        self.add_container_btn = QPushButton("Add New Container")
         self.add_container_btn.clicked.connect(self.add_container)
         button_layout.addWidget(self.add_container_btn)
         
