@@ -1,4 +1,4 @@
-from PySide6.QtWidgets import QWidget, QListWidgetItem, QTableWidgetItem, QMessageBox, QLabel
+from PySide6.QtWidgets import QWidget, QListWidgetItem, QTableWidgetItem, QMessageBox, QLabel, QStackedLayout, QVBoxLayout
 from PySide6.QtGui import QImage, QIcon, QColor, QKeyEvent, QPainter, QPen, QPixmap
 from PySide6.QtCore import QByteArray, Qt, QRect, QBuffer, QEvent, Signal, QTimer
 from PySide6.QtMultimedia import QCamera, QMediaCaptureSession, QImageCapture, QCameraDevice, QMediaDevices
@@ -28,12 +28,37 @@ class AddFromCameraWidget(QWidget):
         self.colorsDetected = []
         self.current_part_id = None
         
-        # Setup di QtMultimedia components
-        self.video_widget = QVideoWidget(self.ui.cameraView)
-        self.video_widget.setGeometry(self.ui.cameraView.geometry())
+        # Setup camera view stack layout
+        self.camera_stack = QStackedLayout(self.ui.cameraView)
         
+        # Create video widget container
+        self.video_container = QWidget()
+        self.video_container_layout = QVBoxLayout(self.video_container)
+        self.video_container_layout.setContentsMargins(0, 0, 0, 0)
+        
+        # Setup video widget
+        self.video_widget = QVideoWidget()
+        self.video_container_layout.addWidget(self.video_widget)
+        
+        # Create captured image container
+        self.capture_container = QWidget()
+        self.capture_container_layout = QVBoxLayout(self.capture_container)
+        # Set black background for capture container
+        self.capture_container.setStyleSheet("background-color: black;")
+        self.capture_container_layout.setContentsMargins(0, 0, 0, 0)
+        
+        # Create label for captured image
+        self.capture_label = QLabel()
+        self.capture_label.setAlignment(Qt.AlignCenter)
+        self.capture_container_layout.addWidget(self.capture_label)
+        
+        # Add widgets to stack
+        self.camera_stack.addWidget(self.video_container)
+        self.camera_stack.addWidget(self.capture_container)
+        
+        # Setup QtMultimedia components
         self.media_capture_session = QMediaCaptureSession()
-        self.camera = None  # Verrà inizializzato più tardi
+        self.camera = None
         self.image_capture = QImageCapture()
         
         self.media_capture_session.setVideoOutput(self.video_widget)
@@ -47,11 +72,12 @@ class AddFromCameraWidget(QWidget):
         # Connect colors_list selection changed signal
         self.ui.colors_list.itemSelectionChanged.connect(self.on_color_selected)
 
-        # Connessioni UI
+        # UI Connections
         self.ui.acquisition_combo.currentIndexChanged.connect(self.switch_camera)
         self.ui.captureButton.clicked.connect(self.capture_image)
-        self.ui.skipButton.clicked.connect(self.startStream)
+        self.ui.skipButton.clicked.connect(self.on_next_clicked)
         self.ui.skipButton.clicked.connect(self.clearDetection)
+        self.ui.addToContainerButton.clicked.connect(self.on_add_clicked)
 
         self.ui.parts_list.setItemDelegateForColumn(0, TransparentSelectionDelegate(self.ui.parts_list))
         self.ui.colors_list.setItemDelegateForColumn(0, TransparentSelectionDelegate(self.ui.colors_list))
@@ -59,17 +85,10 @@ class AddFromCameraWidget(QWidget):
         # Connect list item selection
         self.ui.parts_list.itemSelectionChanged.connect(self.on_part_selected)
 
-        # Connect add part button
-        self.ui.addToContainerButton.clicked.connect(self.on_add_part_clicked)
-
-        self.ui.skipButton.clicked.connect(self.on_next_clicked)
-
-        self.ui.qtySpinBox.setValue(1)  # Set default quantity to 1
-
-        # Installa event filter per intercettare eventi tastiera
+        # Install event filter for keyboard events
         self.installEventFilter(self)
         
-        # Attributo per tenere traccia dell'immagine catturata e del rettangolo di rilevamento
+        # Initialize capture attributes
         self.captured_image = None
         self.detection_rect = None
         
@@ -81,13 +100,18 @@ class AddFromCameraWidget(QWidget):
         self.update_video_widget_geometry()
         # And schedule another update after a short delay to ensure proper sizing
         QTimer.singleShot(100, self.update_video_widget_geometry)
+        
+        # Update captured image if present
+        if self.captured_image and self.detection_rect:
+            self.setDetectionImage(self.captured_image, self.detection_rect)
 
     def update_video_widget_geometry(self):
         if self.video_widget and self.video_widget.isVisible():
             # Get the current geometry of the camera view
             view_rect = self.ui.cameraView.rect()
-            # Update video widget geometry
-            self.video_widget.setGeometry(view_rect)
+            # Update container geometry
+            self.video_container.setGeometry(view_rect)
+            self.capture_container.setGeometry(view_rect)
             # Force update
             self.video_widget.update()
             self.ui.cameraView.update()
@@ -173,11 +197,8 @@ class AddFromCameraWidget(QWidget):
     def startStream(self):
         if self.camera:
             self.camera.start()
+            self.camera_stack.setCurrentWidget(self.video_container)
             self.video_widget.show()
-            # Force geometry update
-            self.update_video_widget_geometry()
-            # Use a short timer to ensure the widget is properly sized after the layout is updated
-            QTimer.singleShot(100, self.update_video_widget_geometry)
             
     def close_stream(self):
         if self.camera:
@@ -193,47 +214,50 @@ class AddFromCameraWidget(QWidget):
         self.captured_image = image.copy()
         self.detection_rect = bb
         
-        self.close_stream()
-        
+        # Create a copy of the image to draw on
         display_image = self.captured_image.copy()
         
+        # Draw bounding box
         painter = QPainter(display_image)
         painter.setPen(QPen(Qt.red, 3))
         painter.drawRect(bb)
         painter.end()
         
+        # Convert to pixmap and scale
         pixmap = QPixmap.fromImage(display_image)
-
         scaled_pixmap = pixmap.scaled(
             self.ui.cameraView.size(),
             Qt.KeepAspectRatio,
             Qt.SmoothTransformation
         )
-
-        if not hasattr(self.ui.cameraView, 'image_label'):
-            self.ui.cameraView.image_label = QLabel(self.ui.cameraView)
-            self.ui.cameraView.image_label.setAlignment(Qt.AlignCenter)
-            
-        self.ui.cameraView.image_label.setPixmap(scaled_pixmap)
-        self.ui.cameraView.image_label.setGeometry(self.ui.cameraView.rect())
-        self.ui.cameraView.image_label.show()
         
-        self.ui.cameraView.image_label.raise_()
-
+        # Set the image to the label
+        self.capture_label.setPixmap(scaled_pixmap)
+        
+        # Switch to capture view
+        self.camera_stack.setCurrentWidget(self.capture_container)
 
     def on_next_clicked(self):
         self.startStream()
         self.clearDetection()
+
+    def on_add_clicked(self):
+        try:
+            result = self.on_add_part_clicked()
+            if result:
+                self.startStream()
+                self.clearDetection()
+        except Exception as e:
+            QMessageBox.critical(self, "Error", f"An error occurred: {str(e)}")
 
     def clearDetection(self):
         self.ui.parts_list.setRowCount(0)
         self.ui.colors_list.setRowCount(0)
         self.imageCaputured = False
         self.ui.qtySpinBox.setValue(1)
-        
-        # Nascondi il label dell'immagine catturata se presente
-        if hasattr(self.ui.cameraView, 'image_label'):
-            self.ui.cameraView.image_label.hide()
+        self.captured_image = None
+        self.detection_rect = None
+        self.update_add_button_state()
 
     def on_image_captured(self, id, image:QImage):
         # Convert QImage to bytes in memory
@@ -278,7 +302,8 @@ class AddFromCameraWidget(QWidget):
         # If image is available, update immediately
         if image:
             self.update_part_image_camera(image, part_row)
-        # If not, it will be handled by on_image_loaded when available
+        
+        self.update_add_button_state()
 
     def on_image_loaded(self, key, pixmap):
         # Parse key to get part_id and color_id
@@ -406,6 +431,8 @@ class AddFromCameraWidget(QWidget):
         if self.ui.parts_list.rowCount() > 0:
             self.ui.parts_list.selectRow(0)
             
+        self.setDetectionImage(image, bb)
+            
     def on_part_selected(self):
         current_row = self.ui.parts_list.currentRow()
         if current_row >= 0:
@@ -503,11 +530,11 @@ class AddFromCameraWidget(QWidget):
 
             logging.info(f"Added {quantity} of part {part_data['id']} in color {color_data.name} to container {container_id}")
 
-            self.video_manager.startStream()
-            self.clearDetection()
+            return True
 
         except Exception as e:
             logging.error(f"Error adding part to collection: {str(e)}")
+            return False
             
     def update_colors_list(self, part_id):
         self.ui.colors_list.setRowCount(0)
