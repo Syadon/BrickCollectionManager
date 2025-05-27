@@ -1,5 +1,5 @@
 from PySide6.QtWidgets import QWidget, QListWidgetItem, QTableWidgetItem, QMessageBox, QLabel, QStackedLayout, QVBoxLayout
-from PySide6.QtGui import QImage, QIcon, QColor, QKeyEvent, QPainter, QPen, QPixmap
+from PySide6.QtGui import QImage, QIcon, QColor, QKeyEvent, QPainter, QPen, QPixmap, QKeySequence
 from PySide6.QtCore import QByteArray, Qt, QRect, QBuffer, QEvent, Signal, QTimer
 from PySide6.QtMultimedia import QCamera, QMediaCaptureSession, QImageCapture, QCameraDevice, QMediaDevices
 from PySide6.QtMultimediaWidgets import QVideoWidget
@@ -499,7 +499,15 @@ class AddFromCameraWidget(QWidget):
             # Show a message box with the part image to confirm addition
             msg = TimedMessageBox(timeout=5, buttons=[QMessageBox.Ok, QMessageBox.Cancel], parent = self)
             msg.setWindowTitle("Adding Part")
-            msg.setText(f"Adding {quantity} of part {part_data['id']} - {part_data['name']} in color {color_data.name} - {color_data.type} to container {container_name}")
+            msg.setText(f"""
+                <html>
+                <p><b>Adding...</b></p>
+                <p><b>Part:</b> {part_data['id']} - {part_data['name']}</p>
+                <p><b>Color:</b> {color_data.name} - {color_data.type}</p>
+                <p><b>Quantity:</b> {quantity}</p>
+                <p><b>Container:</b> {container_name}</p>
+                </html>
+            """)
             # msg.setStandardButtons(QMessageBox.Ok|QMessageBox.Cancel)
             # msg.setDefaultButton(QMessageBox.Ok)            
             if msg_pixmap != None:
@@ -692,3 +700,33 @@ class AddFromCameraWidget(QWidget):
         has_selection = (self.ui.parts_list.currentRow() >= 0 and 
                         self.ui.colors_list.currentRow() >= 0)
         self.ui.addToContainerButton.setEnabled(container_data is not None and has_selection)
+
+    def eventFilter(self, obj, event):
+        """Handle keyboard events"""
+        if event.type() == QEvent.KeyPress:
+            key_event = QKeyEvent(event)
+            if key_event.key() == Qt.Key_F1:
+                if not self.imageCaputured:
+                    # If no image is captured, capture one
+                    self.capture_image()
+                else:
+                    # If image is captured and we can add the part, do it
+                    if self.ui.addToContainerButton.isEnabled():
+                        self.on_add_clicked()
+                return True
+            elif key_event.key() == Qt.Key_Escape and self.imageCaputured:
+                # If ESC is pressed and we have a captured image, trigger next/skip
+                self.on_next_clicked()
+                return True
+            elif key_event.key() == Qt.Key_F2 or key_event.key() == Qt.Key_Plus:
+                # Increase quantity by 1
+                current_value = self.ui.qtySpinBox.value()
+                self.ui.qtySpinBox.setValue(current_value + 1)
+                return True
+            elif key_event.key() == Qt.Key_F3 or key_event.key() == Qt.Key_Minus:
+                # Decrease quantity by 1, but don't go below minimum
+                current_value = self.ui.qtySpinBox.value()
+                if current_value > self.ui.qtySpinBox.minimum():
+                    self.ui.qtySpinBox.setValue(current_value - 1)
+                return True
+        return super().eventFilter(obj, event)
