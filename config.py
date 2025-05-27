@@ -14,6 +14,7 @@ class AppConfig:
     DATABASE_DIR = BASE_DIR / "database"
     
     # Database Configuration
+    DATABASE_FILE_NAME = "brick_collection"
     DATABASE_NAME = "brick_collection.db"
     DATABASE_PATH = DATABASE_DIR / DATABASE_NAME
     DATABASE_TYPE = "QSQLITE"

@@ -3,8 +3,7 @@ from PySide6.QtWidgets import (QMainWindow, QWidget, QVBoxLayout, QHBoxLayout,
 from PySide6.QtGui import QIcon, QAction
 from PySide6.QtCore import Qt, QSize
 from src.widgets import (ContainerListWidget, SearchManualWidget, AddManualWidget,
-                        AddFromCameraWidget, AddFromFileWidget)
-from src.updateDBDialog import UpdateDBDialog
+                        AddFromCameraWidget, AddFromFileWidget, DatabaseWidget)
 from config import AppConfig
 import resources_rc
 
@@ -38,6 +37,7 @@ class MainWindow(QMainWindow):
         self.add_manual_widget = AddManualWidget()
         self.add_camera_widget = AddFromCameraWidget()
         self.add_file_widget = AddFromFileWidget()
+        self.database_widget = DatabaseWidget()
 
         # Add widgets to stack
         self.stack_layout.addWidget(self.container_list)
@@ -45,6 +45,7 @@ class MainWindow(QMainWindow):
         self.stack_layout.addWidget(self.add_manual_widget)
         self.stack_layout.addWidget(self.add_camera_widget)
         self.stack_layout.addWidget(self.add_file_widget)
+        self.stack_layout.addWidget(self.database_widget)
 
         # Create toolbar actions
         self.setup_toolbar()
@@ -81,11 +82,12 @@ class MainWindow(QMainWindow):
         self.toolbar.addAction(add_file_action)
 
         # Add separator before database action
-        self.toolbar.addSeparator()
+        #self.toolbar.addSeparator()
 
         # Database action
-        database_action = QAction(QIcon(":/icons/database.png"), "Update Database", self)
-        database_action.triggered.connect(self.open_update_db_dialog)
+        database_action = QAction(QIcon(":/icons/database.png"), "Database", self)
+        database_action.setCheckable(True)
+        database_action.triggered.connect(lambda: self.switch_page(5))
         self.toolbar.addAction(database_action)
 
         # Set containers as default selected
@@ -100,21 +102,3 @@ class MainWindow(QMainWindow):
         
         # Switch to the selected page
         self.stack_layout.setCurrentIndex(index)
-
-    def open_update_db_dialog(self):
-        try:
-            dialog = UpdateDBDialog(self)
-            result = dialog.exec()
-            
-            # If database was updated, refresh all widgets
-            if result == QDialog.Accepted:
-                # Refresh container list
-                self.container_list.update_view()
-                
-                # Show success message
-                QMessageBox.information(self, "Database Update", 
-                                     "Database has been successfully updated.")
-        except Exception as e:
-            QMessageBox.critical(self, "Database Update Error", 
-                                 f"An error occurred while updating the database: {e}")
-

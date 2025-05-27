@@ -1,33 +1,39 @@
-from PySide6.QtWidgets import (QDialog, QFileDialog, QMessageBox, QDialogButtonBox)
+from PySide6.QtWidgets import (QWidget, QFileDialog, QMessageBox, QDialogButtonBox)
 from PySide6.QtCore import QDir
-from ui.ui_updateDBDialog import Ui_UpdateDBDialog
+from ui.ui_databaseWidget import Ui_DatabaseWidget
 from src.database import DatabaseManager
 import os
 import logging
+import shutil
+from datetime import datetime
+from config import AppConfig
 import xml.etree.ElementTree as ET
 
-class UpdateDBDialog(QDialog):
+class DatabaseWidget(QWidget):
     def __init__(self, parent=None):
         super().__init__(parent)
 
-        self.ui = Ui_UpdateDBDialog()
+        self.ui = Ui_DatabaseWidget()
         self.ui.setupUi(self)
         
         # Connetti il pulsante alla funzione
         self.ui.openFilesDirButton.clicked.connect(self.select_directory)
         
         # Connetti i pulsanti standard di dialogo
-        self.ui.buttonBox.accepted.connect(self.accept)
-        self.ui.buttonBox.rejected.connect(self.reject)
-        
+        self.ui.updateDBButton.clicked.connect(self.update_database)
+        self.ui.dbRestorePointButton.clicked.connect(self.create_restore_database)
         # Inizializza il database manager
         self.db_manager = DatabaseManager()
         
-        # Disabilita il pulsante OK finché non viene selezionata una directory
-        self.ui.buttonBox.button(QDialogButtonBox.Ok).setEnabled(False)
-        
         # Variabile per tracciare il percorso della directory selezionata
         self.selected_directory = None
+        self.all_files_found = False
+
+    def update_dbUpdate_button_state(self):
+        if self.all_files_found:
+            self.ui.updateDBButton.setEnabled(True)
+        else:
+            self.ui.updateDBButton.setEnabled(False)
     
     def select_directory(self):
         """Apre un dialogo per selezionare una directory"""
@@ -65,7 +71,7 @@ class UpdateDBDialog(QDialog):
             ]
             
             # Flag per verificare se tutti i file sono stati trovati
-            all_files_found = True
+            self.all_files_found = True
             
             # Pulisci i campi di testo
             for _, edit_field in required_files:
@@ -93,7 +99,7 @@ class UpdateDBDialog(QDialog):
                             # File trovato ma non valido
                             edit_field.setText(f"{file_path} (INVALID)")
                             edit_field.setStyleSheet("color: red;")
-                            all_files_found = False
+                            self.all_files_found = False
             
             # Verifica quali file non sono stati trovati
             missing_files = []
@@ -102,13 +108,10 @@ class UpdateDBDialog(QDialog):
                     edit_field.setText(f"Not found")
                     edit_field.setStyleSheet("color: red;")
                     missing_files.append(file_name)
-                    all_files_found = False
-            
-            # Aggiorna lo stato del pulsante OK
-            self.ui.buttonBox.button(QDialogButtonBox.Ok).setEnabled(all_files_found)
+                    self.all_files_found = False
             
             # Aggiorna l'interfaccia con un messaggio appropriato
-            if all_files_found:
+            if self.all_files_found:
                 QMessageBox.information(self, "Files Found", "All required XML files were found.\nClick OK to update the database.")
             else:
                 #QMessageBox.warning(self, "Missing Files", f"The following files were not found:\n {'\n• '.join(missing_files)}\n\nPlease select a different directory.")
@@ -117,7 +120,8 @@ class UpdateDBDialog(QDialog):
         except Exception as e:
             QMessageBox.critical(self, "Error", f"Error scanning directory: {str(e)}")
             logging.error(f"Error scanning directory {directory}: {str(e)}")
-            self.ui.buttonBox.button(QDialog.StandardButton.Ok).setEnabled(False)
+            
+        self.update_dbUpdate_button_state()
 
     def is_valid_xml_file(self, file_path):
         """Verifica se un file è un XML valido che può essere aperto e letto"""
@@ -137,7 +141,7 @@ class UpdateDBDialog(QDialog):
             logging.warning(f"Invalid XML file {file_path}: {str(e)}")
             return False
     
-    def accept(self):
+    def update_database(self):
         dbManager = DatabaseManager()
         try:
             # Ottieni i percorsi dei file XML dai campi di testo
@@ -158,11 +162,42 @@ class UpdateDBDialog(QDialog):
             
             if not dbManager.import_color_parts_from_xml(codes_file):
                 raise Exception("Failed to import color parts from XML")
-            
-            # Chiudi il dialogo con successo
-            super().accept()
         
         except Exception as e:
             QMessageBox.critical(self, "Error", f"Failed to update the database: {str(e)}")
             logging.error(f"Failed to update the database: {str(e)}")
+        else:
+            QMessageBox.information(self, "Success", "Database has been successfully updated.")
+            logging.error(f"Database has been successfully updated.")
 
+    def create_restore_database(self):
+        """Creates a backup copy of the database file with timestamp"""
+        try:
+            # Get current timestamp
+            timestamp = datetime.now().strftime("%Y_%m_%d")
+            
+            # Base backup filename
+            base_backup_name = f"{AppConfig.DATABASE_FILE_NAME}_{timestamp}.db"
+            backup_file_name = base_backup_name
+            
+            # Get the directory path from DATABASE_PATH
+            backup_dir = AppConfig.DATABASE_PATH.parent
+            backup_path = backup_dir / backup_file_name
+            
+            # Check if file exists and append counter if needed
+            counter = 2
+            while os.path.exists(backup_path):
+                backup_file_name = f"brick_collection_{timestamp}_{counter}.db"
+                backup_path = backup_dir / backup_file_name
+                counter += 1
+
+            # Copy the database file
+            shutil.copy2(AppConfig.DATABASE_PATH, backup_path)
+            
+            QMessageBox.information(self, "Success", f"Database restore point created: {backup_path}")
+            logging.info(f"Database backup created: {backup_path}")
+            
+        except Exception as e:
+            QMessageBox.critical(self, "Error", f"Failed to create database restore point: {str(e)}")
+            logging.error(f"Failed to create database backup: {str(e)}")
+        

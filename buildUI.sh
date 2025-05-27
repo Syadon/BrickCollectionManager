@@ -7,4 +7,4 @@ pyside6-uic ./ui/addFromFileWidget.ui -o ./ui/ui_addFromFileWidget.py
 pyside6-uic ./ui/addFromCameraWidget.ui -o ./ui/ui_addFromCameraWidget.py
 pyside6-uic ./ui/addManualWidget.ui -o ./ui/ui_addManualWidget.py
 pyside6-uic ./ui/searchManualWidget.ui -o ./ui/ui_searchManualWidget.py
-pyside6-uic ./ui/updateDBDialog.ui -o ./ui/ui_updateDBDialog.py
+pyside6-uic ./ui/databaseWidget.ui -o ./ui/ui_databaseWidget.py
