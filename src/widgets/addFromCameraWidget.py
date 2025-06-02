@@ -561,6 +561,8 @@ class AddFromCameraWidget(QWidget):
             # Skip colors without RGB values
             if not color.rgb:
                 continue
+            
+            color.year_to = int(color.year_to) if color.year_to else 0
 
             # Convert color RGB string to tuple
             c = QColor(f"#{color.rgb}")
@@ -577,7 +579,7 @@ class AddFromCameraWidget(QWidget):
                 similarity = calculate_hsv_similarity(color_hsv, detected_hsv)
                 
                 # Weight similarity by detected color percentage
-                weighted_score = similarity * (detected['percentage'] / 100)
+                weighted_score = float(similarity * (detected['percentage'] / 100))
                 max_score = max(max_score, weighted_score)
 
             scored_colors.append((color, max_score))
@@ -587,7 +589,7 @@ class AddFromCameraWidget(QWidget):
 
         # Add sorted colors to table
         for color, score in scored_colors:
-            self.add_color_to_table(color, score.item())
+            self.add_color_to_table(color, score)
 
         # Add remaining colors without RGB values at the end
         for color in colors:
