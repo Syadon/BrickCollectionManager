@@ -73,6 +73,10 @@ class ContainerListWidget(QWidget):
         
         # Initialize model
         self.model = None
+        #self.update_view()
+    
+    def showEvent(self, event):
+        super().showEvent(event)
         self.update_view()
         
     def update_view(self):
@@ -113,4 +117,4 @@ class ContainerListWidget(QWidget):
     def open_container_dialog(self, container):
         dialog = ContainerDetailDialog(container, self)
         if dialog.exec() == QMessageBox.Accepted:
-            self.update_view() 
+            self.update_view()
