@@ -172,7 +172,7 @@ cython_debug/
 
 # PyPI configuration file
 .pypirc
-database/brick_collection.db
+database/*
 ui/ui_*.py
 database/bricklink_data
 cache
