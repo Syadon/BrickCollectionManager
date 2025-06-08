@@ -35,6 +35,13 @@ class SearchManualWidget(QWidget):
         self.ui.search_clear_button.clicked.connect(self.clear_search)
         self.ui.openFileButton.clicked.connect(self.openFile)
 
+        # Connect inputs to validation
+        self.ui.search_part_id_edit.textChanged.connect(self.validate_search_inputs)
+        self.ui.search_part_name_edit.textChanged.connect(self.validate_search_inputs)
+        self.ui.search_color_combo.currentIndexChanged.connect(self.validate_search_inputs)
+        self.ui.search_color_type_combo.currentIndexChanged.connect(self.validate_search_inputs)
+        self.ui.fileEdit.textChanged.connect(self.validate_search_inputs)
+
         self.ui.search_results_table.setColumnCount(8)
         self.ui.search_results_table.setHorizontalHeaderLabels(["Image", "Part ID", "Part Name", "Category", "Color", "Color Type", "Container", "Quantity"])
         self.ui.search_results_table.horizontalHeader().setStretchLastSection(True)
@@ -60,6 +67,9 @@ class SearchManualWidget(QWidget):
         # Setup autocompletion
         self.setup_autocompletion()
         
+        # Initial validation
+        self.validate_search_inputs()
+
     def setup_autocompletion(self):
         dbManager = DatabaseManager()
 
@@ -93,6 +103,18 @@ class SearchManualWidget(QWidget):
         # Get all color types
         for type in dbManager.getColorsTypesNames():
              self.ui.search_color_type_combo.addItem(type, type)
+
+    def validate_search_inputs(self):
+        """Enable search button only if at least one search criteria is provided"""
+        has_part_id = bool(self.ui.search_part_id_edit.text().strip())
+        has_part_name = bool(self.ui.search_part_name_edit.text().strip())
+        has_color = self.ui.search_color_combo.currentIndex() > 0  # Index 0 is "Any"
+        has_color_type = self.ui.search_color_type_combo.currentIndex() > 0  # Index 0 is "Any"
+        has_file = bool(self.ui.fileEdit.text().strip())
+        
+        # Enable search if at least one criteria is provided
+        is_valid = has_part_id or has_part_name or has_color or has_color_type or has_file
+        self.ui.search_button.setEnabled(is_valid)
 
     def on_part_id_changed(self, text):
         if text:
@@ -375,6 +397,7 @@ class SearchManualWidget(QWidget):
         self.ui.search_color_type_combo.setCurrentIndex(0)
         self.ui.search_results_table.setRowCount(0)
         self.ui.fileEdit.clear()
+        # Validation will be triggered by the clear operations above
 
     def on_result_double_clicked(self, row, column):
         # Get the data from the row

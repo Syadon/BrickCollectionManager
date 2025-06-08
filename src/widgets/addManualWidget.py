@@ -45,6 +45,12 @@ class AddManualWidget(QWidget):
         # Part Name
         self.ui.search_part_name_edit.textChanged.connect(self.on_search_part_name_changed)
 
+        # Connect inputs to validation
+        self.ui.search_part_id_edit.textChanged.connect(self.validate_search_inputs)
+        self.ui.search_part_name_edit.textChanged.connect(self.validate_search_inputs)
+        self.ui.search_color_combo.currentIndexChanged.connect(self.validate_search_inputs)
+        self.ui.search_color_type_combo.currentIndexChanged.connect(self.validate_search_inputs)
+
         # Color
         self.ui.search_color_combo.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Fixed)
         
@@ -85,6 +91,9 @@ class AddManualWidget(QWidget):
         
         # Connetti al segnale di selezione tabella
         self.ui.search_results_table.itemSelectionChanged.connect(self.on_search_selection_changed)
+        
+        # Initial validation
+        self.validate_search_inputs()
 
     def populate_container_list(self):
         self.ui.searchContainerComboBox.clear()
@@ -152,6 +161,17 @@ class AddManualWidget(QWidget):
         part_name_completer.setFilterMode(Qt.MatchContains)
         self.ui.search_part_name_edit.setCompleter(part_name_completer)
 
+    def validate_search_inputs(self):
+        """Enable search button only if at least one search criteria is provided"""
+        has_part_id = bool(self.ui.search_part_id_edit.text().strip())
+        has_part_name = bool(self.ui.search_part_name_edit.text().strip())
+        has_color = self.ui.search_color_combo.currentIndex() > 0  # Index 0 is "Any"
+        has_color_type = self.ui.search_color_type_combo.currentIndex() > 0  # Index 0 is "Any"
+        
+        # Enable search if at least one criteria is provided
+        is_valid = has_part_id or has_part_name or has_color or has_color_type
+        self.ui.search_button.setEnabled(is_valid)
+
     def on_search_part_id_changed(self, text):
         if text:
             self.ui.search_part_name_edit.blockSignals(True)
@@ -173,6 +193,7 @@ class AddManualWidget(QWidget):
         self.ui.search_add_button.setEnabled(False)
 
         self.imgProvider.cleanup_tasks()
+        # Validation will be triggered by the clear operations above
 
     def perform_search(self):
         # Pulisci risultati precedenti
@@ -354,4 +375,4 @@ class AddManualWidget(QWidget):
         container_data = self.ui.searchContainerComboBox.currentData()
         self.ui.search_add_button.setEnabled(container_data is not None and self.ui.search_results_table.currentRow() >= 0)
 
-      
+
