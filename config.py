@@ -4,7 +4,7 @@ from PySide6.QtCore import QDir
 class AppConfig:
     # Application Information
     APP_NAME = "Brick Collection Manager"
-    APP_VERSION = "1.0.0"
+    APP_VERSION = "0.1.0"
     ORGANIZATION_NAME = ""
     
     # File Paths
@@ -38,8 +38,6 @@ class AppConfig:
     DEBUG_MODE = True
     LOG_LEVEL = "INFO"
 
-    # Application version
-    VERSION = "0.1.0"
     
     @classmethod
     def initialize(cls):

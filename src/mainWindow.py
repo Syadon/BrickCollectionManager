@@ -103,7 +103,7 @@ class MainWindow(QMainWindow):
         self.setStatusBar(status_bar)
         
         # Display app version
-        version_text = f"Brick Collection Manager v{getattr(AppConfig, 'VERSION', '0.0.0')}"
+        version_text = f"{getattr(AppConfig, 'APP_NAME', '0.0.0')} v{getattr(AppConfig, 'APP_VERSION', '0.0.0')}"
         status_bar.showMessage(version_text)
 
     def switch_page(self, index):
