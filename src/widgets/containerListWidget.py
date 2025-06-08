@@ -1,5 +1,5 @@
 from PySide6.QtWidgets import (QWidget, QVBoxLayout, QHBoxLayout, QPushButton, 
-                              QTableView, QMenu, QMessageBox)
+                              QTableView, QMenu, QMessageBox, QLabel)
 from PySide6.QtCore import Qt, QAbstractTableModel
 from src.database import DatabaseManager
 from src.containerDetailDialog import ContainerDetailDialog
@@ -50,6 +50,18 @@ class ContainerListWidget(QWidget):
         # Create main layout
         layout = QVBoxLayout(self)
         
+        # Create counters layout
+        counters_layout = QHBoxLayout()
+        
+        # Total parts counter
+        self.total_parts_label = QLabel("Total Parts: 0")
+        self.total_parts_label.setStyleSheet("font-weight: bold; font-size: 12px; color: #2E7D32;")
+        counters_layout.addWidget(self.total_parts_label)
+        
+        counters_layout.addStretch()  # Push labels to the left
+        
+        layout.addLayout(counters_layout)
+        
         # Create buttons layout
         button_layout = QHBoxLayout()
         
@@ -84,6 +96,18 @@ class ContainerListWidget(QWidget):
         containers = dbManager.getContainers()
         self.model = ContainerTableModel(containers)
         self.table_view.setModel(self.model)
+        
+        # Update counters
+        self.update_counters()
+        
+    def update_counters(self):
+        """Update the collection counters"""
+        dbManager = DatabaseManager()
+        
+        # Get total parts count
+        total_parts = dbManager.getCollectionPartsCount()
+        self.total_parts_label.setText(f"Total Parts: {total_parts:,}")
+
         
     def add_container(self):
         dialog = AddContainerDialog(self)

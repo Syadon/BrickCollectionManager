@@ -165,6 +165,16 @@ class DatabaseManager:
             ret.append(query.value("type"))
 
         return ret
+
+    def getCollectionPartsCount(self):
+        """Get the total number of parts in the collection"""
+        from PySide6.QtSql import QSqlQuery
+        
+        query = QSqlQuery()
+        if query.exec("SELECT SUM(count) FROM parts_collection") and query.next():
+            result = query.value(0)
+            return result if result is not None else 0
+        return 0
         
     def searchIntoCollection(self, part_id: str = None, part_name: str = None, 
                              color_name: str = None, color_type: str = None,
