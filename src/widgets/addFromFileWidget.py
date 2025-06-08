@@ -319,6 +319,10 @@ class AddFromFileWidget(QWidget):
         self.clear_table()
         self.ui.fileEdit.clear()
         super().hideEvent(event)
+        
+    def showEvent(self, event):
+        self.populate_container_combo()
+        return super().showEvent(event)
 
     def on_container_selection_changed(self, index):
         self.update_add_button_state()
