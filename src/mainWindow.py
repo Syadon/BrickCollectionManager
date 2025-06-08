@@ -1,5 +1,5 @@
 from PySide6.QtWidgets import (QMainWindow, QWidget, QVBoxLayout, QHBoxLayout, 
-                              QToolBar, QStackedLayout, QDialog, QPushButton, QMessageBox)
+                              QToolBar, QStackedLayout, QDialog, QPushButton, QMessageBox, QStatusBar)
 from PySide6.QtGui import QIcon, QAction
 from PySide6.QtCore import Qt, QSize
 from src.widgets import (ContainerListWidget, SearchManualWidget, AddManualWidget,
@@ -49,6 +49,9 @@ class MainWindow(QMainWindow):
 
         # Create toolbar actions
         self.setup_toolbar()
+        
+        # Setup status bar
+        self.setup_status_bar()
 
     def setup_toolbar(self):
         # Containers action
@@ -93,6 +96,15 @@ class MainWindow(QMainWindow):
         # Set containers as default selected
         containers_action.setChecked(True)
         self.toolbar.actions()[0].setChecked(True)
+
+    def setup_status_bar(self):
+        """Setup the status bar with app version"""
+        status_bar = QStatusBar()
+        self.setStatusBar(status_bar)
+        
+        # Display app version
+        version_text = f"Brick Collection Manager v{getattr(AppConfig, 'VERSION', '0.0.0')}"
+        status_bar.showMessage(version_text)
 
     def switch_page(self, index):
         # Uncheck all actions except the selected one

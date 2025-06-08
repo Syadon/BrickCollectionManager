@@ -37,6 +37,9 @@ class AppConfig:
     # Application Settings
     DEBUG_MODE = True
     LOG_LEVEL = "INFO"
+
+    # Application version
+    VERSION = "0.1.0"
     
     @classmethod
     def initialize(cls):
