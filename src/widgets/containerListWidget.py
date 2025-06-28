@@ -106,7 +106,7 @@ class ContainerListWidget(QWidget):
         
         # Get total parts count
         total_parts = dbManager.getCollectionPartsCount()
-        self.total_parts_label.setText(f"Total Parts: {total_parts:,}")
+        self.total_parts_label.setText(f"Total Parts: {total_parts}")
 
         
     def add_container(self):
