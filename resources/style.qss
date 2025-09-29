@@ -1,6 +1,24 @@
 
 /* Custom QSS Style for Qt Widgets */
 
+QWidget {
+	background-color: #f0f0f0;
+	color: #000000;
+}
+
+QGroupBox {
+	border: 1px solid #c0c0c0;
+	background-color: #f0f0f0;
+	border-radius: 4px;
+	margin-top: 6px;
+}
+
+QGroupBox:title {
+	subcontrol-origin: margin;
+	subcontrol-position: top center;
+	padding: 0 3px;
+}
+
 /* QToolBar */
 QToolBar {
 	background: transparent;
