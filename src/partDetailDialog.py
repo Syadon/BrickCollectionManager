@@ -69,7 +69,8 @@ class PartDetailDialog(QDialog):
     def setup_image(self, key, pixmap:QPixmap):
         sz = pixmap.size()
         if sz.width() > self.imgSize or sz.height() > self.imgSize:
-            image = pixmap.scaled(self.imgSize, self.imgSize, Qt.KeepAspectRatio, Qt.SmoothTransformation)
+            image = pixmap.scaled(self.imgSize, self.imgSize, 
+                                  Qt.AspectRatioMode.KeepAspectRatio, Qt.TransformationMode.SmoothTransformation)
             self.ui.imageLabel.setPixmap(image)
         else:
             self.ui.imageLabel.setPixmap(pixmap)

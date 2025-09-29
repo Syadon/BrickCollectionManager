@@ -66,8 +66,11 @@ class XmlParser:
             color_id_elem = item.find('COLOR')
             quantity_elem = item.find('MINQTY')
             
-            # Verifica che tutti i campi obbligatori siano presenti
-            if None in (item_type_elem, item_id_elem, color_id_elem, quantity_elem):
+            # Verifica che tutti i campi obbligatori siano presenti            
+            if (item_type_elem is None or item_type_elem.text is None
+                or item_id_elem is None or item_id_elem.text is None
+                or color_id_elem is None or color_id_elem.text is None
+                or quantity_elem is None or quantity_elem.text is None):
                 return None
                 
             # Estrai i valori

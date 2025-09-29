@@ -1,10 +1,16 @@
-from PySide6.QtWidgets import QMessageBox
+from typing import List
+from PySide6.QtWidgets import QMessageBox, QWidget
 from PySide6.QtCore import QTimer
 
 class TimedMessageBox(QMessageBox):
-    def __init__(self, timeout=5, buttons=None, parent = None, **kwargs):
+    def __init__(self, timeout : float=5, 
+                 buttons : List[QMessageBox.StandardButton]|None = None, 
+                 parent : QWidget|None = None, **kwargs):
+
         if not buttons:
-            buttons = [QMessageBox.Ok, QMessageBox.Abort, QMessageBox.Cancel]
+            buttons = [QMessageBox.StandardButton.Ok, 
+                       QMessageBox.StandardButton.Abort, 
+                       QMessageBox.StandardButton.Cancel]
 
         self.timer = QTimer()
         self.timeout = timeout
@@ -35,8 +41,8 @@ class TimedMessageBox(QMessageBox):
             self.timer.stop()
             self.defaultButton().animateClick()
 
-    @staticmethod
-    def question(**kwargs):
-        w = TimedMessageBox(**kwargs)
-        w.setIcon(QMessageBox.Question)
-        return w.exec_()
+    # @staticmethod
+    # def question(**kwargs):
+    #     w = TimedMessageBox(**kwargs)
+    #     w.setIcon(QMessageBox.Icon.Question)
+    #     return w.exec_()

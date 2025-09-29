@@ -1,5 +1,6 @@
 from PySide6.QtWidgets import (QWidget, QVBoxLayout, QHBoxLayout, QPushButton, 
-                              QLabel, QComboBox, QSpinBox, QMessageBox, QTableWidget, QTableWidgetItem, QSizePolicy)
+                              QLabel, QComboBox, QSpinBox, QMessageBox, 
+                              QTableWidget, QTableWidgetItem, QSizePolicy, QCompleter)
 from PySide6.QtGui import QIcon, QColor
 from PySide6.QtCore import Qt, QStringListModel
 from src.utils import TransparentSelectionDelegate
@@ -10,7 +11,7 @@ from config import AppConfig
 
 class AddManualWidget(QWidget):
 
-    def __init__(self, container:Container = None, parent=None):
+    def __init__(self, container:Container|None = None, parent=None):
         super(AddManualWidget, self).__init__(parent)
 
         self.ui = Ui_AddManualWidget()
@@ -52,11 +53,11 @@ class AddManualWidget(QWidget):
         self.ui.search_color_type_combo.currentIndexChanged.connect(self.validate_search_inputs)
 
         # Color
-        self.ui.search_color_combo.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Fixed)
+        self.ui.search_color_combo.setSizePolicy(QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Fixed)
         
         # Color Type
-        self.ui.search_color_type_combo.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Fixed)
-        
+        self.ui.search_color_type_combo.setSizePolicy(QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Fixed)
+
         # Pulsanti di ricerca
         self.ui.search_button.clicked.connect(self.perform_search)
         self.ui.search_clear_button.clicked.connect(self.clear_search)
@@ -69,10 +70,10 @@ class AddManualWidget(QWidget):
         self.ui.search_results_table.setHorizontalHeaderLabels(headerLabels)
         self.ui.search_results_table.horizontalHeader().setStretchLastSection(True)
         self.ui.search_results_table.verticalHeader().setVisible(False)
-        self.ui.search_results_table.setEditTriggers(QTableWidget.NoEditTriggers)
-        self.ui.search_results_table.setSelectionBehavior(QTableWidget.SelectRows)
+        self.ui.search_results_table.setEditTriggers(QTableWidget.EditTrigger.NoEditTriggers)
+        self.ui.search_results_table.setSelectionBehavior(QTableWidget.SelectionBehavior.SelectRows)
         self.ui.search_results_table.setSortingEnabled(True)
-        self.ui.search_results_table.setSelectionMode(QTableWidget.SingleSelection)
+        self.ui.search_results_table.setSelectionMode(QTableWidget.SelectionMode.SingleSelection)
         self.ui.search_results_table.setItemDelegateForColumn(0, TransparentSelectionDelegate(self.ui.search_results_table))
         self.ui.search_results_table.setItemDelegateForColumn(3, TransparentSelectionDelegate(self.ui.search_results_table))
 
@@ -149,16 +150,16 @@ class AddManualWidget(QWidget):
         part_ids = dbManager.getAllPartsIds()
         part_id_model = QStringListModel(part_ids)
         part_id_completer = QCompleter(part_id_model, self)
-        part_id_completer.setCaseSensitivity(Qt.CaseInsensitive)
-        part_id_completer.setFilterMode(Qt.MatchContains)
-        self.search_part_id_edit.setCompleter(part_id_completer)
+        part_id_completer.setCaseSensitivity(Qt.CaseSensitivity.CaseInsensitive)
+        part_id_completer.setFilterMode(Qt.MatchFlag.MatchContains)
+        self.ui.search_part_id_edit.setCompleter(part_id_completer)
         
         # Part Name completer
         part_names = dbManager.getAllPartsNames()
         part_name_model = QStringListModel(part_names)
         part_name_completer = QCompleter(part_name_model, self)
-        part_name_completer.setCaseSensitivity(Qt.CaseInsensitive)
-        part_name_completer.setFilterMode(Qt.MatchContains)
+        part_name_completer.setCaseSensitivity(Qt.CaseSensitivity.CaseInsensitive)
+        part_name_completer.setFilterMode(Qt.MatchFlag.MatchContains)
         self.ui.search_part_name_edit.setCompleter(part_name_completer)
 
     def validate_search_inputs(self):
@@ -222,14 +223,16 @@ class AddManualWidget(QWidget):
         for row, data in enumerate(results):
             # Colonna immagine
             image_item = QTableWidgetItem()
-            image_item.setData(Qt.UserRole, data)  # Salva i dati completi per uso futuro
+            image_item.setData(Qt.ItemDataRole.UserRole, data)  # Salva i dati completi per uso futuro
             
             # Prova a ottenere l'immagine
             part_id = data['part_id']
             color_id = data['color_id']
             img = self.imgProvider.get_part_image(part_id, color_id)
             if img is not None:
-                scaled = img.scaled(self.iconSize, self.iconSize, Qt.KeepAspectRatio, Qt.SmoothTransformation)
+                scaled = img.scaled(self.iconSize, self.iconSize, 
+                                    Qt.AspectRatioMode.KeepAspectRatio, 
+                                    Qt.TransformationMode.SmoothTransformation)
                 image_item.setIcon(QIcon(scaled))
             
             self.ui.search_results_table.setItem(row, 0, image_item)
@@ -248,7 +251,7 @@ class AddManualWidget(QWidget):
                 
                 # Imposta colore del testo per migliore visibilità
                 luminance = (0.299 * bg_color.red() + 0.587 * bg_color.green() + 0.114 * bg_color.blue())
-                text_color = Qt.white if luminance < 128 else Qt.black
+                text_color = Qt.GlobalColor.white if luminance < 128 else Qt.GlobalColor.black
                 color_item.setForeground(text_color)
             
             self.ui.search_results_table.setItem(row, 3, color_item)
@@ -276,7 +279,7 @@ class AddManualWidget(QWidget):
                 return
             
             # Recupera dati completi
-            data = item.data(Qt.UserRole)
+            data = item.data(Qt.ItemDataRole.UserRole)
             
             # Ottieni container selezionato
             container_data = self.ui.searchContainerComboBox.currentData()
@@ -305,7 +308,7 @@ class AddManualWidget(QWidget):
             msg = QMessageBox(self)
             msg.setWindowTitle("Part Added")
             msg.setText(f"Added {quantity} of part {data['part_id']} - {data['part_name']} in color {data['color_name']} to container {container_name}")
-            msg.setStandardButtons(QMessageBox.Ok)
+            msg.setStandardButtons(QMessageBox.StandardButton.Ok)
             
             # Aggiungi immagine al messaggio
             pixmap = self.imgProvider.get_part_image(data['part_id'], data['color_id'])
@@ -345,8 +348,8 @@ class AddManualWidget(QWidget):
             if not item:
                 continue
 
-            row_part_id = str(item.data(Qt.UserRole)['part_id'])
-            row_color_id = str(item.data(Qt.UserRole)['color_id'])
+            row_part_id = str(item.data(Qt.ItemDataRole.UserRole)['part_id'])
+            row_color_id = str(item.data(Qt.ItemDataRole.UserRole)['color_id'])
             if row_part_id == part_id and row_color_id == color_id:
                 self.update_part_image_search(pixmap, row)
                 break
@@ -357,9 +360,9 @@ class AddManualWidget(QWidget):
             
         # Scale image
         scaled = pixmap.scaled(self.iconSize, self.iconSize, 
-                              Qt.KeepAspectRatio, 
-                              Qt.SmoothTransformation)
-        
+                              Qt.AspectRatioMode.KeepAspectRatio, 
+                              Qt.TransformationMode.SmoothTransformation)
+
         # Update image in table
         image_item = self.ui.search_results_table.item(row, 0)
         if image_item:

@@ -57,9 +57,9 @@ class ContainerDetailDialog(QDialog):
         self.ui.partsView.setModel(self.parts_model)
         
         # Configure table view
-        self.ui.partsView.setSelectionBehavior(QTableView.SelectRows)
-        self.ui.partsView.setSelectionMode(QTableView.SingleSelection)
-        
+        self.ui.partsView.setSelectionBehavior(QTableView.SelectionBehavior.SelectRows)
+        self.ui.partsView.setSelectionMode(QTableView.SelectionMode.SingleSelection)
+
         # Imposta l'altezza delle righe in base alle immagini (64px)
         self.ui.partsView.verticalHeader().setDefaultSectionSize(70)
         
@@ -84,7 +84,7 @@ class ContainerDetailDialog(QDialog):
         row_index = index.row()
         part_data = self.parts_model.parts_data[row_index]
         dialog = PartDetailDialog(part_data, self.container, parent=self)
-        if dialog.exec() == QDialog.Accepted:
+        if dialog.exec() == QDialog.DialogCode.Accepted:
             # Refresh the parts list
             self.refresh_parts_table()
             
@@ -113,7 +113,7 @@ class ContainerDetailDialog(QDialog):
             dialog = DeleteContainerDialog(self.container, self)
             result = dialog.exec()
             
-            if result == QDialog.Accepted:
+            if result == QDialog.DialogCode.Accepted:
                 # Container was deleted
                 QMessageBox.information(self, "Success", f"Container '{self.container.name}' deleted successfully")
                 self.accept()  # Close this dialog too
@@ -123,11 +123,11 @@ class ContainerDetailDialog(QDialog):
                 self, 
                 "Confirm Deletion", 
                 f"Are you sure you want to delete container '{self.container.name}'?",
-                QMessageBox.Yes | QMessageBox.No,
-                QMessageBox.No
+                QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No,
+                QMessageBox.StandardButton.No
             )
-            
-            if reply == QMessageBox.Yes:
+
+            if reply == QMessageBox.StandardButton.Yes:
                 db_manager = DatabaseManager()
                 if db_manager.deleteContainer(self.container.id):
                     QMessageBox.information(self, "Success", f"Container '{self.container.name}' deleted successfully")
@@ -207,7 +207,7 @@ class DeleteContainerDialog(QDialog):
         layout.addWidget(options_group)
         
         # Buttons
-        button_box = QDialogButtonBox(QDialogButtonBox.Ok | QDialogButtonBox.Cancel)
+        button_box = QDialogButtonBox(QDialogButtonBox.StandardButton.Ok | QDialogButtonBox.StandardButton.Cancel)
         button_box.accepted.connect(self.accept)
         button_box.rejected.connect(self.reject)
         layout.addWidget(button_box)
@@ -259,11 +259,11 @@ class DeleteContainerDialog(QDialog):
                     "Confirm Deletion", 
                     "Are you sure you want to PERMANENTLY DELETE all parts in this container?\n\n"
                     "This action cannot be undone!",
-                    QMessageBox.Yes | QMessageBox.No,
-                    QMessageBox.No
+                    QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No,
+                    QMessageBox.StandardButton.No
                 )
-                
-                if reply == QMessageBox.Yes:
+
+                if reply == QMessageBox.StandardButton.Yes:
                     # Delete container and all parts
                     if self.db_manager.deleteContainerWithParts(self.container.id):
                         super().accept()

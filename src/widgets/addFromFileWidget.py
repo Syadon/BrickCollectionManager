@@ -24,19 +24,19 @@ class SpinBoxDelegate(QStyledItemDelegate):
         editor = QSpinBox(parent)
         editor.setMinimum(self.min_value)
         editor.setMaximum(self.max_value)
-        editor.setAlignment(Qt.AlignCenter)
+        editor.setAlignment(Qt.AlignmentFlag.AlignCenter)
         return editor
         
     def setEditorData(self, editor, index):
         """Imposta il valore dell'editor in base al valore nella cella"""
-        value = int(index.model().data(index, Qt.DisplayRole) or 0)
+        value = int(index.model().data(index, Qt.ItemDataRole.DisplayRole) or 0)
         editor.setValue(value)
         
     def setModelData(self, editor, model, index):
         """Imposta il valore del modello quando l'editing è completato"""
         editor.interpretText()
         value = editor.value()
-        model.setData(index, value, Qt.EditRole)
+        model.setData(index, value, Qt.ItemDataRole.EditRole)
         
     def updateEditorGeometry(self, editor, option, index):
         """Aggiorna la geometria dell'editor"""
@@ -54,7 +54,7 @@ class AddFromFileWidget(QWidget):
     # Signal emitted when parts are added to a container
     part_added = Signal()
     
-    def __init__(self, container:Container = None, parent=None):
+    def __init__(self, container:Container|None = None, parent=None):
         super().__init__(parent)
 
         self.ui = Ui_AddFromFileWidget()
@@ -89,7 +89,7 @@ class AddFromFileWidget(QWidget):
         self.populate_container_combo()
 
         # Enable context menu
-        self.ui.tableWidget.setContextMenuPolicy(Qt.CustomContextMenu)
+        self.ui.tableWidget.setContextMenuPolicy(Qt.ContextMenuPolicy.CustomContextMenu)
         self.ui.tableWidget.customContextMenuRequested.connect(self.show_context_menu)
     
         # Dizionario per mappare le righe della tabella alle informazioni complete del pezzo
@@ -113,7 +113,7 @@ class AddFromFileWidget(QWidget):
         # Consenti l'editing solo per la colonna della quantità
         #self.ui.tableWidget.setEditTriggers(QTableWidget.DoubleClicked | QTableWidget.EditKeyPressed)
 
-        self.ui.tableWidget.setEditTriggers(QTableWidget.NoEditTriggers)
+        self.ui.tableWidget.setEditTriggers(QTableWidget.EditTrigger.NoEditTriggers)
         
         # Connetti il segnale per aggiornare i dati quando viene modificata una cella
         self.ui.tableWidget.cellChanged.connect(self.on_cell_changed)
@@ -234,7 +234,7 @@ class AddFromFileWidget(QWidget):
                 img = self.imgProvider.get_part_image(part['part_id'], part['color_id'])
                 if img is not None:
                     scaled = img.scaled(self.iconSize, self.iconSize, 
-                                      Qt.KeepAspectRatio, Qt.SmoothTransformation)
+                                      Qt.AspectRatioMode.KeepAspectRatio, Qt.TransformationMode.SmoothTransformation)
                     image_item.setIcon(QIcon(scaled))
             self.ui.tableWidget.setItem(row, 0, image_item)
             
@@ -255,7 +255,7 @@ class AddFromFileWidget(QWidget):
                 
                 # Imposta il colore del testo per migliorare la leggibilità
                 luminance = (0.299 * bg_color.red() + 0.587 * bg_color.green() + 0.114 * bg_color.blue())
-                text_color = Qt.white if luminance < 128 else Qt.black
+                text_color = Qt.GlobalColor.white if luminance < 128 else Qt.GlobalColor.black
                 color_item.setForeground(text_color)
             self.ui.tableWidget.setItem(row, 3, color_item)
             
@@ -265,8 +265,8 @@ class AddFromFileWidget(QWidget):
             
             # Colonna Quantity - imposta l'EditRole per permettere l'editing
             qty_item = QTableWidgetItem()
-            qty_item.setData(Qt.EditRole, part.get('quantity', 1))
-            qty_item.setTextAlignment(Qt.AlignCenter)
+            qty_item.setData(Qt.ItemDataRole.EditRole, part.get('quantity', 1))
+            qty_item.setTextAlignment(Qt.AlignmentFlag.AlignCenter)
             self.ui.tableWidget.setItem(row, 5, qty_item)
         
         # Regola la larghezza delle colonne
@@ -437,7 +437,8 @@ class AddFromFileWidget(QWidget):
             if str(part_data.get('part_id')) == part_id and str(part_data.get('color_id')) == color_id:
                 # Aggiorna l'icona
                 scaled = pixmap.scaled(self.iconSize, self.iconSize, 
-                                      Qt.KeepAspectRatio, Qt.SmoothTransformation)
+                                      Qt.AspectRatioMode.KeepAspectRatio, 
+                                      Qt.TransformationMode.SmoothTransformation)
                 
                 # Ottieni l'item della tabella
                 item = self.ui.tableWidget.item(row, 0)

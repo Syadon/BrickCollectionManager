@@ -35,8 +35,8 @@ def main():
     
     # Set application style sheet from resources
     style_from_resources = QFile(":/styles/style.qss")
-    if style_from_resources.open(QFile.ReadOnly | QFile.Text):
-        styleStr = style_from_resources.readAll().data().decode('utf-8')
+    if style_from_resources.open(QFile.OpenModeFlag.ReadOnly | QFile.OpenModeFlag.Text):
+        styleStr = bytes(style_from_resources.readAll().data()).decode('utf-8')
         app.setStyleSheet(styleStr)
         style_from_resources.close()
     else:

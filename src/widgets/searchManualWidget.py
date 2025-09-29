@@ -8,6 +8,7 @@ from src.utils import TransparentSelectionDelegate
 from src.partDetailDialog import PartDetailDialog
 from src.partsFileParser import XmlParser
 import logging
+import copy
 from ui.ui_searchManualWidget import Ui_SearchManualWidget
 
 class SearchManualWidget(QWidget):
@@ -46,10 +47,10 @@ class SearchManualWidget(QWidget):
         self.ui.search_results_table.setHorizontalHeaderLabels(["Image", "Part ID", "Part Name", "Category", "Color", "Color Type", "Container", "Quantity"])
         self.ui.search_results_table.horizontalHeader().setStretchLastSection(True)
         self.ui.search_results_table.verticalHeader().setVisible(False)
-        self.ui.search_results_table.setEditTriggers(QTableWidget.NoEditTriggers)
-        self.ui.search_results_table.setSelectionBehavior(QTableWidget.SelectRows)
+        self.ui.search_results_table.setEditTriggers(QTableWidget.EditTrigger.NoEditTriggers)
+        self.ui.search_results_table.setSelectionBehavior(QTableWidget.SelectionBehavior.SelectRows)
         self.ui.search_results_table.setSortingEnabled(True)
-        self.ui.search_results_table.setSelectionMode(QTableWidget.SingleSelection)
+        self.ui.search_results_table.setSelectionMode(QTableWidget.SelectionMode.SingleSelection)
         self.ui.search_results_table.setItemDelegateForColumn(0, TransparentSelectionDelegate(self.ui.search_results_table))
         self.ui.search_results_table.setItemDelegateForColumn(4, TransparentSelectionDelegate(self.ui.search_results_table))
 
@@ -77,16 +78,16 @@ class SearchManualWidget(QWidget):
         self.part_ids = dbManager.getAllPartsIds()
         part_id_model = QStringListModel(self.part_ids)
         part_id_completer = QCompleter(part_id_model, self)
-        part_id_completer.setCaseSensitivity(Qt.CaseInsensitive)
-        part_id_completer.setFilterMode(Qt.MatchContains)
+        part_id_completer.setCaseSensitivity(Qt.CaseSensitivity.CaseInsensitive)
+        part_id_completer.setFilterMode(Qt.MatchFlag.MatchContains)
         self.ui.search_part_id_edit.setCompleter(part_id_completer)
         
         # Part Name completer
         self.part_names = dbManager.getAllPartsNames()
         part_name_model = QStringListModel(self.part_names)
         part_name_completer = QCompleter(part_name_model, self)
-        part_name_completer.setCaseSensitivity(Qt.CaseInsensitive)
-        part_name_completer.setFilterMode(Qt.MatchContains)
+        part_name_completer.setCaseSensitivity(Qt.CaseSensitivity.CaseInsensitive)
+        part_name_completer.setFilterMode(Qt.MatchFlag.MatchContains)
         self.ui.search_part_name_edit.setCompleter(part_name_completer)
 
     def populate_combos(self):
@@ -141,11 +142,13 @@ class SearchManualWidget(QWidget):
             if not item:
                 continue
                 
-            data = item.data(Qt.UserRole)
+            data = item.data(Qt.ItemDataRole.UserRole)
             part = data[0]
             if part.id == part_id and str(part.color_id) == color_id:
                 # Update the icon
-                scaled = pixmap.scaled(self.iconSize, self.iconSize, Qt.KeepAspectRatio, Qt.SmoothTransformation)
+                scaled = pixmap.scaled(self.iconSize, self.iconSize, 
+                                       Qt.AspectRatioMode.KeepAspectRatio, 
+                                       Qt.TransformationMode.SmoothTransformation)
                 item.setIcon(QIcon(scaled))
                 
                 # Force update
@@ -243,10 +246,11 @@ class SearchManualWidget(QWidget):
                         missing_parts.append((part_data, required_qty))
                     continue
                 else:
-                    part_data = matching_parts[0].copy()
-                    part_data.container_name="",
-                    part_data.quantity=0,
-                    part_data.container_id=None
+                    part_data = copy.copy(matching_parts[0])
+                    part_data.container_name = ""
+                    part_data.quantity = 0
+                    part_data.container_id = None
+
 
                 if colorTypeEdit and part_data.color_type != colorTypeEdit:
                     continue
@@ -266,7 +270,7 @@ class SearchManualWidget(QWidget):
                         required_qty_count -= part.quantity
 
                 if required_qty_count > 0:
-                    not_enough_part = part_data.copy()
+                    not_enough_part = copy.copy(part_data)
                     not_enough_part.quantity = 0
                     not_enough_part.container_name = "Not enough parts"
                     not_enough_part.container_id = None
@@ -329,15 +333,17 @@ class SearchManualWidget(QWidget):
         self.ui.search_results_table.setColumnWidth(0, self.iconSize + 8)  # Set fixed width for image column
         self.ui.search_results_table.resizeColumnsToContents()
 
-    def addItemToTable(self, row, part: CollectionPart, required_quantity: int = None):
+    def addItemToTable(self, row, part: CollectionPart, required_quantity: int|None = None):
         # Image column
         image_item = QTableWidgetItem()
-        image_item.setData(Qt.UserRole, (part, required_quantity))  # Store full data for later use
+        image_item.setData(Qt.ItemDataRole.UserRole, (part, required_quantity))  # Store full data for later use
         
         # Try to get image
         img = self.imgProvider.get_part_image(part.part_id, part.color_id)
         if img is not None:
-            scaled = img.scaled(self.iconSize, self.iconSize, Qt.KeepAspectRatio, Qt.SmoothTransformation)
+            scaled = img.scaled(self.iconSize, self.iconSize, 
+                                Qt.AspectRatioMode.KeepAspectRatio, 
+                                Qt.TransformationMode.SmoothTransformation)
             image_item.setIcon(QIcon(scaled))
         
         self.ui.search_results_table.setItem(row, 0, image_item)
@@ -359,7 +365,7 @@ class SearchManualWidget(QWidget):
             
             # Set text color for better visibility
             luminance = (0.299 * bg_color.red() + 0.587 * bg_color.green() + 0.114 * bg_color.blue())
-            text_color = Qt.white if luminance < 128 else Qt.black
+            text_color = Qt.GlobalColor.white if luminance < 128 else Qt.GlobalColor.black
             color_item.setForeground(text_color)
         
         self.ui.search_results_table.setItem(row, 4, color_item)
@@ -386,7 +392,7 @@ class SearchManualWidget(QWidget):
             self.ui.search_results_table.setItem(row, 7, quantity_item)
         else:
             quantity_item = QTableWidgetItem()
-            quantity_item.setData(Qt.DisplayRole, part.quantity)
+            quantity_item.setData(Qt.ItemDataRole.DisplayRole, part.quantity)
             self.ui.search_results_table.setItem(row, 7, quantity_item)
 
 
@@ -404,8 +410,8 @@ class SearchManualWidget(QWidget):
         item = self.ui.search_results_table.item(row, 0)  # First column has the complete data
         if not item:
             return
-            
-        part_data = item.data(Qt.UserRole)
+
+        part_data = item.data(Qt.ItemDataRole.UserRole)
         if not part_data:
             return
         
@@ -424,7 +430,7 @@ class SearchManualWidget(QWidget):
         result = dialog.exec()
         
         # If the dialog was accepted (changed were made), refresh the search results
-        if result == QDialog.Accepted:
+        if result == QDialog.DialogCode.Accepted:
             self.perform_search()  # Re-run the search to refresh the results
 
     def openFile(self):
