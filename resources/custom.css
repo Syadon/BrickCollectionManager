@@ -1,0 +1,23 @@
+QToolButton {{
+    border: none;
+    border-radius: 4px;
+    padding: 8px;
+    width: 96px;
+    height: 50px;
+}}
+
+QToolButton:checked  {{
+    border: 1px solid {QTMATERIAL_PRIMARYCOLOR};
+    background-color: {QTMATERIAL_PRIMARYLIGHTCOLOR};
+	border-radius: 4px;
+}}
+
+QToolButton:hover  {{
+	border: 1px solid {QTMATERIAL_PRIMARYCOLOR};
+}}
+
+QToolButton:pressed  {{
+	background-color: {QTMATERIAL_PRIMARYLIGHTCOLOR};
+	border: 1px solid {QTMATERIAL_PRIMARYCOLOR};
+}}
+

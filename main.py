@@ -6,6 +6,9 @@ from config import AppConfig
 from src.database import DatabaseManager
 import sys
 import resources_rc as resources_rc  # Importa il file delle risorse generato
+import os
+
+from qt_material import apply_stylesheet
 
 def main():
     # Initialize application configuration
@@ -33,15 +36,29 @@ def main():
                            "Could not initialize the database. The application will now exit.")
         sys.exit(1)
     
-    # Set application style sheet from resources
-    style_from_resources = QFile(":/styles/style.qss")
-    if style_from_resources.open(QFile.ReadOnly | QFile.Text):
-        styleStr = style_from_resources.readAll().data().decode('utf-8')
-        app.setStyleSheet(styleStr)
+    extra = {
+        # Button colors
+        'danger': '#dc3545',
+        'warning': '#ffc107',
+        'success': '#17a2b8',
+
+        # Font
+        # 'font_family': 'Roboto',
+        # 'font_size': '12',     # Adjust font size as needed
+
+        'density_scale': '0',  # Adjust density scale as needed
+    }
+    apply_stylesheet(app, theme='dark_blue.xml', extra=extra)
+    
+    stylesheet = app.styleSheet()
+    style_from_resources = QFile(":/styles/custom.css")
+    if style_from_resources.open(QFile.OpenModeFlag.ReadOnly | QFile.OpenModeFlag.Text):
+        styleStr = bytearray(style_from_resources.readAll().data()).decode('utf-8')
+        app.setStyleSheet(stylesheet + styleStr.format(**os.environ))
         style_from_resources.close()
-    else:
-        # Fallback to file-based stylesheet
-        app.setStyleSheet(AppConfig.load_stylesheet())
+
+    # with open('resources/custom.css') as file:
+    #     app.setStyleSheet(stylesheet + file.read().format(**os.environ))
     
     # Create and show main window
     window = MainWindow()

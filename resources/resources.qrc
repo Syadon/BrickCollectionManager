@@ -4,7 +4,7 @@
         <file>placeholder_icon.png</file>
     </qresource>
     <qresource prefix="/styles">
-        <file>style.qss</file>
+        <file>custom.css</file>
     </qresource>
     <qresource prefix="/database">
         <file>schema.sql</file>
