@@ -45,7 +45,7 @@ class DatabaseWidget(QWidget):
             self,                           # parent widget
             "Select Directory with XML Files",  # titolo del dialogo
             initial_dir,                    # directory iniziale
-            QFileDialog.ShowDirsOnly | QFileDialog.DontResolveSymlinks  # opzioni
+            QFileDialog.Option.ShowDirsOnly | QFileDialog.Option.DontResolveSymlinks  # opzioni
         )
         
         # Verifica se l'utente ha selezionato una directory

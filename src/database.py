@@ -7,7 +7,9 @@ from pathlib import Path
 import resources_rc as resources_rc
 
 class BrickColor:
-    def __init__(self, id: int, name: str, rgb: str, color_type: str, year_from: int = None, year_to: int = None):
+    def __init__(self, id: int, name: str, 
+                 rgb: str, color_type: str, 
+                 year_from: int|None = None, year_to: int|None = None):
         self.id = id
         self.name = name
         self.rgb = rgb
@@ -16,7 +18,8 @@ class BrickColor:
         self.year_to = year_to
 
 class Container:
-    def __init__(self, id: int, name: str, description: str, part_count: int = 0, lot_count:int = 0):
+    def __init__(self, id: int, name: str, description: str, 
+                 part_count: int = 0, lot_count:int = 0):
         self.id = id
         self.name = name
         self.description = description
@@ -31,8 +34,8 @@ class ColorPart:
         
 class CollectionPart:
     def __init__(self, id: int, part_id: str, part_name: str, part_category: str,
-                    color_id: int, color_name: str, rgb: str, color_type: str,
-                    container_name: str, quantity: int, container_id: int):
+                    color_id: int, color_name: str, rgb: str|None, color_type: str,
+                    container_name: str, quantity: int, container_id: int|None):
         self.id = id
         self.part_id = part_id
         self.part_name = part_name
@@ -73,7 +76,7 @@ class DatabaseManager:
         if self.db and self.db.isOpen():
             self.db.close()
 
-    def getColorFromName(self, colorName: str) -> BrickColor:
+    def getColorFromName(self, colorName: str) -> BrickColor|None:
         query = QSqlQuery()
         query.prepare("SELECT id,name,rgb,type,year_from,year_to FROM colors WHERE name = ?")
         query.addBindValue(colorName)
@@ -95,12 +98,19 @@ class DatabaseManager:
         containers = []
         query = QSqlQuery("SELECT * FROM containers")
         while query.next():
+            id = query.value("id")
+            partCount = self.getConteinerPartCount(id)
+            lotCount = self.getConteinerLotCount(id)
+
+            if partCount == None or lotCount == None:
+                continue
+            
             container = Container(
-                query.value("id"),
+                id,
                 query.value("name"),
                 query.value("description"),
-                self.getConteinerPartCount(query.value("id")),
-                self.getConteinerLotCount(query.value("id"))
+                partCount,
+                lotCount
             )
             containers.append(container)
         return containers
@@ -176,9 +186,9 @@ class DatabaseManager:
             return result if result is not None else 0
         return 0
         
-    def searchIntoCollection(self, part_id: str = None, part_name: str = None, 
-                             color_name: str = None, color_type: str = None,
-                             color_id:int=None) -> list[CollectionPart]:
+    def searchIntoCollection(self, part_id: str|None = None, part_name: str|None = None, 
+                             color_name: str|None = None, color_type: str|None = None,
+                             color_id:int|None=None) -> list[CollectionPart]:
         # Build query based on search criteria
         query_str = """
             SELECT cp.id, p.id as part_id, p.name as part_name, 
@@ -281,7 +291,7 @@ class DatabaseManager:
         else:
             return []
 
-    def getConteinerPartCount(self, container_id: int) -> int:
+    def getConteinerPartCount(self, container_id: int) -> int|None:
         query = QSqlQuery()
         query.prepare("SELECT SUM(count) FROM parts_collection WHERE container_id = ?")
         query.addBindValue(container_id)
@@ -291,7 +301,7 @@ class DatabaseManager:
         else:
             return None
         
-    def getConteinerLotCount(self, container_id: int) -> int:
+    def getConteinerLotCount(self, container_id: int) -> int|None:
         query = QSqlQuery()
         query.prepare("SELECT COUNT(*) FROM parts_collection WHERE container_id = ? AND count > 0")
         query.addBindValue(container_id)
@@ -311,7 +321,7 @@ class DatabaseManager:
             return False
         return True
     
-    def getColorPart(self, part_id: str, color_id: int) -> ColorPart:
+    def getColorPart(self, part_id: str, color_id: int) -> ColorPart|None:
         query = QSqlQuery()
         query.prepare("SELECT id FROM colors_parts WHERE part_id = ? AND color_id = ?")
         query.addBindValue(part_id)
@@ -382,7 +392,7 @@ class DatabaseManager:
             logging.error(f"Error cleaning zero qty {container_id}: {str(e)}")
             return False
         
-    def movePartsBetweenContainers(self, part_id: str, source_container_id: int, target_container_id: int, quantity: int) -> bool:
+    def movePartsBetweenContainers(self, part_id: int, source_container_id: int, target_container_id: int, quantity: int) -> bool:
         # Start transaction
         self.db.transaction()
 
@@ -483,11 +493,11 @@ class DatabaseManager:
             # if QFile.exists(AppConfig.DATABASE_SCHEMA_RESOURCE_PATH):
                 query = QSqlQuery()
                 schema_sql_file = QFile(AppConfig.DATABASE_SCHEMA_RESOURCE_PATH)
-                if not schema_sql_file.open(QIODevice.ReadOnly | QIODevice.Text):
+                if not schema_sql_file.open(QIODevice.OpenModeFlag.ReadOnly | QIODevice.OpenModeFlag.Text):
                     logging.error(f"Error opening schema file: {schema_sql_file.errorString()}")
                     return False
 
-                schema_sql = schema_sql_file.readAll().data().decode('utf-8')
+                schema_sql = bytearray(schema_sql_file.readAll().data()).decode('utf-8')
                 schema_sql_file.close()
 
                 # Split and execute multiple SQL statements
@@ -543,6 +553,11 @@ class DatabaseManager:
                 # Skip incomplete or empty entries
                 color_elem = item.find('COLOR')
                 name_elem = item.find('COLORNAME')
+                colorRGB_elem = item.find('COLORRGB')
+                colorType_elem = item.find('COLORTYPE')
+                colorYearFrom_elem = item.find('COLORYEARFROM')
+                colorYearTo_elem = item.find('COLORYEARTO')
+                
                 if color_elem is None or name_elem is None or not color_elem.text:
                     logging.warning(f"Invalid xml codes for color_part!")
                     continue
@@ -550,11 +565,11 @@ class DatabaseManager:
                 # Extract data
                 color_id = int(color_elem.text)
                 name = name_elem.text
-                rgb = item.find('COLORRGB').text if item.find('COLORRGB').text is not None else ''
-                color_type = item.find('COLORTYPE').text if item.find('COLORTYPE').text is not None else ''
+                rgb = colorRGB_elem.text if colorRGB_elem is not None and colorRGB_elem.text is not None else ''
+                color_type = colorType_elem.text if colorType_elem is not None and colorType_elem.text is not None else ''
 
-                year_from = item.find('COLORYEARFROM').text
-                year_to = item.find('COLORYEARTO').text
+                year_from = colorYearFrom_elem.text if colorYearFrom_elem is not None else None
+                year_to = colorYearTo_elem.text if colorYearTo_elem is not None else None
 
                 year_from = int(year_from) if year_from else None
                 year_to = int(year_to) if year_to else None
@@ -634,7 +649,10 @@ class DatabaseManager:
                 category_id = item.find('CATEGORY')
                 name = item.find('CATEGORYNAME')
                 
-                if category_id is None or name is None:
+                if (
+                    category_id is None or category_id.text is None 
+                    or name is None or name.text is None
+                ):
                     logging.warning(f"Invalid xml codes for categories!")
                     continue
 
@@ -702,7 +720,11 @@ class DatabaseManager:
                 category = item.find('CATEGORY')
                 altitemid = item.find('ALTITEMIDS')
                 
-                if item_id is None or name is None or category is None or altitemid is None:
+                if (item_id is None or item_id.text is None 
+                    or name is None or name.text is None 
+                    or category is None or category.text is None 
+                    or altitemid is None
+                    ):
                     logging.warning(f"Invalid xml codes for parts!")
                     continue
 
@@ -792,7 +814,11 @@ class DatabaseManager:
                 colorname = item.find('COLOR')
                 codename = item.find('CODENAME')
                 
-                if item_id is None or colorname is None or codename is None:
+                if (
+                    item_id is None or item_id.text is None
+                    or colorname is None or colorname.text is None
+                    or codename is None or codename.text is None
+                ):
                     logging.warning(f"Invalid xml codes for color_part!")
                     continue
 

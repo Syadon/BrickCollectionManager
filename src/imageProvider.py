@@ -51,9 +51,9 @@ class ImageUrlWorker(QRunnable):
             self.signals.error.emit(self.cache_name, str(e))
 
 class ImagePartColorWorker(ImageUrlWorker):
-    class Signals(QObject):
-        finished = Signal(str, QPixmap)
-        error = Signal(str, str)
+    # class Signals(QObject):
+    #     finished = Signal(str, QPixmap)
+    #     error = Signal(str, str)
 
     def __init__(self, part_id, color_id, cache_path):
         super().__init__(
@@ -138,4 +138,6 @@ class ImagesProvider(QObject):
             pixmap = QPixmap(size, size)
             pixmap.fill(QColor(200, 200, 200))
         
-        return pixmap.scaled(size, size, Qt.KeepAspectRatio, Qt.SmoothTransformation)
+        return pixmap.scaled(size, size, 
+                             Qt.AspectRatioMode.KeepAspectRatio, 
+                             Qt.TransformationMode.SmoothTransformation)

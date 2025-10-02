@@ -7,7 +7,7 @@ class TransparentSelectionDelegate(QStyledItemDelegate):
     def initStyleOption(self, option, index):
         super().initStyleOption(option, index)
         # Rimuovi l'effetto di selezione
-        option.state &= ~QStyle.State_Selected
+        option.state &= ~QStyle.StateFlag.State_Selected
 
 def rgb_to_hsv(r, g, b):
     r, g, b = r/255.0, g/255.0, b/255.0
@@ -60,7 +60,7 @@ def calculate_hsv_similarity(hsv1, hsv2):
 
 def qImageToOpenCV(image:QImage):
     # Crop the image using the bounding box
-    img = image.convertToFormat(QImage.Format_RGB32)
+    img = image.convertToFormat(QImage.Format.Format_RGB32)
 
     # Convert QImage to OpenCV format
     width = img.width()
@@ -77,7 +77,7 @@ def opencvToQImage(image):
     h, w, ch = image.shape
     bytes_per_line = ch * w
     imageTmp = cv2.cvtColor(image, cv2.COLOR_BGR2RGB)
-    return QImage(imageTmp.data, w, h, bytes_per_line, QImage.Format_RGB888)
+    return QImage(imageTmp.data, w, h, bytes_per_line, QImage.Format.Format_RGB888)
 
 def opencvToPixmap(image):
     return QPixmap.fromImage(opencvToQImage(image))

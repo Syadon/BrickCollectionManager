@@ -13,33 +13,33 @@ class ContainerTableModel(QAbstractTableModel):
         self.attrOrder = ["id", "name", "part_count", "lot_count", "description"]
         self.headerList = ["ID", "Name", "Part Count", "Lot Count", "Description"]
 
-    def rowCount(self, parent):
+    def rowCount(self, parent=None) -> int:
         return len(self.containers)
 
-    def columnCount(self, parent):
+    def columnCount(self, parent=None) -> int:
         return len(self.headerList)
 
-    def data(self, index, role):
+    def data(self, index, role : int = Qt.ItemDataRole.DisplayRole):
         if not index.isValid():
             return None
-        elif role != Qt.DisplayRole:
+        elif role != Qt.ItemDataRole.DisplayRole:
             return None
         else:
             c = self.containers[index.row()]
             attr = self.attrOrder[index.column()]
             return getattr(c, attr)
-        
-    def headerData(self, col, orientation, role):
-        if orientation == Qt.Horizontal and role == Qt.DisplayRole:
+
+    def headerData(self, col, orientation, role : int = Qt.ItemDataRole.DisplayRole):
+        if orientation == Qt.Orientation.Horizontal and role == Qt.ItemDataRole.DisplayRole:
             return self.headerList[col]
         return None
 
-    def sort(self, col, order):
+    def sort(self, col, order = Qt.SortOrder.AscendingOrder):
         attr = self.attrOrder[col]
         self.layoutAboutToBeChanged.emit()
         self.containers = sorted(self.containers,
             key=operator.attrgetter(attr))
-        if order == Qt.DescendingOrder:
+        if order == Qt.SortOrder.DescendingOrder:
             self.containers.reverse()
         self.layoutChanged.emit()
 
@@ -75,16 +75,16 @@ class ContainerListWidget(QWidget):
         
         # Create table view
         self.table_view = QTableView()
-        self.table_view.setSelectionBehavior(QTableView.SelectRows)
-        self.table_view.setSelectionMode(QTableView.SingleSelection)
+        self.table_view.setSelectionBehavior(QTableView.SelectionBehavior.SelectRows)
+        self.table_view.setSelectionMode(QTableView.SelectionMode.SingleSelection)
         self.table_view.setSortingEnabled(True)
         self.table_view.doubleClicked.connect(self.on_container_double_clicked)
-        self.table_view.setContextMenuPolicy(Qt.CustomContextMenu)
+        self.table_view.setContextMenuPolicy(Qt.ContextMenuPolicy.CustomContextMenu)
         self.table_view.customContextMenuRequested.connect(self.show_context_menu)
         layout.addWidget(self.table_view)
         
         # Initialize model
-        self.model = None
+        self.model : ContainerTableModel | None= None
         #self.update_view()
     
     def showEvent(self, event):
@@ -111,14 +111,20 @@ class ContainerListWidget(QWidget):
         
     def add_container(self):
         dialog = AddContainerDialog(self)
-        if dialog.exec() == AddContainerDialog.Accepted:
+        if dialog.exec() == AddContainerDialog.DialogCode.Accepted:
             self.update_view()
             
     def on_container_double_clicked(self, index):
+        if self.model is None:
+            return
+        
         container = self.model.containers[index.row()]
         self.open_container_dialog(container)
         
     def show_context_menu(self, position):
+        if self.model is None:
+            return
+
         index = self.table_view.indexAt(position)
         
         if index.isValid():
@@ -140,5 +146,5 @@ class ContainerListWidget(QWidget):
                 
     def open_container_dialog(self, container):
         dialog = ContainerDetailDialog(container, self)
-        if dialog.exec() == QMessageBox.Accepted:
+        if dialog.exec() == QMessageBox.DialogCode.Accepted:
             self.update_view()

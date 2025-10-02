@@ -1,4 +1,4 @@
-from PySide6.QtCore import QAbstractTableModel, Qt, QSize
+from PySide6.QtCore import QAbstractTableModel, Qt, QSize, QModelIndex, QPersistentModelIndex
 from PySide6.QtGui import QColor, QBrush, QPixmap
 from config import AppConfig
 from src.imageProvider import ImagesProvider
@@ -31,8 +31,10 @@ class ContainerPartsModel(QAbstractTableModel):
                     # Store image in a temporary dictionary since it's not part of Loot class
                     if not hasattr(loot, '_temp_data'):
                         loot._temp_data = {}
-                    loot._temp_data['image'] = image.scaled(self.imageSizes, Qt.KeepAspectRatio, Qt.SmoothTransformation)
-    
+                    loot._temp_data['image'] = image.scaled(self.imageSizes, 
+                                                            Qt.AspectRatioMode.KeepAspectRatio, 
+                                                            Qt.TransformationMode.SmoothTransformation)
+
     def _update_image(self, key, pixmap):
         part_id, color_id = key.split('_')
         
@@ -42,18 +44,20 @@ class ContainerPartsModel(QAbstractTableModel):
                 str(loot.color_id) == color_id):
                 if not hasattr(loot, '_temp_data'):
                     loot._temp_data = {}
-                loot._temp_data['image'] = pixmap.scaled(self.imageSizes, Qt.KeepAspectRatio, Qt.SmoothTransformation)
+                loot._temp_data['image'] = pixmap.scaled(self.imageSizes, 
+                                                         Qt.AspectRatioMode.KeepAspectRatio, 
+                                                         Qt.TransformationMode.SmoothTransformation)
                 # Notify view that data has changed
                 model_idx = self.index(row_idx, self.imageColumnIndex)
                 self.dataChanged.emit(model_idx, model_idx)
 
-    def rowCount(self, parent):
+    def rowCount(self, parent=None) -> int:
         return len(self.parts_data)
 
-    def columnCount(self, parent):
+    def columnCount(self, parent=None) -> int:
         return len(self.headers)
 
-    def data(self, index, role):
+    def data(self, index, role : int = Qt.ItemDataRole.DisplayRole):
         if not index.isValid():
             return None
 
@@ -61,23 +65,23 @@ class ContainerPartsModel(QAbstractTableModel):
         col = index.column()
         attr = self.attrCols[col]
 
-        if role == Qt.DisplayRole:
+        if role == Qt.ItemDataRole.DisplayRole:
             if index.column() != self.imageColumnIndex:  # Don't show text in image column
                 if attr == 'image':
                     return None
                 return getattr(loot, attr)
             return None
             
-        elif role == Qt.DecorationRole and index.column() == self.imageColumnIndex:
+        elif role == Qt.ItemDataRole.DecorationRole and index.column() == self.imageColumnIndex:
             if hasattr(loot, '_temp_data'):
                 return loot._temp_data.get('image')
             return None
         
-        elif role == Qt.BackgroundRole and index.column() == self.colorColumnIndex:
+        elif role == Qt.ItemDataRole.BackgroundRole and index.column() == self.colorColumnIndex:
             rgb_values = QColor(f"#{loot.rgb}")
             return QBrush(rgb_values)
 
-        elif role == Qt.ForegroundRole and index.column() == self.colorColumnIndex:
+        elif role == Qt.ItemDataRole.ForegroundRole and index.column() == self.colorColumnIndex:
             # Calculate luminance to determine text color
             rgb_values = QColor(f"#{loot.rgb}")
             luminance = (0.299 * rgb_values.red() + 
@@ -88,7 +92,7 @@ class ContainerPartsModel(QAbstractTableModel):
 
         return None
 
-    def headerData(self, section, orientation, role):
-        if orientation == Qt.Horizontal and role == Qt.DisplayRole:
+    def headerData(self, section, orientation, role : int = Qt.ItemDataRole.DisplayRole):
+        if orientation == Qt.Orientation.Horizontal and role == Qt.ItemDataRole.DisplayRole:
             return self.headers[section]
         return None

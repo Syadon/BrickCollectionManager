@@ -20,9 +20,9 @@ class MainWindow(QMainWindow):
 
         # Create left toolbar
         self.toolbar = QToolBar()
-        self.toolbar.setOrientation(Qt.Vertical)
+        self.toolbar.setOrientation(Qt.Orientation.Vertical)
         self.toolbar.setIconSize(QSize(32, 32))
-        self.toolbar.setToolButtonStyle(Qt.ToolButtonTextUnderIcon)
+        self.toolbar.setToolButtonStyle(Qt.ToolButtonStyle.ToolButtonTextUnderIcon)
         
         main_layout.addWidget(self.toolbar)
 

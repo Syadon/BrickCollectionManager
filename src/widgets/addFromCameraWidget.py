@@ -16,7 +16,7 @@ from ui.ui_addFromCameraWidget import Ui_AddFromCameraWidget
 
 class AddFromCameraWidget(QWidget):
 
-    def __init__(self, container:Container = None, parent=None):
+    def __init__(self, container:Container|None = None, parent=None):
         super().__init__(parent)
 
         self.ui = Ui_AddFromCameraWidget()
@@ -49,7 +49,7 @@ class AddFromCameraWidget(QWidget):
         
         # Create label for captured image
         self.capture_label = QLabel()
-        self.capture_label.setAlignment(Qt.AlignCenter)
+        self.capture_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
         self.capture_container_layout.addWidget(self.capture_label)
         
         # Add widgets to stack
@@ -219,7 +219,7 @@ class AddFromCameraWidget(QWidget):
         
         # Draw bounding box
         painter = QPainter(display_image)
-        painter.setPen(QPen(Qt.red, 3))
+        painter.setPen(QPen(Qt.GlobalColor.red, 3))
         painter.drawRect(bb)
         painter.end()
         
@@ -227,8 +227,8 @@ class AddFromCameraWidget(QWidget):
         pixmap = QPixmap.fromImage(display_image)
         scaled_pixmap = pixmap.scaled(
             self.ui.cameraView.size(),
-            Qt.KeepAspectRatio,
-            Qt.SmoothTransformation
+            Qt.AspectRatioMode.KeepAspectRatio,
+            Qt.TransformationMode.SmoothTransformation
         )
         
         # Set the image to the label
@@ -263,14 +263,16 @@ class AddFromCameraWidget(QWidget):
         # Convert QImage to bytes in memory
         byte_array = QByteArray()
         buffer = QBuffer(byte_array)
-        buffer.open(QBuffer.WriteOnly)
-        image.save(buffer, "JPG")
+        buffer.open(QBuffer.OpenModeFlag.WriteOnly)
+        image.save(buffer, "JPG", quality=90)
         buffer.close()
 
         self.imageCaputured = True
 
         recongnition = BrickRecognition()
-        recognition_result = recongnition.recognize(byte_array, image_width=image.width(), image_height=image.height())
+        recognition_result = recongnition.recognize(bytearray(byte_array.data()), 
+                                                    image_width=image.width(), 
+                                                    image_height=image.height())
         if recognition_result:
             self.on_part_detected(image, recognition_result)
 
@@ -289,8 +291,8 @@ class AddFromCameraWidget(QWidget):
             return
             
         # Get color data
-        color_data = color_item.data(Qt.UserRole)
-        
+        color_data = color_item.data(Qt.ItemDataRole.UserRole)
+
         # Get current selected part row
         part_row = self.ui.parts_list.currentRow()
         if part_row < 0:
@@ -316,7 +318,7 @@ class AddFromCameraWidget(QWidget):
             part_row = -1
             for row in range(self.ui.parts_list.rowCount()):
                 item = self.ui.parts_list.item(row, 0)
-                if item and item.data(Qt.UserRole)['id'] == part_id:
+                if item and item.data(Qt.ItemDataRole.UserRole)['id'] == part_id:
                     part_row = row
                     break
 
@@ -343,7 +345,7 @@ class AddFromCameraWidget(QWidget):
             if not color_item:
                 return
                 
-            color_data = color_item.data(Qt.UserRole)
+            color_data = color_item.data(Qt.ItemDataRole.UserRole)
             
             # Only update if this is our currently selected color
             if str(color_data.id) != color_id:
@@ -358,8 +360,8 @@ class AddFromCameraWidget(QWidget):
             
         # Scale image
         scaled = pixmap.scaled(self.iconSize, self.iconSize, 
-                              Qt.KeepAspectRatio, 
-                              Qt.SmoothTransformation)
+                              Qt.AspectRatioMode.KeepAspectRatio, 
+                              Qt.TransformationMode.SmoothTransformation)
         
         # Update image in table
         image_item = self.ui.parts_list.item(row, 0)
@@ -404,16 +406,18 @@ class AddFromCameraWidget(QWidget):
             image_item = QTableWidgetItem()
             img = self.imgProvider.get_image_from_url(item['img_url'], f"{item['id']}_part")
             if img != None and not img.isNull():
-                scaled = img.scaled(self.iconSize, self.iconSize, Qt.KeepAspectRatio, Qt.SmoothTransformation)
+                scaled = img.scaled(self.iconSize, self.iconSize, 
+                                    Qt.AspectRatioMode.KeepAspectRatio, 
+                                    Qt.TransformationMode.SmoothTransformation)
                 image_item.setIcon(QIcon(scaled))
     
             id_item = QTableWidgetItem(f"{item['id']}")
             name_item = QTableWidgetItem(f"{item['name']}")
             score_item = QTableWidgetItem()
-            score_item.setData(Qt.EditRole, round(item['score']*100, 2))
+            score_item.setData(Qt.ItemDataRole.EditRole, round(item['score']*100, 2))
 
             # Store full item data in item's data role
-            image_item.setData(Qt.UserRole, item)
+            image_item.setData(Qt.ItemDataRole.UserRole, item)
 
             # Add item to list
             self.ui.parts_list.setItem(row, 0, image_item)
@@ -439,7 +443,7 @@ class AddFromCameraWidget(QWidget):
             # Get data from first column
             current_item = self.ui.parts_list.item(current_row, 0)
             if current_item:
-                part_data = current_item.data(Qt.UserRole)
+                part_data = current_item.data(Qt.ItemDataRole.UserRole)
                 self.current_part_id = part_data['id']  # Store current part ID
                 logging.info(f"Selected part: {part_data['id']} - {part_data['name']}")
                 self.update_colors_list(part_data['id'])
@@ -482,9 +486,9 @@ class AddFromCameraWidget(QWidget):
                 return
 
             # Get part and color IDs
-            part_data = part_item.data(Qt.UserRole)
-            color_data = color_item.data(Qt.UserRole)
-            
+            part_data = part_item.data(Qt.ItemDataRole.UserRole)
+            color_data = color_item.data(Qt.ItemDataRole.UserRole)
+
             # Get colors_parts ID
             dbManager = DatabaseManager()
             colorPart = dbManager.getColorPart(part_data['id'], color_data.id)
@@ -497,7 +501,9 @@ class AddFromCameraWidget(QWidget):
             #...
 
             # Show a message box with the part image to confirm addition
-            msg = TimedMessageBox(timeout=5, buttons=[QMessageBox.Ok, QMessageBox.Cancel], parent = self)
+            msg = TimedMessageBox(timeout=5, buttons=[QMessageBox.StandardButton.Ok, 
+                                                      QMessageBox.StandardButton.Cancel], 
+                                  parent = self)
             msg.setWindowTitle("Adding Part")
             msg.setText(f"""
                 <html>
@@ -515,17 +521,17 @@ class AddFromCameraWidget(QWidget):
                 msg.setIconPixmap(msg_pixmap)
             
             response = msg.exec()
-            if response == QMessageBox.Cancel:
+            if response == QMessageBox.StandardButton.Cancel:
                 return
 
             # Insert into parts_collection
             if not dbManager.addColorPartToContainer(colorPart, container_id, quantity):
                 logging.warning("Color_part not added to collection!")
                 msg = QMessageBox(self)
-                msg.setIcon(QMessageBox.Critical)
+                msg.setIcon(QMessageBox.Icon.Critical)
                 msg.setWindowTitle("Adding Part")
                 msg.setText(f"Fail to add {quantity} of part {part_data['id']} - {part_data['name']} in color {color_data.name} - {color_data.type} to container {container_name}")
-                msg.setStandardButtons(QMessageBox.Ok)
+                msg.setStandardButtons(QMessageBox.StandardButton.Ok)
                 if msg_pixmap != None:
                     msg.setIconPixmap(msg_pixmap)
                 msg.exec()
@@ -596,7 +602,7 @@ class AddFromCameraWidget(QWidget):
             if not color.rgb:
                 self.add_color_to_table(color)
                 
-    def add_color_to_table(self, color: BrickColor, score: float = None):
+    def add_color_to_table(self, color: BrickColor, score: float|None = None):
         row = self.ui.colors_list.rowCount()
         self.ui.colors_list.insertRow(row)
 
@@ -604,7 +610,7 @@ class AddFromCameraWidget(QWidget):
         name_item = QTableWidgetItem(color.name)
         type_item = QTableWidgetItem(color.type if color.type else "")
         score_item = QTableWidgetItem()
-        score_item.setData(Qt.EditRole, round(score*100, 2) if score is not None else 0)
+        score_item.setData(Qt.ItemDataRole.EditRole, round(score*100, 2) if score is not None else 0)
         id_item = QTableWidgetItem(str(color.id))
         year_item = QTableWidgetItem(str(color.year_to) if color.year_to else "")
 
@@ -615,11 +621,11 @@ class AddFromCameraWidget(QWidget):
             
             # Set text color for better visibility
             luminance = (0.299 * bg_color.red() + 0.587 * bg_color.green() + 0.114 * bg_color.blue())
-            text_color = Qt.white if luminance < 128 else Qt.black
+            text_color = Qt.GlobalColor.white if luminance < 128 else Qt.GlobalColor.black
             name_item.setForeground(text_color)
 
         # Store color data
-        name_item.setData(Qt.UserRole, color)
+        name_item.setData(Qt.ItemDataRole.UserRole, color)
 
         # Add items to row
         self.ui.colors_list.setItem(row, 0, name_item)
@@ -628,7 +634,7 @@ class AddFromCameraWidget(QWidget):
         self.ui.colors_list.setItem(row, 3, year_item)
         self.ui.colors_list.setItem(row, 4, id_item)
 
-    def create_color_list_item(self, color:BrickColor, score:float = None) -> QListWidgetItem:
+    def create_color_list_item(self, color:BrickColor, score:float|None = None) -> QListWidgetItem:
         item = QListWidgetItem()
 
         itemText = f"{color.name} - {color.type}" if color.type else color.name
@@ -642,10 +648,10 @@ class AddFromCameraWidget(QWidget):
 
             # Set text color for better visibility
         luminance = (0.299 * bgColor.red() + 0.587 * bgColor.green() + 0.114 * bgColor.blue())
-        text_color = Qt.white if luminance < 128 else Qt.black
+        text_color = Qt.GlobalColor.white if luminance < 128 else Qt.GlobalColor.black
         item.setForeground(text_color)
 
-        item.setData(Qt.UserRole, color)
+        item.setData(Qt.ItemDataRole.UserRole, color)
 
         # Add score to tooltip
         item.setToolTip(f"Match score: {score:.2%}")
@@ -705,9 +711,9 @@ class AddFromCameraWidget(QWidget):
 
     def eventFilter(self, obj, event):
         """Handle keyboard events"""
-        if event.type() == QEvent.KeyPress:
+        if event.type() == QEvent.Type.KeyPress:
             key_event = QKeyEvent(event)
-            if key_event.key() == Qt.Key_F1:
+            if key_event.key() == Qt.Key.Key_F1:
                 if not self.imageCaputured:
                     # If no image is captured, capture one
                     self.capture_image()
@@ -716,16 +722,16 @@ class AddFromCameraWidget(QWidget):
                     if self.ui.addToContainerButton.isEnabled():
                         self.on_add_clicked()
                 return True
-            elif key_event.key() == Qt.Key_Escape and self.imageCaputured:
+            elif key_event.key() == Qt.Key.Key_Escape and self.imageCaputured:
                 # If ESC is pressed and we have a captured image, trigger next/skip
                 self.on_next_clicked()
                 return True
-            elif key_event.key() == Qt.Key_F2 or key_event.key() == Qt.Key_Plus:
+            elif key_event.key() == Qt.Key.Key_F2 or key_event.key() == Qt.Key.Key_Plus:
                 # Increase quantity by 1
                 current_value = self.ui.qtySpinBox.value()
                 self.ui.qtySpinBox.setValue(current_value + 1)
                 return True
-            elif key_event.key() == Qt.Key_F3 or key_event.key() == Qt.Key_Minus:
+            elif key_event.key() == Qt.Key.Key_F3 or key_event.key() == Qt.Key.Key_Minus:
                 # Decrease quantity by 1, but don't go below minimum
                 current_value = self.ui.qtySpinBox.value()
                 if current_value > self.ui.qtySpinBox.minimum():
