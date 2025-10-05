@@ -194,6 +194,11 @@ class AddFromFileWidget(QWidget):
                 message = f"Loaded {len(parts_to_add)} parts from the file."
                 if missing_parts:
                     message += f"\n{len(missing_parts)} parts were not found in the database."
+                    # Create a formatted list of missing parts to show to the user
+                    missing_part_list = "\n".join([f"  - {p[0]} (color {p[1]}): {p[2]} pcs" for p in missing_parts[:10]])
+                    if len(missing_parts) > 10:
+                        missing_part_list += f"\n  ... and {len(missing_parts) - 10} more"
+                    message += f"\n\nMissing parts:\n{missing_part_list}"
                 QMessageBox.information(self, "File Loaded", message)
             elif missing_parts:
                 part_list = "\n".join([f"{p[0]} (color {p[1]}): {p[2]} pcs" for p in missing_parts[:5]])
