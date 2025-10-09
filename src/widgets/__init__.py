@@ -4,6 +4,7 @@ from .addManualWidget import AddManualWidget
 from .addFromCameraWidget import AddFromCameraWidget
 from .addFromFileWidget import AddFromFileWidget
 from .databaseWidget import DatabaseWidget
+from .colorLabel import ColorLabel
 
 __all__ = [
     'ContainerListWidget',
@@ -11,5 +12,6 @@ __all__ = [
     'AddManualWidget',
     'AddFromCameraWidget',
     'AddFromFileWidget',
-    'DatabaseWidget'
+    'DatabaseWidget',
+    'ColorLabel'
 ] 

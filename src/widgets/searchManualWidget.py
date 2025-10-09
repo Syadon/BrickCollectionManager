@@ -3,6 +3,7 @@ from PySide6.QtGui import QIcon, QPixmap, QColor
 from PySide6.QtCore import Qt, QStringListModel, QDir, QFile
 from src.database import DatabaseManager, Container, CollectionPart
 from src.imageProvider import ImagesProvider
+from src.widgets.colorLabel import ColorLabel
 from config import AppConfig
 from src.utils import TransparentSelectionDelegate
 from src.partDetailDialog import PartDetailDialog
@@ -357,18 +358,10 @@ class SearchManualWidget(QWidget):
         # Part Category
         self.ui.search_results_table.setItem(row, 3, QTableWidgetItem(part.part_category))
         
-        # Color with background color
-        color_item = QTableWidgetItem(part.color_name)
-        if part.rgb:
-            bg_color = QColor(f"#{part.rgb}")
-            color_item.setBackground(bg_color)
-            
-            # Set text color for better visibility
-            luminance = (0.299 * bg_color.red() + 0.587 * bg_color.green() + 0.114 * bg_color.blue())
-            text_color = Qt.GlobalColor.white if luminance < 128 else Qt.GlobalColor.black
-            color_item.setForeground(text_color)
-        
-        self.ui.search_results_table.setItem(row, 4, color_item)
+        # Color using ColorLabel widget
+        rgb_hex = part.rgb if part.rgb else None
+        color_label = ColorLabel(part.color_name, rgb_hex)
+        self.ui.search_results_table.setCellWidget(row, 4, color_label)
         
         # Color Type
         self.ui.search_results_table.setItem(row, 5, QTableWidgetItem(part.color_type))

@@ -6,6 +6,7 @@ from PySide6.QtGui import QColor, QIcon
 from ui.ui_addFromFileWidget import Ui_AddFromFileWidget
 from src.database import DatabaseManager, Container
 from src.utils import TransparentSelectionDelegate
+from src.widgets.colorLabel import ColorLabel
 from src.imageProvider import ImagesProvider
 from config import AppConfig
 from src.partsFileParser import XmlParser
@@ -252,17 +253,10 @@ class AddFromFileWidget(QWidget):
             self.ui.tableWidget.setItem(row, 2, name_item)
             name_item.setSizeHint(QSize(400, self.iconSize))
             
-            # Colonna Color con sfondo colorato
-            color_item = QTableWidgetItem(part.get('color_name', 'Unknown'))
-            if 'rgb' in part and part['rgb']:
-                bg_color = QColor(f"#{part['rgb']}")
-                color_item.setBackground(bg_color)
-                
-                # Imposta il colore del testo per migliorare la leggibilità
-                luminance = (0.299 * bg_color.red() + 0.587 * bg_color.green() + 0.114 * bg_color.blue())
-                text_color = Qt.GlobalColor.white if luminance < 128 else Qt.GlobalColor.black
-                color_item.setForeground(text_color)
-            self.ui.tableWidget.setItem(row, 3, color_item)
+            # Colonna Color using ColorLabel widget
+            rgb_hex = part.get('rgb') if part.get('rgb') else None
+            color_label = ColorLabel(part.get('color_name', 'Unknown'), rgb_hex)
+            self.ui.tableWidget.setCellWidget(row, 3, color_label)
             
             # Colonna Color Type
             type_item = QTableWidgetItem(part.get('color_type', 'Unknown'))

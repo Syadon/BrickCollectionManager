@@ -4,6 +4,7 @@ from PySide6.QtWidgets import (QWidget, QVBoxLayout, QHBoxLayout, QPushButton,
 from PySide6.QtGui import QIcon, QColor
 from PySide6.QtCore import Qt, QStringListModel
 from src.utils import TransparentSelectionDelegate
+from src.widgets.colorLabel import ColorLabel
 from ui.ui_addManualWidget import Ui_AddManualWidget
 from src.database import Container, DatabaseManager
 from src.imageProvider import ImagesProvider
@@ -243,18 +244,10 @@ class AddManualWidget(QWidget):
             # Part Name
             self.ui.search_results_table.setItem(row, 2, QTableWidgetItem(data['part_name']))
             
-            # Color con sfondo colorato
-            color_item = QTableWidgetItem(data['color_name'])
-            if data['rgb']:
-                bg_color = QColor(f"#{data['rgb']}")
-                color_item.setBackground(bg_color)
-                
-                # Imposta colore del testo per migliore visibilità
-                luminance = (0.299 * bg_color.red() + 0.587 * bg_color.green() + 0.114 * bg_color.blue())
-                text_color = Qt.GlobalColor.white if luminance < 128 else Qt.GlobalColor.black
-                color_item.setForeground(text_color)
-            
-            self.ui.search_results_table.setItem(row, 3, color_item)
+            # Color using ColorLabel widget
+            rgb_hex = data['rgb'] if data['rgb'] else None
+            color_label = ColorLabel(data['color_name'], rgb_hex)
+            self.ui.search_results_table.setCellWidget(row, 3, color_label)
             
             # Color Type
             self.ui.search_results_table.setItem(row, 4, QTableWidgetItem(data['color_type']))

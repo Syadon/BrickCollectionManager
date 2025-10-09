@@ -6,6 +6,7 @@ from PySide6.QtMultimediaWidgets import QVideoWidget
 from src.database import DatabaseManager, Container, BrickColor
 from src.timedMessageBox import TimedMessageBox
 from src.imageProvider import ImagesProvider
+from src.widgets.colorLabel import ColorLabel
 from src.utils import TransparentSelectionDelegate, qImageToOpenCV, rgb_to_hsv, calculate_hsv_similarity
 from config import AppConfig
 import cv2
@@ -607,28 +608,23 @@ class AddFromCameraWidget(QWidget):
         self.ui.colors_list.insertRow(row)
 
         # Create items
-        name_item = QTableWidgetItem(color.name)
+        # Create ColorLabel for color name with background color
+        rgb_hex = color.rgb if color.rgb else None
+        color_label = ColorLabel(color.name, rgb_hex)
+        
+        # Create empty item to store data (ColorLabel doesn't store data)
+        name_item = QTableWidgetItem()
+        name_item.setData(Qt.ItemDataRole.UserRole, color)
+        
         type_item = QTableWidgetItem(color.type if color.type else "")
         score_item = QTableWidgetItem()
         score_item.setData(Qt.ItemDataRole.EditRole, round(score*100, 2) if score is not None else 0)
         id_item = QTableWidgetItem(str(color.id))
         year_item = QTableWidgetItem(str(color.year_to) if color.year_to else "")
 
-        # Set background color
-        if color.rgb:
-            bg_color = QColor(f"#{color.rgb}")
-            name_item.setBackground(bg_color)
-            
-            # Set text color for better visibility
-            luminance = (0.299 * bg_color.red() + 0.587 * bg_color.green() + 0.114 * bg_color.blue())
-            text_color = Qt.GlobalColor.white if luminance < 128 else Qt.GlobalColor.black
-            name_item.setForeground(text_color)
-
-        # Store color data
-        name_item.setData(Qt.ItemDataRole.UserRole, color)
-
         # Add items to row
-        self.ui.colors_list.setItem(row, 0, name_item)
+        self.ui.colors_list.setItem(row, 0, name_item)  # Set the item with data
+        self.ui.colors_list.setCellWidget(row, 0, color_label)  # Set the ColorLabel widget
         self.ui.colors_list.setItem(row, 1, type_item)
         self.ui.colors_list.setItem(row, 2, score_item)
         self.ui.colors_list.setItem(row, 3, year_item)
