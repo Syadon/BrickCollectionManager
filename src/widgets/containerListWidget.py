@@ -55,7 +55,7 @@ class ContainerListWidget(QWidget):
         
         # Total parts counter
         self.total_parts_label = QLabel("Total Parts: 0")
-        self.total_parts_label.setStyleSheet("font-weight: bold; font-size: 12px; color: #2E7D32;")
+        # self.total_parts_label.setStyleSheet("font-weight: bold; font-size: 12px; color: #2E7D32;")
         counters_layout.addWidget(self.total_parts_label)
         
         counters_layout.addStretch()  # Push labels to the left

@@ -27,7 +27,7 @@ class ContainerDetailDialog(QDialog):
 
         # Add delete button
         self.delete_button = QPushButton("Delete Container")
-        self.delete_button.setStyleSheet("background-color: #e74c3c; color: white;")
+        self.delete_button.setProperty('class', 'danger')
         
         # Add button to the bottom left
         button_layout = QHBoxLayout()
@@ -196,7 +196,8 @@ class DeleteContainerDialog(QDialog):
         
         # Warning for delete option
         delete_warning = QLabel("Warning: This will permanently remove all parts from your collection!")
-        delete_warning.setStyleSheet("color: #e74c3c; font-weight: bold;")
+        delete_warning.setProperty('class', 'danger')
+
         delete_warning.setWordWrap(True)
         container_layout = QHBoxLayout()
         container_layout.addSpacing(20)  # Indent

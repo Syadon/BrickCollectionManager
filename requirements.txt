@@ -1,3 +1,4 @@
 pyside6
 opencv-python
 requests
+qt-material
