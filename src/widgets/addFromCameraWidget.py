@@ -1,7 +1,7 @@
-from PySide6.QtWidgets import QWidget, QListWidgetItem, QTableWidgetItem, QMessageBox, QLabel, QStackedLayout, QVBoxLayout
-from PySide6.QtGui import QImage, QIcon, QColor, QKeyEvent, QPainter, QPen, QPixmap, QKeySequence
-from PySide6.QtCore import QByteArray, Qt, QRect, QBuffer, QEvent, Signal, QTimer
-from PySide6.QtMultimedia import QCamera, QMediaCaptureSession, QImageCapture, QCameraDevice, QMediaDevices
+from PySide6.QtWidgets import QWidget, QTableWidgetItem, QMessageBox, QLabel, QStackedLayout, QVBoxLayout
+from PySide6.QtGui import QImage, QIcon, QColor, QKeyEvent, QPainter, QPen, QPixmap
+from PySide6.QtCore import QByteArray, Qt, QRect, QBuffer, QEvent, QTimer
+from PySide6.QtMultimedia import QCamera, QMediaCaptureSession, QImageCapture, QMediaDevices
 from PySide6.QtMultimediaWidgets import QVideoWidget
 from src.database import DatabaseManager, Container, BrickColor
 from src.timedMessageBox import TimedMessageBox
@@ -25,7 +25,7 @@ class AddFromCameraWidget(QWidget):
 
         self.iconSize = AppConfig.DEFAULT_ICON_SIZE
         self.targetContainer = container
-        self.imageCaputured = False
+        self.imageCaptured = False
         self.colorsDetected = []
         self.current_part_id = None
         
@@ -254,7 +254,7 @@ class AddFromCameraWidget(QWidget):
     def clearDetection(self):
         self.ui.parts_list.setRowCount(0)
         self.ui.colors_list.setRowCount(0)
-        self.imageCaputured = False
+        self.imageCaptured = False
         self.ui.qtySpinBox.setValue(1)
         self.captured_image = None
         self.detection_rect = None
@@ -268,7 +268,7 @@ class AddFromCameraWidget(QWidget):
         image.save(buffer, "JPG", quality=90)
         buffer.close()
 
-        self.imageCaputured = True
+        self.imageCaptured = True
 
         recongnition = BrickRecognition()
         recognition_result = recongnition.recognize(bytearray(byte_array.data()), 
@@ -475,10 +475,11 @@ class AddFromCameraWidget(QWidget):
 
             # Get selected container
             container_data = self.ui.containerCombobox.currentData()
-            container_id, container_name = container_data
-            if container_id is None:
-                logging.warning("No container selected")
+
+            if not container_data or len(container_data) != 2:
+                logging.warning("Invalid container data")
                 return
+            container_id, container_name = container_data
 
             # Get quantity
             quantity = self.ui.qtySpinBox.value()
@@ -604,6 +605,10 @@ class AddFromCameraWidget(QWidget):
                 self.add_color_to_table(color)
                 
     def add_color_to_table(self, color: BrickColor, score: float|None = None):
+        # Nel metodo add_color_to_table, potresti aggiungere controlli più rigorosi
+        if not color or not hasattr(color, 'name'):
+            return
+            
         row = self.ui.colors_list.rowCount()
         self.ui.colors_list.insertRow(row)
 
@@ -629,30 +634,6 @@ class AddFromCameraWidget(QWidget):
         self.ui.colors_list.setItem(row, 2, score_item)
         self.ui.colors_list.setItem(row, 3, year_item)
         self.ui.colors_list.setItem(row, 4, id_item)
-
-    def create_color_list_item(self, color:BrickColor, score:float|None = None) -> QListWidgetItem:
-        item = QListWidgetItem()
-
-        itemText = f"{color.name} - {color.type}" if color.type else color.name
-        if score != None:
-            itemText += f" - Match score: {score:.2%}"
-
-        item.setText(itemText)
-
-        bgColor = QColor(f"#{color.rgb}")
-        item.setBackground(bgColor)
-
-            # Set text color for better visibility
-        luminance = (0.299 * bgColor.red() + 0.587 * bgColor.green() + 0.114 * bgColor.blue())
-        text_color = Qt.GlobalColor.white if luminance < 128 else Qt.GlobalColor.black
-        item.setForeground(text_color)
-
-        item.setData(Qt.ItemDataRole.UserRole, color)
-
-        # Add score to tooltip
-        item.setToolTip(f"Match score: {score:.2%}")
-
-        return item
 
     def detect_image_colors(self, image:QImage, bb:QRect):
         try:
@@ -710,7 +691,7 @@ class AddFromCameraWidget(QWidget):
         if event.type() == QEvent.Type.KeyPress:
             key_event = QKeyEvent(event)
             if key_event.key() == Qt.Key.Key_F1:
-                if not self.imageCaputured:
+                if not self.imageCaptured:
                     # If no image is captured, capture one
                     self.capture_image()
                 else:
@@ -718,7 +699,7 @@ class AddFromCameraWidget(QWidget):
                     if self.ui.addToContainerButton.isEnabled():
                         self.on_add_clicked()
                 return True
-            elif key_event.key() == Qt.Key.Key_Escape and self.imageCaputured:
+            elif key_event.key() == Qt.Key.Key_Escape and self.imageCaptured:
                 # If ESC is pressed and we have a captured image, trigger next/skip
                 self.on_next_clicked()
                 return True
