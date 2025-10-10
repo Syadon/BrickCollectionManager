@@ -99,6 +99,17 @@ class ContainerDetailDialog(QDialog):
         # Resize columns to content
         self.ui.partsView.resizeColumnsToContents()
         
+        
+        # Limit Name column width
+        name_column_index = 2
+        max_name_width = 400
+        if self.ui.partsView.columnWidth(name_column_index) > max_name_width:
+            self.ui.partsView.setColumnWidth(name_column_index, max_name_width)
+        
+        self.ui.partsView.setWordWrap(True)
+        self.ui.partsView.resizeRowsToContents()
+        self.ui.partsView.horizontalHeader().setStretchLastSection(True)
+        
         # Connect double-click signal
         self.ui.partsView.cellDoubleClicked.connect(self.on_part_double_clicked)
 
@@ -190,6 +201,16 @@ class ContainerDetailDialog(QDialog):
         
         # Resize columns to content
         self.ui.partsView.resizeColumnsToContents()
+        
+        # Limit Name column width
+        name_column_index = 2
+        max_name_width = 400
+        if self.ui.partsView.columnWidth(name_column_index) > max_name_width:
+            self.ui.partsView.setColumnWidth(name_column_index, max_name_width)
+        
+        self.ui.partsView.setWordWrap(True)
+        self.ui.partsView.resizeRowsToContents()
+        self.ui.partsView.horizontalHeader().setStretchLastSection(True)
 
     def on_delete_clicked(self):
         """Handle delete container button click"""

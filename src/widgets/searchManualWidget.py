@@ -333,6 +333,16 @@ class SearchManualWidget(QWidget):
         # Adjust column widths
         self.ui.search_results_table.setColumnWidth(0, self.iconSize + 8)  # Set fixed width for image column
         self.ui.search_results_table.resizeColumnsToContents()
+        
+        # Limit Name column width
+        name_column_index = 2
+        max_name_width = 400
+        if self.ui.search_results_table.columnWidth(name_column_index) > max_name_width:
+            self.ui.search_results_table.setColumnWidth(name_column_index, max_name_width)
+        
+        self.ui.search_results_table.setWordWrap(True)
+        self.ui.search_results_table.resizeRowsToContents()
+        self.ui.search_results_table.horizontalHeader().setStretchLastSection(True)
 
     def addItemToTable(self, row, part: CollectionPart, required_quantity: int|None = None):
         # Image column
@@ -353,7 +363,9 @@ class SearchManualWidget(QWidget):
         self.ui.search_results_table.setItem(row, 1, QTableWidgetItem(part.part_id))
         
         # Part Name
-        self.ui.search_results_table.setItem(row, 2, QTableWidgetItem(part.part_name))
+        name_item = QTableWidgetItem(part.part_name)
+        name_item.setFlags(name_item.flags() | Qt.ItemFlag.ItemIsEnabled | Qt.ItemFlag.ItemIsSelectable)
+        self.ui.search_results_table.setItem(row, 2, name_item)
 
         # Part Category
         self.ui.search_results_table.setItem(row, 3, QTableWidgetItem(part.part_category))

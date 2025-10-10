@@ -242,7 +242,9 @@ class AddManualWidget(QWidget):
             self.ui.search_results_table.setItem(row, 1, QTableWidgetItem(data['part_id']))
             
             # Part Name
-            self.ui.search_results_table.setItem(row, 2, QTableWidgetItem(data['part_name']))
+            name_item = QTableWidgetItem(data['part_name'])
+            name_item.setFlags(name_item.flags() | Qt.ItemFlag.ItemIsEnabled | Qt.ItemFlag.ItemIsSelectable)
+            self.ui.search_results_table.setItem(row, 2, name_item)
             
             # Color using ColorLabel widget
             rgb_hex = data['rgb'] if data['rgb'] else None
@@ -255,6 +257,16 @@ class AddManualWidget(QWidget):
         # Regola larghezza colonne
         self.ui.search_results_table.setColumnWidth(0, self.iconSize + 8)  # Dimensione fissa per colonna immagine
         self.ui.search_results_table.resizeColumnsToContents()
+        
+        # Limit Name column width
+        name_column_index = 2
+        max_name_width = 400
+        if self.ui.search_results_table.columnWidth(name_column_index) > max_name_width:
+            self.ui.search_results_table.setColumnWidth(name_column_index, max_name_width)
+        
+        self.ui.search_results_table.setWordWrap(True)
+        self.ui.search_results_table.resizeRowsToContents()
+        self.ui.search_results_table.horizontalHeader().setStretchLastSection(True)
 
     def on_search_selection_changed(self):
         self.update_add_button_state()

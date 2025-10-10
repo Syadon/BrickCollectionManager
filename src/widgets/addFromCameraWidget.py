@@ -370,6 +370,15 @@ class AddFromCameraWidget(QWidget):
             image_item.setIcon(QIcon(scaled))
             self.ui.parts_list.viewport().update()  # Force repaint
             self.ui.parts_list.resizeColumnsToContents()
+            
+            # Limit Name column width
+            name_column_index = 2
+            max_name_width = 400
+            if self.ui.parts_list.columnWidth(name_column_index) > max_name_width:
+                self.ui.parts_list.setColumnWidth(name_column_index, max_name_width)
+            
+            self.ui.parts_list.setWordWrap(True)
+            self.ui.parts_list.resizeRowsToContents()
             self.ui.parts_list.horizontalHeader().setStretchLastSection(True)
             
     def on_part_detected(self, image, detectionData):
@@ -415,6 +424,9 @@ class AddFromCameraWidget(QWidget):
     
             id_item = QTableWidgetItem(f"{item['id']}")
             name_item = QTableWidgetItem(f"{item['name']}")
+            # Enable word wrap for long part names
+            name_item.setFlags(name_item.flags() | Qt.ItemFlag.ItemIsEnabled)
+            
             score_item = QTableWidgetItem()
             score_item.setData(Qt.ItemDataRole.EditRole, round(item['score']*100, 2))
 
@@ -432,6 +444,17 @@ class AddFromCameraWidget(QWidget):
 
         # Adjust columns to content and stretch last column
         self.ui.parts_list.resizeColumnsToContents()
+        
+        # Limit Name column width and enable word wrap
+        name_column_index = 2  # Name is column 2 (0: Image, 1: ID, 2: Name, 3: Score)
+        max_name_width = 400  # Maximum width for name column
+        if self.ui.parts_list.columnWidth(name_column_index) > max_name_width:
+            self.ui.parts_list.setColumnWidth(name_column_index, max_name_width)
+        
+        # Enable word wrap for the table
+        self.ui.parts_list.setWordWrap(True)
+        self.ui.parts_list.resizeRowsToContents()  # Adjust row heights for wrapped text
+        
         self.ui.parts_list.horizontalHeader().setStretchLastSection(True)
 
         # Select first item if available

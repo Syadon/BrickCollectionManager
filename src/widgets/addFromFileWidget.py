@@ -250,6 +250,7 @@ class AddFromFileWidget(QWidget):
             
             # Colonna Part Name
             name_item = QTableWidgetItem(part.get('part_name', 'Unknown'))
+            name_item.setFlags(name_item.flags() | Qt.ItemFlag.ItemIsEnabled | Qt.ItemFlag.ItemIsSelectable)
             self.ui.tableWidget.setItem(row, 2, name_item)
             name_item.setSizeHint(QSize(400, self.iconSize))
             
@@ -271,6 +272,16 @@ class AddFromFileWidget(QWidget):
         # Regola la larghezza delle colonne
         self.ui.tableWidget.setColumnWidth(0, self.iconSize + 8)
         self.ui.tableWidget.resizeColumnsToContents()
+        
+        # Limit Name column width
+        name_column_index = 2
+        max_name_width = 400
+        if self.ui.tableWidget.columnWidth(name_column_index) > max_name_width:
+            self.ui.tableWidget.setColumnWidth(name_column_index, max_name_width)
+        
+        self.ui.tableWidget.setWordWrap(True)
+        self.ui.tableWidget.resizeRowsToContents()
+        self.ui.tableWidget.horizontalHeader().setStretchLastSection(True)
         
         # Riconnetti il segnale cellChanged
         self.ui.tableWidget.cellChanged.connect(self.on_cell_changed)
