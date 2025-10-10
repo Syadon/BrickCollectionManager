@@ -370,6 +370,7 @@ class AddFromCameraWidget(QWidget):
             image_item.setIcon(QIcon(scaled))
             self.ui.parts_list.viewport().update()  # Force repaint
             self.ui.parts_list.resizeColumnsToContents()
+            self.ui.parts_list.horizontalHeader().setStretchLastSection(True)
             
     def on_part_detected(self, image, detectionData):
         # Check if detectionData contains required fields
@@ -429,8 +430,9 @@ class AddFromCameraWidget(QWidget):
         # Adjust row heights for icons
         self.ui.parts_list.verticalHeader().setDefaultSectionSize(self.iconSize)
 
-        # Adjust columns to content
+        # Adjust columns to content and stretch last column
         self.ui.parts_list.resizeColumnsToContents()
+        self.ui.parts_list.horizontalHeader().setStretchLastSection(True)
 
         # Select first item if available
         if self.ui.parts_list.rowCount() > 0:
@@ -561,6 +563,10 @@ class AddFromCameraWidget(QWidget):
         if not self.colorsDetected:
             for color in colors:
                 self.add_color_to_table(color)
+            # Configure column sizing and row height
+            self.ui.colors_list.resizeColumnsToContents()
+            self.ui.colors_list.horizontalHeader().setStretchLastSection(True)
+            self.ui.colors_list.verticalHeader().setDefaultSectionSize(40)  # Set minimum row height
             return
 
         # Calculate color similarity scores
@@ -603,6 +609,11 @@ class AddFromCameraWidget(QWidget):
         for color in colors:
             if not color.rgb:
                 self.add_color_to_table(color)
+        
+        # Configure column sizing
+        self.ui.colors_list.resizeColumnsToContents()  # Resize all columns to fit content
+        self.ui.colors_list.horizontalHeader().setStretchLastSection(True)  # Make last column stretch to fill remaining space
+        self.ui.colors_list.verticalHeader().setDefaultSectionSize(40)  # Set minimum row height
                 
     def add_color_to_table(self, color: BrickColor, score: float|None = None):
         # Nel metodo add_color_to_table, potresti aggiungere controlli più rigorosi
