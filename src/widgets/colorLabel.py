@@ -17,6 +17,8 @@ class ColorLabel(QLabel):
         # Apply color styling if RGB is provided
         if rgb_hex:
             self.set_color_style(rgb_hex)
+            
+        self.setMinimumWidth(128)
     
     def set_color_style(self, rgb_hex):
         """Set the background and text color based on RGB hex value"""
