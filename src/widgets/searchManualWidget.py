@@ -372,7 +372,7 @@ class SearchManualWidget(QWidget):
         
         # Color using ColorLabel widget
         rgb_hex = part.rgb if part.rgb else None
-        color_label = ColorLabel(part.color_name, rgb_hex)
+        color_label = ColorLabel(part.color_name, rgb_hex, part.color_type, part.color_id)
         self.ui.search_results_table.setCellWidget(row, 4, color_label)
         
         # Color Type

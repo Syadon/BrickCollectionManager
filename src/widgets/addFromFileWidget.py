@@ -256,7 +256,8 @@ class AddFromFileWidget(QWidget):
             
             # Colonna Color using ColorLabel widget
             rgb_hex = part.get('rgb') if part.get('rgb') else None
-            color_label = ColorLabel(part.get('color_name', 'Unknown'), rgb_hex)
+            color_label = ColorLabel(part.get('color_name', 'Unknown'), rgb_hex, 
+                                   part.get('color_type', 'Unknown'), part.get('color_id'))
             self.ui.tableWidget.setCellWidget(row, 3, color_label)
             
             # Colonna Color Type

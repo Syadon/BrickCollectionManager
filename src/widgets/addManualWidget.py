@@ -248,7 +248,7 @@ class AddManualWidget(QWidget):
             
             # Color using ColorLabel widget
             rgb_hex = data['rgb'] if data['rgb'] else None
-            color_label = ColorLabel(data['color_name'], rgb_hex)
+            color_label = ColorLabel(data['color_name'], rgb_hex, data['color_type'], data['color_id'])
             self.ui.search_results_table.setCellWidget(row, 3, color_label)
             
             # Color Type

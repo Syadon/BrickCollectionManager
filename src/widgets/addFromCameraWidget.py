@@ -649,7 +649,7 @@ class AddFromCameraWidget(QWidget):
         # Create items
         # Create ColorLabel for color name with background color
         rgb_hex = color.rgb if color.rgb else None
-        color_label = ColorLabel(color.name, rgb_hex)
+        color_label = ColorLabel(color.name, rgb_hex, color.type, color.id)
         
         # Create empty item to store data (ColorLabel doesn't store data)
         name_item = QTableWidgetItem()

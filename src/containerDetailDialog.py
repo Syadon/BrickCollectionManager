@@ -148,7 +148,8 @@ class ContainerDetailDialog(QDialog):
             
             # Color column (4) - using ColorLabel widget
             rgb_hex = part.rgb if hasattr(part, 'rgb') else None
-            color_label = ColorLabel(part.color_name, rgb_hex)
+            color_id = part.color_id if hasattr(part, 'color_id') else None
+            color_label = ColorLabel(part.color_name, rgb_hex, part.color_type, color_id)
             
             self.ui.partsView.setCellWidget(row, 4, color_label)
             
