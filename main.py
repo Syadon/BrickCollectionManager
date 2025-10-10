@@ -10,6 +10,25 @@ import os
 
 from qt_material import apply_stylesheet
 
+def setup_window_geometry(app, window):
+    """Set optimal window size and center it on screen"""
+    screen = app.primaryScreen()
+    screen_geometry = screen.geometry()
+    screen_width = screen_geometry.width()
+    screen_height = screen_geometry.height()
+
+    # Set window size to 80% of screen dimensions for optimal viewing
+    optimal_width = int(screen_width * 0.8)
+    optimal_height = int(screen_height * 0.8)
+
+    window.resize(optimal_width, optimal_height)
+
+    # Center the window on screen
+    window.move(
+        (screen_width - optimal_width) // 2,
+        (screen_height - optimal_height) // 2
+    )
+
 def main():
     # Initialize application configuration
     AppConfig.initialize()
@@ -63,6 +82,8 @@ def main():
     # Create and show main window
     window = MainWindow()
     window.show()
+
+    setup_window_geometry(app, window)
     
     # Start the event loop
     exit_code = app.exec()

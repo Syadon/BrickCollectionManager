@@ -51,6 +51,16 @@ class ContainerDetailDialog(QDialog):
 
         # Setup parts table
         self.setup_parts_table()
+        
+        # Set dialog size based on parent window if available
+        if self.parent_widget:
+            parent_size = self.parent_widget.size()
+            dialog_width = int(parent_size.width() * 0.9)
+            dialog_height = int(parent_size.height() * 0.9)
+            self.resize(dialog_width, dialog_height)
+        else:
+            # Default size if no parent
+            self.resize(800, 600)
 
     def setup_parts_table(self):
         dbManager = DatabaseManager()
