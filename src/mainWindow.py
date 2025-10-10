@@ -11,7 +11,7 @@ class MainWindow(QMainWindow):
     def __init__(self):
         super().__init__()
         self.setWindowTitle("Brick Collection Manager")
-        self.setMinimumSize(1024, 768)
+        self.setMinimumSize(1200, 700)
 
         # Create central widget and main layout
         central_widget = QWidget()
