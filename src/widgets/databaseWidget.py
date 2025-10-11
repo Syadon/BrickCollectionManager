@@ -7,6 +7,8 @@ import logging
 import shutil
 from datetime import datetime
 from config import AppConfig
+import subprocess
+import sys
 import xml.etree.ElementTree as ET
 
 class DatabaseWidget(QWidget):
@@ -22,12 +24,38 @@ class DatabaseWidget(QWidget):
         # Connetti i pulsanti standard di dialogo
         self.ui.updateDBButton.clicked.connect(self.update_database)
         self.ui.dbRestorePointButton.clicked.connect(self.create_restore_database)
+        self.ui.openDataPathButton.clicked.connect(self.openDataPath)
+
         # Inizializza il database manager
         self.db_manager = DatabaseManager()
         
         # Variabile per tracciare il percorso della directory selezionata
         self.selected_directory = None
         self.all_files_found = False
+        
+    def openDataPath(self):
+        """Opens the database directory in the system file manager"""
+        try:
+            # Get the database directory path
+            db_directory = AppConfig.DATABASE_PATH.parent
+            
+            # Convert to string for subprocess
+            directory_path = str(db_directory)
+            
+            # Open directory based on operating system
+            if sys.platform == "win32":
+                # Windows
+                subprocess.run(["explorer", directory_path], check=True)
+            elif sys.platform == "darwin":
+                # macOS
+                subprocess.run(["open", directory_path], check=True)
+            else:
+                # Linux and other Unix-like systems
+                subprocess.run(["xdg-open", directory_path], check=True)
+                
+        except Exception as e:
+            QMessageBox.critical(self, "Error", f"Failed to open directory: {str(e)}")
+            logging.error(f"Failed to open directory: {str(e)}")
 
     def update_dbUpdate_button_state(self):
         if self.all_files_found:
