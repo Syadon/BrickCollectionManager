@@ -97,6 +97,10 @@ class ContainerListWidget(QWidget):
         self.model = ContainerTableModel(containers)
         self.table_view.setModel(self.model)
         
+        # Configure column sizing
+        self.table_view.resizeColumnsToContents()  # Resize all columns to fit content
+        self.table_view.horizontalHeader().setStretchLastSection(True)  # Make last column stretch to fill remaining space
+        
         # Update counters
         self.update_counters()
         

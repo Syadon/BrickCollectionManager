@@ -6,6 +6,7 @@ from PySide6.QtGui import QColor, QIcon
 from ui.ui_addFromFileWidget import Ui_AddFromFileWidget
 from src.database import DatabaseManager, Container
 from src.utils import TransparentSelectionDelegate
+from src.widgets.colorLabel import ColorLabel
 from src.imageProvider import ImagesProvider
 from config import AppConfig
 from src.partsFileParser import XmlParser
@@ -96,7 +97,7 @@ class AddFromFileWidget(QWidget):
         self.parts_data = []
 
     def setup_table(self):
-        headers = ["Image", "ID", "Name", "Color", "Color Type", "Quantity"]
+        headers = ["Image", "ID", "Name", "Color", "Quantity"]
         self.ui.tableWidget.setColumnCount(len(headers))
         self.ui.tableWidget.setHorizontalHeaderLabels(headers)
         
@@ -107,8 +108,8 @@ class AddFromFileWidget(QWidget):
         self.ui.tableWidget.setItemDelegateForColumn(0, TransparentSelectionDelegate(self.ui.tableWidget))
         self.ui.tableWidget.setItemDelegateForColumn(3, TransparentSelectionDelegate(self.ui.tableWidget))
         
-        # Imposta il delegate per la colonna della quantità (colonna 5)
-        self.ui.tableWidget.setItemDelegateForColumn(5, SpinBoxDelegate(self.ui.tableWidget, 1, 9999))
+        # Imposta il delegate per la colonna della quantità (colonna 4)
+        self.ui.tableWidget.setItemDelegateForColumn(4, SpinBoxDelegate(self.ui.tableWidget, 1, 9999))
         
         # Consenti l'editing solo per la colonna della quantità
         #self.ui.tableWidget.setEditTriggers(QTableWidget.DoubleClicked | QTableWidget.EditKeyPressed)
@@ -249,34 +250,35 @@ class AddFromFileWidget(QWidget):
             
             # Colonna Part Name
             name_item = QTableWidgetItem(part.get('part_name', 'Unknown'))
+            name_item.setFlags(name_item.flags() | Qt.ItemFlag.ItemIsEnabled | Qt.ItemFlag.ItemIsSelectable)
             self.ui.tableWidget.setItem(row, 2, name_item)
             name_item.setSizeHint(QSize(400, self.iconSize))
             
-            # Colonna Color con sfondo colorato
-            color_item = QTableWidgetItem(part.get('color_name', 'Unknown'))
-            if 'rgb' in part and part['rgb']:
-                bg_color = QColor(f"#{part['rgb']}")
-                color_item.setBackground(bg_color)
-                
-                # Imposta il colore del testo per migliorare la leggibilità
-                luminance = (0.299 * bg_color.red() + 0.587 * bg_color.green() + 0.114 * bg_color.blue())
-                text_color = Qt.GlobalColor.white if luminance < 128 else Qt.GlobalColor.black
-                color_item.setForeground(text_color)
-            self.ui.tableWidget.setItem(row, 3, color_item)
-            
-            # Colonna Color Type
-            type_item = QTableWidgetItem(part.get('color_type', 'Unknown'))
-            self.ui.tableWidget.setItem(row, 4, type_item)
+            # Colonna Color using ColorLabel widget
+            rgb_hex = part.get('rgb') if part.get('rgb') else None
+            color_label = ColorLabel(part.get('color_name', 'Unknown'), rgb_hex, 
+                                   part.get('color_type', 'Unknown'), part.get('color_id'))
+            self.ui.tableWidget.setCellWidget(row, 3, color_label)
             
             # Colonna Quantity - imposta l'EditRole per permettere l'editing
             qty_item = QTableWidgetItem()
             qty_item.setData(Qt.ItemDataRole.EditRole, part.get('quantity', 1))
             qty_item.setTextAlignment(Qt.AlignmentFlag.AlignCenter)
-            self.ui.tableWidget.setItem(row, 5, qty_item)
+            self.ui.tableWidget.setItem(row, 4, qty_item)
         
         # Regola la larghezza delle colonne
         self.ui.tableWidget.setColumnWidth(0, self.iconSize + 8)
         self.ui.tableWidget.resizeColumnsToContents()
+        
+        # Limit Name column width
+        name_column_index = 2
+        max_name_width = 400
+        if self.ui.tableWidget.columnWidth(name_column_index) > max_name_width:
+            self.ui.tableWidget.setColumnWidth(name_column_index, max_name_width)
+        
+        self.ui.tableWidget.setWordWrap(True)
+        self.ui.tableWidget.resizeRowsToContents()
+        self.ui.tableWidget.horizontalHeader().setStretchLastSection(True)
         
         # Riconnetti il segnale cellChanged
         self.ui.tableWidget.cellChanged.connect(self.on_cell_changed)
@@ -452,8 +454,8 @@ class AddFromFileWidget(QWidget):
 
     def on_cell_changed(self, row, column):
         """Gestisce le modifiche alle celle della tabella"""
-        # Aggiorna solo se è la colonna della quantità (colonna 5)
-        if column == 5 and row < len(self.parts_data):
+        # Aggiorna solo se è la colonna della quantità (colonna 4)
+        if column == 4 and row < len(self.parts_data):
             item = self.ui.tableWidget.item(row, column)
             if item:
                 try:

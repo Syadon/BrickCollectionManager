@@ -1,11 +1,12 @@
-from PySide6.QtWidgets import QWidget, QListWidgetItem, QTableWidgetItem, QMessageBox, QLabel, QStackedLayout, QVBoxLayout
-from PySide6.QtGui import QImage, QIcon, QColor, QKeyEvent, QPainter, QPen, QPixmap, QKeySequence
-from PySide6.QtCore import QByteArray, Qt, QRect, QBuffer, QEvent, Signal, QTimer
-from PySide6.QtMultimedia import QCamera, QMediaCaptureSession, QImageCapture, QCameraDevice, QMediaDevices
+from PySide6.QtWidgets import QWidget, QTableWidgetItem, QMessageBox, QLabel, QStackedLayout, QVBoxLayout
+from PySide6.QtGui import QImage, QIcon, QColor, QKeyEvent, QPainter, QPen, QPixmap
+from PySide6.QtCore import QByteArray, Qt, QRect, QBuffer, QEvent, QTimer
+from PySide6.QtMultimedia import QCamera, QMediaCaptureSession, QImageCapture, QMediaDevices
 from PySide6.QtMultimediaWidgets import QVideoWidget
 from src.database import DatabaseManager, Container, BrickColor
 from src.timedMessageBox import TimedMessageBox
 from src.imageProvider import ImagesProvider
+from src.widgets.colorLabel import ColorLabel
 from src.utils import TransparentSelectionDelegate, qImageToOpenCV, rgb_to_hsv, calculate_hsv_similarity
 from config import AppConfig
 import cv2
@@ -24,7 +25,7 @@ class AddFromCameraWidget(QWidget):
 
         self.iconSize = AppConfig.DEFAULT_ICON_SIZE
         self.targetContainer = container
-        self.imageCaputured = False
+        self.imageCaptured = False
         self.colorsDetected = []
         self.current_part_id = None
         
@@ -253,7 +254,7 @@ class AddFromCameraWidget(QWidget):
     def clearDetection(self):
         self.ui.parts_list.setRowCount(0)
         self.ui.colors_list.setRowCount(0)
-        self.imageCaputured = False
+        self.imageCaptured = False
         self.ui.qtySpinBox.setValue(1)
         self.captured_image = None
         self.detection_rect = None
@@ -267,7 +268,7 @@ class AddFromCameraWidget(QWidget):
         image.save(buffer, "JPG", quality=90)
         buffer.close()
 
-        self.imageCaputured = True
+        self.imageCaptured = True
 
         recongnition = BrickRecognition()
         recognition_result = recongnition.recognize(bytearray(byte_array.data()), 
@@ -370,6 +371,16 @@ class AddFromCameraWidget(QWidget):
             self.ui.parts_list.viewport().update()  # Force repaint
             self.ui.parts_list.resizeColumnsToContents()
             
+            # Limit Name column width
+            name_column_index = 2
+            max_name_width = 400
+            if self.ui.parts_list.columnWidth(name_column_index) > max_name_width:
+                self.ui.parts_list.setColumnWidth(name_column_index, max_name_width)
+            
+            self.ui.parts_list.setWordWrap(True)
+            self.ui.parts_list.resizeRowsToContents()
+            self.ui.parts_list.horizontalHeader().setStretchLastSection(True)
+            
     def on_part_detected(self, image, detectionData):
         # Check if detectionData contains required fields
         if 'bb' not in detectionData or 'items' not in detectionData:
@@ -413,6 +424,9 @@ class AddFromCameraWidget(QWidget):
     
             id_item = QTableWidgetItem(f"{item['id']}")
             name_item = QTableWidgetItem(f"{item['name']}")
+            # Enable word wrap for long part names
+            name_item.setFlags(name_item.flags() | Qt.ItemFlag.ItemIsEnabled)
+            
             score_item = QTableWidgetItem()
             score_item.setData(Qt.ItemDataRole.EditRole, round(item['score']*100, 2))
 
@@ -428,8 +442,20 @@ class AddFromCameraWidget(QWidget):
         # Adjust row heights for icons
         self.ui.parts_list.verticalHeader().setDefaultSectionSize(self.iconSize)
 
-        # Adjust columns to content
+        # Adjust columns to content and stretch last column
         self.ui.parts_list.resizeColumnsToContents()
+        
+        # Limit Name column width and enable word wrap
+        name_column_index = 2  # Name is column 2 (0: Image, 1: ID, 2: Name, 3: Score)
+        max_name_width = 400  # Maximum width for name column
+        if self.ui.parts_list.columnWidth(name_column_index) > max_name_width:
+            self.ui.parts_list.setColumnWidth(name_column_index, max_name_width)
+        
+        # Enable word wrap for the table
+        self.ui.parts_list.setWordWrap(True)
+        self.ui.parts_list.resizeRowsToContents()  # Adjust row heights for wrapped text
+        
+        self.ui.parts_list.horizontalHeader().setStretchLastSection(True)
 
         # Select first item if available
         if self.ui.parts_list.rowCount() > 0:
@@ -474,10 +500,11 @@ class AddFromCameraWidget(QWidget):
 
             # Get selected container
             container_data = self.ui.containerCombobox.currentData()
-            container_id, container_name = container_data
-            if container_id is None:
-                logging.warning("No container selected")
+
+            if not container_data or len(container_data) != 2:
+                logging.warning("Invalid container data")
                 return
+            container_id, container_name = container_data
 
             # Get quantity
             quantity = self.ui.qtySpinBox.value()
@@ -559,6 +586,10 @@ class AddFromCameraWidget(QWidget):
         if not self.colorsDetected:
             for color in colors:
                 self.add_color_to_table(color)
+            # Configure column sizing and row height
+            self.ui.colors_list.resizeColumnsToContents()
+            self.ui.colors_list.horizontalHeader().setStretchLastSection(True)
+            self.ui.colors_list.verticalHeader().setDefaultSectionSize(self.iconSize)  # Set minimum row height
             return
 
         # Calculate color similarity scores
@@ -601,62 +632,38 @@ class AddFromCameraWidget(QWidget):
         for color in colors:
             if not color.rgb:
                 self.add_color_to_table(color)
+        
+        # Configure column sizing
+        self.ui.colors_list.resizeColumnsToContents()  # Resize all columns to fit content
+        self.ui.colors_list.horizontalHeader().setStretchLastSection(True)  # Make last column stretch to fill remaining space
+        self.ui.colors_list.verticalHeader().setDefaultSectionSize(self.iconSize)  # Set minimum row height
                 
     def add_color_to_table(self, color: BrickColor, score: float|None = None):
+        # Nel metodo add_color_to_table, potresti aggiungere controlli più rigorosi
+        if not color or not hasattr(color, 'name'):
+            return
+            
         row = self.ui.colors_list.rowCount()
         self.ui.colors_list.insertRow(row)
 
         # Create items
-        name_item = QTableWidgetItem(color.name)
-        type_item = QTableWidgetItem(color.type if color.type else "")
+        # Create ColorLabel for color name with background color
+        rgb_hex = color.rgb if color.rgb else None
+        color_label = ColorLabel(color.name, rgb_hex, color.type, color.id)
+        
+        # Create empty item to store data (ColorLabel doesn't store data)
+        name_item = QTableWidgetItem()
+        name_item.setData(Qt.ItemDataRole.UserRole, color)
+        
         score_item = QTableWidgetItem()
         score_item.setData(Qt.ItemDataRole.EditRole, round(score*100, 2) if score is not None else 0)
-        id_item = QTableWidgetItem(str(color.id))
         year_item = QTableWidgetItem(str(color.year_to) if color.year_to else "")
 
-        # Set background color
-        if color.rgb:
-            bg_color = QColor(f"#{color.rgb}")
-            name_item.setBackground(bg_color)
-            
-            # Set text color for better visibility
-            luminance = (0.299 * bg_color.red() + 0.587 * bg_color.green() + 0.114 * bg_color.blue())
-            text_color = Qt.GlobalColor.white if luminance < 128 else Qt.GlobalColor.black
-            name_item.setForeground(text_color)
-
-        # Store color data
-        name_item.setData(Qt.ItemDataRole.UserRole, color)
-
         # Add items to row
-        self.ui.colors_list.setItem(row, 0, name_item)
-        self.ui.colors_list.setItem(row, 1, type_item)
-        self.ui.colors_list.setItem(row, 2, score_item)
-        self.ui.colors_list.setItem(row, 3, year_item)
-        self.ui.colors_list.setItem(row, 4, id_item)
-
-    def create_color_list_item(self, color:BrickColor, score:float|None = None) -> QListWidgetItem:
-        item = QListWidgetItem()
-
-        itemText = f"{color.name} - {color.type}" if color.type else color.name
-        if score != None:
-            itemText += f" - Match score: {score:.2%}"
-
-        item.setText(itemText)
-
-        bgColor = QColor(f"#{color.rgb}")
-        item.setBackground(bgColor)
-
-            # Set text color for better visibility
-        luminance = (0.299 * bgColor.red() + 0.587 * bgColor.green() + 0.114 * bgColor.blue())
-        text_color = Qt.GlobalColor.white if luminance < 128 else Qt.GlobalColor.black
-        item.setForeground(text_color)
-
-        item.setData(Qt.ItemDataRole.UserRole, color)
-
-        # Add score to tooltip
-        item.setToolTip(f"Match score: {score:.2%}")
-
-        return item
+        self.ui.colors_list.setItem(row, 0, name_item)  # Set the item with data
+        self.ui.colors_list.setCellWidget(row, 0, color_label)  # Set the ColorLabel widget
+        self.ui.colors_list.setItem(row, 1, score_item)
+        self.ui.colors_list.setItem(row, 2, year_item)
 
     def detect_image_colors(self, image:QImage, bb:QRect):
         try:
@@ -714,7 +721,7 @@ class AddFromCameraWidget(QWidget):
         if event.type() == QEvent.Type.KeyPress:
             key_event = QKeyEvent(event)
             if key_event.key() == Qt.Key.Key_F1:
-                if not self.imageCaputured:
+                if not self.imageCaptured:
                     # If no image is captured, capture one
                     self.capture_image()
                 else:
@@ -722,7 +729,7 @@ class AddFromCameraWidget(QWidget):
                     if self.ui.addToContainerButton.isEnabled():
                         self.on_add_clicked()
                 return True
-            elif key_event.key() == Qt.Key.Key_Escape and self.imageCaputured:
+            elif key_event.key() == Qt.Key.Key_Escape and self.imageCaptured:
                 # If ESC is pressed and we have a captured image, trigger next/skip
                 self.on_next_clicked()
                 return True
