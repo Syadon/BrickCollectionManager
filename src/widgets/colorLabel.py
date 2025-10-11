@@ -23,7 +23,7 @@ class ColorLabel(QLabel):
         if rgb_hex:
             self.set_color_style(rgb_hex)
             
-        self.setMinimumWidth(200)
+        self.setMinimumSize(200, 50)
     
     def _update_text(self):
         """Update the display text with color name and optional details"""

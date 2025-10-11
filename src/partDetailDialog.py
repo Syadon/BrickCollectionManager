@@ -1,8 +1,9 @@
-from PySide6.QtWidgets import (QDialog, QMessageBox)
+from PySide6.QtWidgets import (QDialog, QMessageBox, QFormLayout)
 from PySide6.QtGui import QColor, QPixmap
 from PySide6.QtCore import Qt
 from src.database import DatabaseManager, Container, CollectionPart
 from src.imageProvider import ImagesProvider
+from src.widgets.colorLabel import ColorLabel
 from config import AppConfig
 from ui.ui_detailPartDialog import Ui_DeatilPartDialog
 
@@ -38,19 +39,13 @@ class PartDetailDialog(QDialog):
         self.ui.nameValLabel.setText(self.part_data.part_name)
         self.ui.categoryValLabel.setText(self.part_data.part_category)
         
-        # Color information with colored background
-        self.ui.colorValLabel.setText(self.part_data.color_name)
-        rgb = QColor(f"#{self.part_data.rgb}")
-        luminance = (0.299 * rgb.red() + 0.587 * rgb.green() + 0.114 * rgb.blue())
+        # Create and add ColorLabel
+        rgb_hex = self.part_data.rgb if hasattr(self.part_data, 'rgb') else None
+        color_id = self.part_data.color_id if hasattr(self.part_data, 'color_id') else None
+        color_type = self.part_data.color_type if hasattr(self.part_data, 'color_type') else None
         
-        # Set stylesheet for colored background
-        self.ui.colorValLabel.setStyleSheet(
-            f"background-color: #{self.part_data.rgb}; "
-            f"color: {'white' if luminance < 128 else 'black'}; "
-            f"padding: 4px; border-radius: 4px;"
-        )
-
-        self.ui.colorTypeValLabel.setText(self.part_data.color_type)
+        self.color_label = ColorLabel(self.part_data.color_name, rgb_hex, color_type, color_id)
+        self.ui.infoLayout.addWidget(self.color_label, 3, 1)
 
         self.ui.currentContainerValue.setText(self.container.name)
         
@@ -61,6 +56,7 @@ class PartDetailDialog(QDialog):
         self.ui.qtySpinBox.setRange(1, self.current_quantity)
         self.ui.qtySpinBox.setValue(1)
 
+        self.ui.moveButton.setProperty('class', 'warning')
         self.ui.moveButton.clicked.connect(self.on_move_remove_clicked)
         self.ui.toContainerRadioButton.toggled.connect(self.ui.containerCombo.setEnabled)
         
