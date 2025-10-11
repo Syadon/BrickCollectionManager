@@ -65,7 +65,7 @@ class AddManualWidget(QWidget):
 
         
         # Tabella risultati
-        headerLabels = ["Image", "Part ID", "Part Name", "Color", "Color Type"]
+        headerLabels = ["Image", "Part ID", "Part Name", "Color"]
         
         self.ui.search_results_table.setColumnCount(len(headerLabels))
         self.ui.search_results_table.setHorizontalHeaderLabels(headerLabels)
@@ -250,9 +250,6 @@ class AddManualWidget(QWidget):
             rgb_hex = data['rgb'] if data['rgb'] else None
             color_label = ColorLabel(data['color_name'], rgb_hex, data['color_type'], data['color_id'])
             self.ui.search_results_table.setCellWidget(row, 3, color_label)
-            
-            # Color Type
-            self.ui.search_results_table.setItem(row, 4, QTableWidgetItem(data['color_type']))
         
         # Regola larghezza colonne
         self.ui.search_results_table.setColumnWidth(0, self.iconSize + 8)  # Dimensione fissa per colonna immagine

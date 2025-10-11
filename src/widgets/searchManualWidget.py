@@ -44,8 +44,9 @@ class SearchManualWidget(QWidget):
         self.ui.search_color_type_combo.currentIndexChanged.connect(self.validate_search_inputs)
         self.ui.fileEdit.textChanged.connect(self.validate_search_inputs)
 
-        self.ui.search_results_table.setColumnCount(8)
-        self.ui.search_results_table.setHorizontalHeaderLabels(["Image", "Part ID", "Part Name", "Category", "Color", "Color Type", "Container", "Quantity"])
+        table_header_labels = ["Image", "Part ID", "Part Name", "Category", "Color", "Container", "Quantity"] 
+        self.ui.search_results_table.setColumnCount(7)
+        self.ui.search_results_table.setHorizontalHeaderLabels(table_header_labels)
         self.ui.search_results_table.horizontalHeader().setStretchLastSection(True)
         self.ui.search_results_table.verticalHeader().setVisible(False)
         self.ui.search_results_table.setEditTriggers(QTableWidget.EditTrigger.NoEditTriggers)
@@ -339,7 +340,12 @@ class SearchManualWidget(QWidget):
         max_name_width = 400
         if self.ui.search_results_table.columnWidth(name_column_index) > max_name_width:
             self.ui.search_results_table.setColumnWidth(name_column_index, max_name_width)
-        
+            
+        type_column_index = 3
+        max_type_width = 200
+        if self.ui.search_results_table.columnWidth(type_column_index) > max_type_width:
+            self.ui.search_results_table.setColumnWidth(type_column_index, max_type_width)
+
         self.ui.search_results_table.setWordWrap(True)
         self.ui.search_results_table.resizeRowsToContents()
         self.ui.search_results_table.horizontalHeader().setStretchLastSection(True)
@@ -375,12 +381,9 @@ class SearchManualWidget(QWidget):
         color_label = ColorLabel(part.color_name, rgb_hex, part.color_type, part.color_id)
         self.ui.search_results_table.setCellWidget(row, 4, color_label)
         
-        # Color Type
-        self.ui.search_results_table.setItem(row, 5, QTableWidgetItem(part.color_type))
-        
         # Container
         container_item = QTableWidgetItem(part.container_name)
-        self.ui.search_results_table.setItem(row, 6, container_item)
+        self.ui.search_results_table.setItem(row, 5, container_item)
 
         # Quantity
         if required_quantity is not None:
@@ -394,11 +397,11 @@ class SearchManualWidget(QWidget):
             # Color in red if there aren't enough parts
             if part.quantity < required_quantity:
                 quantity_item.setForeground(QColor(255, 0, 0))
-            self.ui.search_results_table.setItem(row, 7, quantity_item)
+            self.ui.search_results_table.setItem(row, 6, quantity_item)
         else:
             quantity_item = QTableWidgetItem()
             quantity_item.setData(Qt.ItemDataRole.DisplayRole, part.quantity)
-            self.ui.search_results_table.setItem(row, 7, quantity_item)
+            self.ui.search_results_table.setItem(row, 6, quantity_item)
 
 
     def clear_search(self):

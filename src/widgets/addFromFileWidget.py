@@ -97,7 +97,7 @@ class AddFromFileWidget(QWidget):
         self.parts_data = []
 
     def setup_table(self):
-        headers = ["Image", "ID", "Name", "Color", "Color Type", "Quantity"]
+        headers = ["Image", "ID", "Name", "Color", "Quantity"]
         self.ui.tableWidget.setColumnCount(len(headers))
         self.ui.tableWidget.setHorizontalHeaderLabels(headers)
         
@@ -108,8 +108,8 @@ class AddFromFileWidget(QWidget):
         self.ui.tableWidget.setItemDelegateForColumn(0, TransparentSelectionDelegate(self.ui.tableWidget))
         self.ui.tableWidget.setItemDelegateForColumn(3, TransparentSelectionDelegate(self.ui.tableWidget))
         
-        # Imposta il delegate per la colonna della quantità (colonna 5)
-        self.ui.tableWidget.setItemDelegateForColumn(5, SpinBoxDelegate(self.ui.tableWidget, 1, 9999))
+        # Imposta il delegate per la colonna della quantità (colonna 4)
+        self.ui.tableWidget.setItemDelegateForColumn(4, SpinBoxDelegate(self.ui.tableWidget, 1, 9999))
         
         # Consenti l'editing solo per la colonna della quantità
         #self.ui.tableWidget.setEditTriggers(QTableWidget.DoubleClicked | QTableWidget.EditKeyPressed)
@@ -260,15 +260,11 @@ class AddFromFileWidget(QWidget):
                                    part.get('color_type', 'Unknown'), part.get('color_id'))
             self.ui.tableWidget.setCellWidget(row, 3, color_label)
             
-            # Colonna Color Type
-            type_item = QTableWidgetItem(part.get('color_type', 'Unknown'))
-            self.ui.tableWidget.setItem(row, 4, type_item)
-            
             # Colonna Quantity - imposta l'EditRole per permettere l'editing
             qty_item = QTableWidgetItem()
             qty_item.setData(Qt.ItemDataRole.EditRole, part.get('quantity', 1))
             qty_item.setTextAlignment(Qt.AlignmentFlag.AlignCenter)
-            self.ui.tableWidget.setItem(row, 5, qty_item)
+            self.ui.tableWidget.setItem(row, 4, qty_item)
         
         # Regola la larghezza delle colonne
         self.ui.tableWidget.setColumnWidth(0, self.iconSize + 8)
@@ -458,8 +454,8 @@ class AddFromFileWidget(QWidget):
 
     def on_cell_changed(self, row, column):
         """Gestisce le modifiche alle celle della tabella"""
-        # Aggiorna solo se è la colonna della quantità (colonna 5)
-        if column == 5 and row < len(self.parts_data):
+        # Aggiorna solo se è la colonna della quantità (colonna 4)
+        if column == 4 and row < len(self.parts_data):
             item = self.ui.tableWidget.item(row, column)
             if item:
                 try:

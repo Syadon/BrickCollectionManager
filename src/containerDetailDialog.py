@@ -73,7 +73,7 @@ class ContainerDetailDialog(QDialog):
         self.imgProvider.image_loaded.connect(self._update_image)
 
         # Setup table headers
-        headers = ["Image", "ID", "Part", "Category", "Color", "Color Type", "Quantity"]
+        headers = ["Image", "ID", "Part", "Category", "Color", "Quantity"]
         self.ui.partsView.setColumnCount(len(headers))
         self.ui.partsView.setHorizontalHeaderLabels(headers)
         
@@ -105,6 +105,9 @@ class ContainerDetailDialog(QDialog):
         max_name_width = 400
         if self.ui.partsView.columnWidth(name_column_index) > max_name_width:
             self.ui.partsView.setColumnWidth(name_column_index, max_name_width)
+        
+        type_column_index = 3
+        self.ui.partsView.setColumnWidth(type_column_index := 3, 150)  # Category column
         
         self.ui.partsView.setWordWrap(True)
         self.ui.partsView.resizeRowsToContents()
@@ -153,15 +156,10 @@ class ContainerDetailDialog(QDialog):
             
             self.ui.partsView.setCellWidget(row, 4, color_label)
             
-            # Color type column (5)
-            color_type_item = QTableWidgetItem(part.color_type)
-            color_type_item.setFlags(Qt.ItemFlag.ItemIsEnabled | Qt.ItemFlag.ItemIsSelectable)
-            self.ui.partsView.setItem(row, 5, color_type_item)
-            
-            # Quantity column (6)
+            # Quantity column (5)
             quantity_item = QTableWidgetItem(str(part.quantity))
             quantity_item.setFlags(Qt.ItemFlag.ItemIsEnabled | Qt.ItemFlag.ItemIsSelectable)
-            self.ui.partsView.setItem(row, 6, quantity_item)
+            self.ui.partsView.setItem(row, 5, quantity_item)
 
     def _update_image(self, key, pixmap):
         """Update image in table when it's loaded asynchronously"""
@@ -208,6 +206,11 @@ class ContainerDetailDialog(QDialog):
         max_name_width = 400
         if self.ui.partsView.columnWidth(name_column_index) > max_name_width:
             self.ui.partsView.setColumnWidth(name_column_index, max_name_width)
+            
+        type_column_index = 3
+        max_type_width = 200
+        if self.ui.partsView.columnWidth(type_column_index) > max_type_width:
+            self.ui.partsView.setColumnWidth(type_column_index, max_type_width)
         
         self.ui.partsView.setWordWrap(True)
         self.ui.partsView.resizeRowsToContents()

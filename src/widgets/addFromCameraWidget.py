@@ -589,7 +589,7 @@ class AddFromCameraWidget(QWidget):
             # Configure column sizing and row height
             self.ui.colors_list.resizeColumnsToContents()
             self.ui.colors_list.horizontalHeader().setStretchLastSection(True)
-            self.ui.colors_list.verticalHeader().setDefaultSectionSize(40)  # Set minimum row height
+            self.ui.colors_list.verticalHeader().setDefaultSectionSize(self.iconSize)  # Set minimum row height
             return
 
         # Calculate color similarity scores
@@ -636,7 +636,7 @@ class AddFromCameraWidget(QWidget):
         # Configure column sizing
         self.ui.colors_list.resizeColumnsToContents()  # Resize all columns to fit content
         self.ui.colors_list.horizontalHeader().setStretchLastSection(True)  # Make last column stretch to fill remaining space
-        self.ui.colors_list.verticalHeader().setDefaultSectionSize(40)  # Set minimum row height
+        self.ui.colors_list.verticalHeader().setDefaultSectionSize(self.iconSize)  # Set minimum row height
                 
     def add_color_to_table(self, color: BrickColor, score: float|None = None):
         # Nel metodo add_color_to_table, potresti aggiungere controlli più rigorosi
@@ -655,19 +655,15 @@ class AddFromCameraWidget(QWidget):
         name_item = QTableWidgetItem()
         name_item.setData(Qt.ItemDataRole.UserRole, color)
         
-        type_item = QTableWidgetItem(color.type if color.type else "")
         score_item = QTableWidgetItem()
         score_item.setData(Qt.ItemDataRole.EditRole, round(score*100, 2) if score is not None else 0)
-        id_item = QTableWidgetItem(str(color.id))
         year_item = QTableWidgetItem(str(color.year_to) if color.year_to else "")
 
         # Add items to row
         self.ui.colors_list.setItem(row, 0, name_item)  # Set the item with data
         self.ui.colors_list.setCellWidget(row, 0, color_label)  # Set the ColorLabel widget
-        self.ui.colors_list.setItem(row, 1, type_item)
-        self.ui.colors_list.setItem(row, 2, score_item)
-        self.ui.colors_list.setItem(row, 3, year_item)
-        self.ui.colors_list.setItem(row, 4, id_item)
+        self.ui.colors_list.setItem(row, 1, score_item)
+        self.ui.colors_list.setItem(row, 2, year_item)
 
     def detect_image_colors(self, image:QImage, bb:QRect):
         try:
