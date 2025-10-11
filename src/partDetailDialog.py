@@ -6,6 +6,7 @@ from src.imageProvider import ImagesProvider
 from src.widgets.colorLabel import ColorLabel
 from config import AppConfig
 from ui.ui_detailPartDialog import Ui_DeatilPartDialog
+from src import utils
 
 class PartDetailDialog(QDialog):
     def __init__(self, part_data: CollectionPart, container: Container, qty = 1, outsideDefault = False, parent=None):
@@ -72,17 +73,21 @@ class PartDetailDialog(QDialog):
             self.ui.imageLabel.setPixmap(pixmap)
         
     def populate_container_combo(self):
-        dbManager = DatabaseManager()
-        containers = dbManager.getContainers()
+        utils.populate_container_combo(self.ui.containerCombo, DatabaseManager(), None, [self.container.id])
+        self.ui.containerCombo.setCurrentIndex(0)
         
-        for container in containers:
-            if container.id != self.container.id:
-                self.ui.containerCombo.addItem(container.name, container.id)
+ 
+        # dbManager = DatabaseManager()
+        # containers = dbManager.getContainers()
+        
+        # for container in containers:
+        #     if container.id != self.container.id:
+        #         self.ui.containerCombo.addItem(container.name, container.id)
                 
-        if self.ui.containerCombo.count() == 0:
-            self.ui.toContainerRadioButton.setEnabled(False)
-            self.ui.containerCombo.setEnabled(False)
-            self.ui.toOutsideRadioButton.setChecked(True)
+        # if self.ui.containerCombo.count() == 0:
+        #     self.ui.toContainerRadioButton.setEnabled(False)
+        #     self.ui.containerCombo.setEnabled(False)
+        #     self.ui.toOutsideRadioButton.setChecked(True)
 
     def on_move_remove_clicked(self):
         if self.ui.toContainerRadioButton.isChecked():

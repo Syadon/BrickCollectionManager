@@ -12,6 +12,7 @@ from config import AppConfig
 import cv2
 import numpy as np
 import logging
+from src import utils
 from src.brickRecongnition import BrickRecognition
 from ui.ui_addFromCameraWidget import Ui_AddFromCameraWidget
 
@@ -137,25 +138,7 @@ class AddFromCameraWidget(QWidget):
         super().hideEvent(event)
 
     def populate_container_list(self):
-        self.ui.containerCombobox.clear()
-        
-        # Add dummy container as first option
-        self.ui.containerCombobox.addItem("Select Container...", None)
-        
-        # Get containers from database
-        db_manager = DatabaseManager()
-        containers = db_manager.getContainers()
-        
-        # Add containers to combobox
-        for container in containers:
-            if self.targetContainer != None and container.id != self.targetContainer.id:
-                continue
-
-            # Display name and part count
-            display_text = f"{container.name} ({container.part_count} parts)"
-            self.ui.containerCombobox.addItem(display_text, (container.id, container.name))
-
-        self.ui.containerCombobox.setEnabled(self.targetContainer == None)
+        utils.populate_container_combo(self.ui.containerCombobox, DatabaseManager(), self.targetContainer)
         
         # Connect to selection change event if not already connected
         try:
@@ -564,10 +547,9 @@ class AddFromCameraWidget(QWidget):
                 msg.exec()
                 return
 
-            newPartCount = dbManager.getConteinerPartCount(container_id)
-            if newPartCount != None and newPartCount > 0:
-                self.ui.containerCombobox.setItemText(self.ui.containerCombobox.currentIndex(), 
-                    f"{container_name} ({newPartCount} parts)")
+            utils.update_container_combo_single_parts_count(self.ui.containerCombobox, 
+                                                            dbManager, 
+                                                            self.ui.containerCombobox.currentIndex())
 
             logging.info(f"Added {quantity} of part {part_data['id']} in color {color_data.name} to container {container_id}")
 

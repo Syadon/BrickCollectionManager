@@ -1,5 +1,7 @@
 from PySide6.QtGui import QImage, QPixmap
-from PySide6.QtWidgets import QStyledItemDelegate, QStyle
+from PySide6.QtWidgets import QStyledItemDelegate, QStyle, QComboBox
+from PySide6.QtCore import Qt
+from src.database import Container, DatabaseManager
 import cv2
 import numpy as np
 
@@ -81,3 +83,36 @@ def opencvToQImage(image):
 
 def opencvToPixmap(image):
     return QPixmap.fromImage(opencvToQImage(image))
+
+def populate_container_combo(containerCombo : QComboBox, db_manager: DatabaseManager, 
+                             targetContainer:Container|None=None,
+                             excludeContainerIds:list[int]=[]):
+    """Popola il combobox dei container"""
+    containerCombo.clear()
+    
+    # Add dummy container as first option
+    containerCombo.addItem("Select Container...", None)
+
+    containers = db_manager.getContainers()
+    
+    # Aggiungi i container al combobox
+    for container in containers:
+        if container.id in excludeContainerIds:
+            continue
+
+        if targetContainer == None or container.id == targetContainer.id:
+            part_count = container.part_count or 0
+            display_text = f"{container.name} ({part_count} parts)"
+            containerCombo.addItem(display_text, (container.id, container.name))
+
+    containerCombo.setEnabled(targetContainer == None)
+
+def update_container_combo_single_parts_count(containerCombo : QComboBox, db_manager: DatabaseManager, comboIndex:int):
+    data = containerCombo.itemData(comboIndex)
+    if data is not None:
+        container_id, container_name = data
+        container = db_manager.getContainerById(container_id)
+        if container:
+            part_count = container.part_count or 0
+            display_text = f"{container.name} ({part_count} parts)"
+            containerCombo.setItemText(comboIndex, display_text)

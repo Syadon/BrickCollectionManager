@@ -9,6 +9,7 @@ from src.utils import TransparentSelectionDelegate
 from src.widgets.colorLabel import ColorLabel
 from src.imageProvider import ImagesProvider
 from config import AppConfig
+from src import utils
 from src.partsFileParser import XmlParser
 import logging
 
@@ -291,24 +292,7 @@ class AddFromFileWidget(QWidget):
         self.update_add_button_state()
     
     def populate_container_combo(self):
-        """Popola il combobox dei container"""
-        self.ui.containerCombo.clear()
-        
-        # Add dummy container as first option
-        self.ui.containerCombo.addItem("Select Container...", None)
-        
-        # Ottieni i container dal database
-        db_manager = DatabaseManager()
-        containers = db_manager.getContainers()
-        
-        # Aggiungi i container al combobox
-        for container in containers:
-            if self.targetContainer == None or container.id == self.targetContainer.id:
-                part_count = container.part_count or 0
-                display_text = f"{container.name} ({part_count} parts)"
-                self.ui.containerCombo.addItem(display_text, (container.id, container.name))
-
-        self.ui.containerCombo.setEnabled(self.targetContainer == None)
+        utils.populate_container_combo(self.ui.containerCombo, DatabaseManager(), self.targetContainer)
         
         # Connect to selection change event if not already connected
         try:
@@ -412,7 +396,9 @@ class AddFromFileWidget(QWidget):
                 self.part_added.emit()
                 
                 # Aggiorna il combobox dei container
-                self.populate_container_combo()
+                utils.update_container_combo_single_parts_count(self.ui.containerCombo, 
+                                                                db_manager, 
+                                                                self.ui.containerCombo.currentIndex())
                 
                 message = f"Added {success_count} lots to container '{container_name}'."
                 if error_count > 0:

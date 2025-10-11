@@ -8,6 +8,7 @@ from src.widgets.colorLabel import ColorLabel
 from ui.ui_addManualWidget import Ui_AddManualWidget
 from src.database import Container, DatabaseManager
 from src.imageProvider import ImagesProvider
+from src import utils
 from config import AppConfig
 
 class AddManualWidget(QWidget):
@@ -98,25 +99,9 @@ class AddManualWidget(QWidget):
         self.validate_search_inputs()
 
     def populate_container_list(self):
-        self.ui.searchContainerComboBox.clear()
-        
-        # Add dummy container as first option
-        self.ui.searchContainerComboBox.addItem("Select Container...", None)
-        
-        # Get containers from database
-        db_manager = DatabaseManager()
-        containers = db_manager.getContainers()
-        
-        # Add containers to combobox
-        for container in containers:
-            if self.targetContainer != None and container.id != self.targetContainer.id:
-                continue
-
-            # Display name and part count
-            display_text = f"{container.name} ({container.part_count} parts)"
-            self.ui.searchContainerComboBox.addItem(display_text, (container.id, container.name))
-
-        self.ui.searchContainerComboBox.setEnabled(self.targetContainer == None)
+        utils.populate_container_combo(self.ui.searchContainerComboBox, 
+                                       DatabaseManager(), 
+                                       self.targetContainer)
         
         # Connect to selection change event if not already connected
         try:
@@ -327,16 +312,9 @@ class AddManualWidget(QWidget):
             QMessageBox.critical(self, "Error", f"An error occurred: {str(e)}")
 
     def update_container_combo_display(self):
-        current_index = self.ui.searchContainerComboBox.currentIndex()
-        if current_index >= 0:
-            container_id, container_name = self.ui.searchContainerComboBox.currentData()
-            
-            # Aggiorna il conteggio parti
-            dbManager = DatabaseManager()
-            part_count = dbManager.getConteinerPartCount(container_id)
-            
-            if part_count is not None:
-                self.ui.searchContainerComboBox.setItemText(current_index, f"{container_name} ({part_count} parts)")
+        utils.update_container_combo_single_parts_count(self.ui.searchContainerComboBox, 
+                                                        DatabaseManager(), 
+                                                        self.ui.searchContainerComboBox.currentIndex())
 
     def on_image_loaded(self, key, pixmap):
         # Parse key to get part_id and color_id

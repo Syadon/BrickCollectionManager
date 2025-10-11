@@ -114,6 +114,28 @@ class DatabaseManager:
             )
             containers.append(container)
         return containers
+
+    def getContainerById(self, container_id: int) -> Container|None:
+        query = QSqlQuery()
+        query.prepare("SELECT id, name, description FROM containers WHERE id = ?")
+        query.addBindValue(container_id)
+        
+        if query.exec() and query.next():
+            partCount = self.getConteinerPartCount(container_id)
+            lotCount = self.getConteinerLotCount(container_id)
+            
+            if partCount is None or lotCount is None:
+                return None
+                
+            return Container(
+                query.value("id"),
+                query.value("name"),
+                query.value("description"),
+                partCount,
+                lotCount
+            )
+        
+        return None
     
     def getColors(self) -> list[BrickColor]:
         query = QSqlQuery("SELECT * FROM colors ORDER BY name")
