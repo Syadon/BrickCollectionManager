@@ -1,5 +1,31 @@
+import sys
 from pathlib import Path
 from PySide6.QtCore import QDir
+import os
+
+def get_base_dir():
+    """Get the base directory - handles PyInstaller packaging correctly"""
+    if getattr(sys, 'frozen', False) and hasattr(sys, '_MEIPASS'):
+        # Running in PyInstaller bundle
+        return Path(sys._MEIPASS)
+    else:
+        # Running in development
+        return Path(__file__).parent.absolute()
+    
+def get_user_data_dir():
+    """Get the user data directory - uses system user directory for packaged app, BASE_DIR for development"""
+    if getattr(sys, 'frozen', False) and hasattr(sys, '_MEIPASS'):
+        # Running in PyInstaller bundle - use user directory
+        if sys.platform == "win32":
+            return Path(os.environ.get('APPDATA', Path.home())) / "BrickCollectionManager"
+        elif sys.platform == "darwin":
+            return Path.home() / "Library" / "Application Support" / "BrickCollectionManager"
+        else:
+            # Linux and other Unix-like systems
+            return Path.home() / ".local" / "share" / "BrickCollectionManager"
+    else:
+        # Running in development - use BASE_DIR
+        return get_base_dir()
 
 class AppConfig:
     # Application Information
@@ -8,10 +34,11 @@ class AppConfig:
     ORGANIZATION_NAME = ""
     
     # File Paths
-    BASE_DIR = Path(QDir.currentPath())
+    BASE_DIR = get_base_dir()
+    DATA_DIR = get_user_data_dir()
     UI_DIR = BASE_DIR / "ui"
     RESOURCES_DIR = BASE_DIR / "resources"
-    DATABASE_DIR = BASE_DIR / "database"
+    DATABASE_DIR = DATA_DIR / "database"
     
     # Database Configuration
     DATABASE_FILE_NAME = "brick_collection"
@@ -21,8 +48,8 @@ class AppConfig:
     DATABASE_SCHEMA_RESOURCE_PATH = ":/database/schema.sql"
 
     # Cache directory
-    CHACHE_DIR = DATABASE_DIR / "cache"
-    PARTS_IMG_CACHE_DIR = CHACHE_DIR / "parts_images"
+    CACHE_DIR = DATA_DIR / "cache"
+    PARTS_IMG_CACHE_DIR = CACHE_DIR / "parts_images"
     
     # UI Configuration
     WINDOW_WIDTH = 800
@@ -43,8 +70,9 @@ class AppConfig:
     def initialize(cls):
         #cls.UI_DIR.mkdir(exist_ok=True)
         #cls.RESOURCES_DIR.mkdir(exist_ok=True)
+        cls.DATA_DIR.mkdir(exist_ok=True)
         cls.DATABASE_DIR.mkdir(exist_ok=True)
-        cls.CHACHE_DIR.mkdir(exist_ok=True)
+        cls.CACHE_DIR.mkdir(exist_ok=True)
         cls.PARTS_IMG_CACHE_DIR.mkdir(parents=True, exist_ok=True)
 
     @classmethod

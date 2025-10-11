@@ -1,0 +1,65 @@
+# PyInstaller build configuration
+# This file contains additional configuration options for building the application
+
+[build]
+# Application metadata
+app_name = "Brick Collection Manager"
+app_version = "1.0.0"
+app_description = "A comprehensive LEGO brick collection management application"
+app_author = "Brick Collection Manager Team"
+
+# Build options
+optimize_imports = true
+strip_debug = true
+upx_compression = true
+exclude_tests = true
+
+# Platform-specific settings
+[build.windows]
+console = false
+icon = "resources/placeholder_icon.png"
+add_manifest = true
+
+[build.macos]
+bundle_identifier = "com.brickmanager.app"
+high_resolution = true
+code_sign = false
+
+[build.linux]
+desktop_file = true
+icon_sizes = [16, 32, 48, 64, 128, 256]
+
+# Dependencies to include
+[dependencies]
+required = [
+    "PySide6",
+    "opencv-python",
+    "numpy",
+    "requests",
+    "qt-material",
+]
+
+# Files to exclude from build
+[exclude]
+modules = [
+    "tkinter",
+    "matplotlib",
+    "PyQt5",
+    "test",
+    "unittest",
+    "doctest",
+    "pdb",
+    "email",
+    "html",
+    "http",
+    "urllib",
+    "xml",
+]
+
+directories = [
+    "__pycache__",
+    ".git",
+    ".vscode",
+    "tests",
+    "docs",
+]
