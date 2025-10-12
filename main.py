@@ -46,9 +46,9 @@ def main():
         app.setWindowIcon(app_icon)
         
         # Check if placeholder icon exists in resources
-        placeholder = QPixmap(":/images/placeholder_icon.png")
+        placeholder = QPixmap(":/images/app_icon.png")
         if placeholder.isNull():
-            print("Warning: placeholder_icon.png not found in resources")
+            print("Warning: app_icon.png not found in resources")
         
         # Initialize database
         db_manager = DatabaseManager()

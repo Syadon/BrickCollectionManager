@@ -17,7 +17,7 @@ exclude_tests = true
 # Platform-specific settings
 [build.windows]
 console = false
-icon = "resources/placeholder_icon.png"
+icon = "resources/app_icon.png"
 add_manifest = true
 
 [build.macos]

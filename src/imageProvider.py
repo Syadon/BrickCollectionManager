@@ -132,7 +132,7 @@ class ImagesProvider(QObject):
 
     @staticmethod
     def get_placeholder_image(size=100):
-        pixmap = QPixmap(":/images/placeholder_icon.png")
+        pixmap = QPixmap(":/images/app_icon.png")
         if pixmap.isNull():
             # Fallback: create a default placeholder if resource not found
             pixmap = QPixmap(size, size)

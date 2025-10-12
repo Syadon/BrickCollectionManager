@@ -91,7 +91,7 @@ After successful build, you'll find:
 ## Customization
 
 ### Icons:
-Replace `resources/placeholder_icon.png` with your application icon:
+Replace `resources/app_icon.png` and `resources/app_icon_hd.png` with your application icon:
 - Windows: Convert to .ico format
 - macOS: Convert to .icns format  
 - Linux: Use PNG format
