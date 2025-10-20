@@ -82,7 +82,7 @@
       </widget>
      </item>
      <item>
-      <widget class="QComboBox" name="containerCombo"/>
+      <widget class="ContainerComboBox" name="containerCombo"/>
      </item>
      <item>
       <widget class="QPushButton" name="pushButton">
@@ -95,6 +95,13 @@
    </item>
   </layout>
  </widget>
+ <customwidgets>
+  <customwidget>
+   <class>ContainerComboBox</class>
+   <extends>QComboBox</extends>
+   <header>src.widgets.containerComboBox</header>
+  </customwidget>
+ </customwidgets>
  <resources/>
  <connections/>
 </ui>

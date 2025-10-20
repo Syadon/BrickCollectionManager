@@ -164,7 +164,7 @@
            </widget>
           </item>
           <item row="0" column="3">
-           <widget class="QComboBox" name="searchContainerComboBox"/>
+           <widget class="ContainerComboBox" name="searchContainerComboBox"/>
           </item>
          </layout>
         </item>
@@ -223,6 +223,11 @@
    <class>ColorComboBox</class>
    <extends>QComboBox</extends>
    <header>src.widgets.colorComboBox</header>
+  </customwidget>
+  <customwidget>
+   <class>ContainerComboBox</class>
+   <extends>QComboBox</extends>
+   <header>src.widgets.containerComboBox</header>
   </customwidget>
  </customwidgets>
  <resources/>
