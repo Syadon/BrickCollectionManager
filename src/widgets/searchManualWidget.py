@@ -5,7 +5,7 @@ from src.database import DatabaseManager, Container, CollectionPart
 from src.imageProvider import ImagesProvider
 from src.widgets.colorLabel import ColorLabel
 from config import AppConfig
-from src.utils import TransparentSelectionDelegate
+from src.utils import TransparentSelectionDelegate, populate_color_combo, setup_color_combo_delegate
 from src.partDetailDialog import PartDetailDialog
 from src.partsFileParser import XmlParser
 import logging
@@ -93,15 +93,14 @@ class SearchManualWidget(QWidget):
         self.ui.search_part_name_edit.setCompleter(part_name_completer)
 
     def populate_combos(self):
-        # Add "Any" option to color combo
-        self.ui.search_color_combo.addItem("Any", None)
-        self.ui.search_color_type_combo.addItem("Any", None)
-        
-        # Get all colors
         dbManager = DatabaseManager()
-
-        for color in dbManager.getColors():
-            self.ui.search_color_combo.addItem(color.name, color)
+        
+        # Setup color combo with delegate
+        populate_color_combo(self.ui.search_color_combo, dbManager, include_any_option=True)
+        setup_color_combo_delegate(self.ui.search_color_combo)
+        
+        # Add "Any" option to color type combo
+        self.ui.search_color_type_combo.addItem("Any", None)
         
         # Get all color types
         for type in dbManager.getColorsTypesNames():
@@ -191,7 +190,11 @@ class SearchManualWidget(QWidget):
 
             partIdEdit = self.ui.search_part_id_edit.text()
             partNameEdit = self.ui.search_part_name_edit.text()
-            colorIdEdit = self.ui.search_color_combo.currentData()
+            
+            # Extract color ID from color data tuple
+            color_data = self.ui.search_color_combo.currentData()
+            colorIdEdit = color_data[0] if color_data is not None else None  # color_data is (id, name, rgb)
+            
             colorTypeEdit = self.ui.search_color_type_combo.currentData()
             
             # Process each part in the file
@@ -203,7 +206,7 @@ class SearchManualWidget(QWidget):
                 if partIdEdit and part_id != partIdEdit:
                     continue
 
-                if colorIdEdit and color_id != int(colorIdEdit.id):
+                if colorIdEdit and color_id != int(colorIdEdit):
                     continue
                 
                 # Cerca nelle parti della collezione per trovare i container che contengono questo pezzo
@@ -313,7 +316,13 @@ class SearchManualWidget(QWidget):
         # Clear previous results
         self.ui.search_results_table.setRowCount(0)
         
-        colorName = self.ui.search_color_combo.currentData().name if self.ui.search_color_combo.currentData() else None 
+        # Extract color name from color data tuple
+        color_data = self.ui.search_color_combo.currentData()
+        if color_data is not None:
+            # color_data is a tuple: (id, name, rgb)
+            colorName = color_data[1]
+        else:
+            colorName = None
 
         dbManager = DatabaseManager()
         results = dbManager.searchIntoCollection(part_id=self.ui.search_part_id_edit.text(), 

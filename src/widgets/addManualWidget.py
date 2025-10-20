@@ -3,7 +3,7 @@ from PySide6.QtWidgets import (QWidget, QVBoxLayout, QHBoxLayout, QPushButton,
                               QTableWidget, QTableWidgetItem, QSizePolicy, QCompleter)
 from PySide6.QtGui import QIcon, QColor
 from PySide6.QtCore import Qt, QStringListModel
-from src.utils import TransparentSelectionDelegate
+from src.utils import TransparentSelectionDelegate, populate_color_combo, setup_color_combo_delegate
 from src.widgets.colorLabel import ColorLabel
 from ui.ui_addManualWidget import Ui_AddManualWidget
 from src.database import Container, DatabaseManager
@@ -117,16 +117,14 @@ class AddManualWidget(QWidget):
         self.on_container_selection_changed(self.ui.searchContainerComboBox.currentIndex())
 
     def populate_search_combos(self):
-        # Aggiungi opzione "Any" ai combobox dei colori
-        self.ui.search_color_combo.addItem("Any", None)
-        self.ui.search_color_type_combo.addItem("Any", None)
-        
-        # Ottieni tutti i colori dal database
         dbManager = DatabaseManager()
         
-        # Colori
-        for color in dbManager.getColorsNames():
-            self.ui.search_color_combo.addItem(color, color)
+        # Setup color combo with delegate
+        populate_color_combo(self.ui.search_color_combo, dbManager, include_any_option=True)
+        setup_color_combo_delegate(self.ui.search_color_combo)
+        
+        # Add "Any" option to color type combo
+        self.ui.search_color_type_combo.addItem("Any", None)
         
         # Tipi di colore
         for type in dbManager.getColorsTypesNames():
@@ -192,7 +190,15 @@ class AddManualWidget(QWidget):
         # Ottieni criteri di ricerca
         part_id = self.ui.search_part_id_edit.text()
         part_name = self.ui.search_part_name_edit.text()
-        color_name = self.ui.search_color_combo.currentData()
+        
+        # Extract color name from color data tuple
+        color_data = self.ui.search_color_combo.currentData()
+        if color_data is not None:
+            # color_data is a tuple: (id, name, rgb)
+            color_name = color_data[1]
+        else:
+            color_name = None
+            
         color_type = self.ui.search_color_type_combo.currentData()
         
         # Esegui la ricerca nel database

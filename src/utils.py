@@ -154,3 +154,34 @@ def setup_container_combo_delegate(containerCombo: QComboBox):
     containerCombo.setItemDelegate(delegate)
     
     return delegate
+
+def populate_color_combo(colorCombo: QComboBox, db_manager: DatabaseManager, 
+                        include_any_option: bool = True):
+    """Popola il combobox dei colori con background RGB"""
+    colorCombo.clear()
+    
+    # Add "Any" option if requested
+    if include_any_option:
+        colorCombo.addItem("Any", None)
+    
+    # Get all colors from database
+    colors = db_manager.getColors()
+    
+    # Add colors to combobox
+    for color in colors:
+        # Display text for fallback rendering
+        display_text = color.name
+        
+        # Store complete data: (id, name, rgb)
+        color_data = (color.id, color.name, color.rgb)
+        
+        colorCombo.addItem(display_text, color_data)
+
+def setup_color_combo_delegate(colorCombo: QComboBox):
+    """Configura il custom delegate per la combobox dei colori"""
+    from src.colorComboDelegate import ColorComboDelegate
+    
+    delegate = ColorComboDelegate(colorCombo)
+    colorCombo.setItemDelegate(delegate)
+    
+    return delegate
