@@ -10,6 +10,8 @@
     </qresource>
     <qresource prefix="/icons">
         <file>container.png</file>
+        <file>container_box.png</file>
+        <file>container_bag.png</file>
         <file>search.png</file>
         <file>addManually.png</file>
         <file>addCamera.png</file>

@@ -19,12 +19,13 @@ class BrickColor:
 
 class Container:
     def __init__(self, id: int, name: str, description: str, 
-                 part_count: int = 0, lot_count:int = 0):
+                 part_count: int = 0, lot_count:int = 0, type: str = 'box'):
         self.id = id
         self.name = name
         self.description = description
         self.part_count = part_count if part_count != None else 0
         self.lot_count = lot_count if lot_count != None else 0
+        self.type = type if type in ['box', 'bag'] else 'box'
     
 class ColorPart:
     def __init__(self, id:int, part_id: str, color_id: int):
@@ -110,14 +111,15 @@ class DatabaseManager:
                 query.value("name"),
                 query.value("description"),
                 partCount,
-                lotCount
+                lotCount,
+                query.value("type") if query.value("type") else 'box'
             )
             containers.append(container)
         return containers
 
     def getContainerById(self, container_id: int) -> Container|None:
         query = QSqlQuery()
-        query.prepare("SELECT id, name, description FROM containers WHERE id = ?")
+        query.prepare("SELECT id, name, description, type FROM containers WHERE id = ?")
         query.addBindValue(container_id)
         
         if query.exec() and query.next():
@@ -132,7 +134,8 @@ class DatabaseManager:
                 query.value("name"),
                 query.value("description"),
                 partCount,
-                lotCount
+                lotCount,
+                query.value("type") if query.value("type") else 'box'
             )
         
         return None
@@ -333,11 +336,15 @@ class DatabaseManager:
         else:
             return None
 
-    def addContainer(self, name: str, description: str) -> bool:
+    def addContainer(self, name: str, description: str, type: str = 'box') -> bool:
+        if type not in ['box', 'bag']:
+            type = 'box'
+        
         query = QSqlQuery()
-        query.prepare("INSERT INTO containers (name, description) VALUES (?, ?)")
+        query.prepare("INSERT INTO containers (name, description, type) VALUES (?, ?, ?)")
         query.addBindValue(name)
         query.addBindValue(description)
+        query.addBindValue(type)
         if not query.exec():
             logging.error(f"Error inserting container {name}: {query.lastError().text()}")
             return False
@@ -451,11 +458,12 @@ class DatabaseManager:
             query = QSqlQuery()
             query.prepare("""
                 UPDATE containers 
-                SET name = ?, description = ?
+                SET name = ?, description = ?, type = ?
                 WHERE id = ?
             """)
             query.addBindValue(container.name)
             query.addBindValue(container.description)
+            query.addBindValue(container.type)
             query.addBindValue(container.id)
             
             if not query.exec():

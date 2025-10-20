@@ -28,6 +28,13 @@ class ContainerDetailDialog(QDialog):
         self.ui.description_edit.setText(container.description)
         self.ui.part_count_label.setText(str(container.part_count))
         self.ui.lots_count_label.setText(str(container.lot_count))
+        
+        # Setup type combobox
+        if hasattr(container, 'type'):
+            if container.type == 'bag':
+                self.ui.type_combobox.setCurrentText('Bag')
+            else:
+                self.ui.type_combobox.setCurrentText('Box')
 
         # Add delete button
         self.delete_button = QPushButton("Delete Container")
@@ -252,6 +259,10 @@ class ContainerDetailDialog(QDialog):
         # Update container object
         self.container.name = self.ui.name_edit.text()
         self.container.description = self.ui.description_edit.text()
+        
+        # Update type
+        type_text = self.ui.type_combobox.currentText().lower()
+        self.container.type = type_text
         
         # Save to database
         if db_manager.updateContainer(self.container):

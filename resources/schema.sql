@@ -38,7 +38,8 @@ CREATE TABLE IF NOT EXISTS colors_parts_codenames (
 CREATE TABLE IF NOT EXISTS containers (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
     name TEXT NOT NULL UNIQUE,
-    description TEXT
+    description TEXT,
+    type TEXT NOT NULL DEFAULT 'box' CHECK (type IN ('box', 'bag'))
 );
 
 CREATE TABLE IF NOT EXISTS parts_collection (

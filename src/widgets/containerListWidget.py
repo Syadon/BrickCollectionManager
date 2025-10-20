@@ -1,17 +1,19 @@
 from PySide6.QtWidgets import (QWidget, QVBoxLayout, QHBoxLayout, QPushButton, 
                               QTableView, QMenu, QMessageBox, QLabel)
 from PySide6.QtCore import Qt, QAbstractTableModel
+from PySide6.QtGui import QIcon
 from src.database import DatabaseManager
 from src.containerDetailDialog import ContainerDetailDialog
 from src.addContainerDialog import AddContainerDialog
 import operator
+import resources_rc  # Import the compiled resources
 
 class ContainerTableModel(QAbstractTableModel):
     def __init__(self, containers, parent=None):
         super().__init__(parent)
         self.containers = containers
-        self.attrOrder = ["id", "name", "part_count", "lot_count", "description"]
-        self.headerList = ["ID", "Name", "Part Count", "Lot Count", "Description"]
+        self.attrOrder = ["id", "type", "name", "part_count", "lot_count", "description"]
+        self.headerList = ["ID", "Type", "Name", "Part Count", "Lot Count", "Description"]
 
     def rowCount(self, parent=None) -> int:
         return len(self.containers)
@@ -22,12 +24,27 @@ class ContainerTableModel(QAbstractTableModel):
     def data(self, index, role : int = Qt.ItemDataRole.DisplayRole):
         if not index.isValid():
             return None
-        elif role != Qt.ItemDataRole.DisplayRole:
-            return None
-        else:
-            c = self.containers[index.row()]
-            attr = self.attrOrder[index.column()]
-            return getattr(c, attr)
+        
+        c = self.containers[index.row()]
+        attr = self.attrOrder[index.column()]
+        
+        if role == Qt.ItemDataRole.DisplayRole:
+            if attr == "type":
+                # Don't display text for type column, just the icon
+                return ""
+            else:
+                return getattr(c, attr, "")
+                
+        elif role == Qt.ItemDataRole.DecorationRole:
+            if attr == "type":
+                # Return appropriate icon based on container type
+                container_type = getattr(c, 'type', 'box')
+                if container_type == 'bag':
+                    return QIcon(":/icons/container_bag.png")
+                else:
+                    return QIcon(":/icons/container_box.png")
+        
+        return None
 
     def headerData(self, col, orientation, role : int = Qt.ItemDataRole.DisplayRole):
         if orientation == Qt.Orientation.Horizontal and role == Qt.ItemDataRole.DisplayRole:
@@ -38,7 +55,7 @@ class ContainerTableModel(QAbstractTableModel):
         attr = self.attrOrder[col]
         self.layoutAboutToBeChanged.emit()
         self.containers = sorted(self.containers,
-            key=operator.attrgetter(attr))
+            key=lambda x: getattr(x, attr, ""))
         if order == Qt.SortOrder.DescendingOrder:
             self.containers.reverse()
         self.layoutChanged.emit()
@@ -99,6 +116,10 @@ class ContainerListWidget(QWidget):
         
         # Configure column sizing
         self.table_view.resizeColumnsToContents()  # Resize all columns to fit content
+        
+        # Set specific width for type column (icon only)
+        self.table_view.setColumnWidth(1, 60)  # Type column - just wide enough for icon
+        
         self.table_view.horizontalHeader().setStretchLastSection(True)  # Make last column stretch to fill remaining space
         
         # Update counters

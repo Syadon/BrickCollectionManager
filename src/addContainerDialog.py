@@ -20,4 +20,12 @@ class AddContainerDialog(QDialog):
 
     def addContainer(self):
         dbManager = DatabaseManager()
-        dbManager.addContainer(self.ui.nameEdit.text(), self.ui.descriptionEdit.text())
+        
+        # Get the type from the combo box
+        type_text = self.ui.typeComboBox.currentText().lower()
+        
+        dbManager.addContainer(
+            self.ui.nameEdit.text(), 
+            self.ui.descriptionEdit.text(),
+            type_text
+        )
