@@ -87,7 +87,7 @@ def opencvToPixmap(image):
 def populate_container_combo(containerCombo : QComboBox, db_manager: DatabaseManager, 
                              targetContainer:Container|None=None,
                              excludeContainerIds:list[int]=[]):
-    """Popola il combobox dei container"""
+    """Popola il combobox dei container con icone e dettagli"""
     containerCombo.clear()
     
     # Add dummy container as first option
@@ -102,17 +102,55 @@ def populate_container_combo(containerCombo : QComboBox, db_manager: DatabaseMan
 
         if targetContainer == None or container.id == targetContainer.id:
             part_count = container.part_count or 0
+            container_type = getattr(container, 'type', 'box')
+            container_description = getattr(container, 'description', '')
+            
+            # Display text for fallback rendering
             display_text = f"{container.name} ({part_count} parts)"
-            containerCombo.addItem(display_text, (container.id, container.name))
+            
+            # Store complete data: (id, name, type, part_count, description)
+            container_data = (container.id, container.name, container_type, part_count, container_description)
+            
+            containerCombo.addItem(display_text, container_data)
 
     containerCombo.setEnabled(targetContainer == None)
 
 def update_container_combo_single_parts_count(containerCombo : QComboBox, db_manager: DatabaseManager, comboIndex:int):
     data = containerCombo.itemData(comboIndex)
     if data is not None:
-        container_id, container_name = data
+        try:
+            # Try newest format first: (id, name, type, part_count, description)
+            container_id, container_name, container_type, old_part_count, container_description = data
+        except (ValueError, TypeError):
+            try:
+                # Try format without description: (id, name, type, part_count)
+                container_id, container_name, container_type, old_part_count = data
+                container_description = ''
+            except (ValueError, TypeError):
+                # Fallback to old format: (id, name)
+                container_id, container_name = data
+                container_type = 'box'
+                container_description = ''
+        
         container = db_manager.getContainerById(container_id)
         if container:
             part_count = container.part_count or 0
+            container_type = getattr(container, 'type', 'box')
+            container_description = getattr(container, 'description', '')
+            
+            # Update display text
             display_text = f"{container.name} ({part_count} parts)"
             containerCombo.setItemText(comboIndex, display_text)
+            
+            # Update data with new part count and description
+            container_data = (container.id, container.name, container_type, part_count, container_description)
+            containerCombo.setItemData(comboIndex, container_data)
+
+def setup_container_combo_delegate(containerCombo: QComboBox):
+    """Configura il custom delegate per la combobox dei container"""
+    from src.containerComboDelegate import ContainerComboDelegate
+    
+    delegate = ContainerComboDelegate(containerCombo)
+    containerCombo.setItemDelegate(delegate)
+    
+    return delegate

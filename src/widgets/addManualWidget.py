@@ -103,6 +103,9 @@ class AddManualWidget(QWidget):
                                        DatabaseManager(), 
                                        self.targetContainer)
         
+        # Setup custom delegate for better rendering
+        utils.setup_container_combo_delegate(self.ui.searchContainerComboBox)
+        
         # Connect to selection change event if not already connected
         try:
             self.ui.searchContainerComboBox.currentIndexChanged.disconnect(self.on_container_selection_changed)
@@ -274,7 +277,17 @@ class AddManualWidget(QWidget):
                 QMessageBox.warning(self, "No Container", "Please select a container")
                 return
             
-            container_id, container_name = container_data
+            # Extract container ID and name from data tuple (id, name, type, part_count)
+            try:
+                if isinstance(container_data, tuple):
+                    container_id = container_data[0]
+                    container_name = container_data[1] if len(container_data) > 1 else "Unknown"
+                else:
+                    container_id = container_data
+                    container_name = "Unknown"
+            except (TypeError, IndexError):
+                QMessageBox.warning(self, "Error", "Invalid container data")
+                return
             
             # Ottieni quantità
             quantity = self.ui.search_qty_spinbox.value()

@@ -340,11 +340,22 @@ class DeleteContainerDialog(QDialog):
         
     def populate_container_combo(self):
         """Populate the container combo box with all containers except current one"""
+        import src.utils as utils
+        
         containers = self.db_manager.getContainers()
         
         for container in containers:
             if container.id != self.container.id:
-                self.container_combo.addItem(container.name, container.id)
+                part_count = container.part_count or 0
+                container_type = getattr(container, 'type', 'box')
+                display_text = f"{container.name} ({part_count} parts)"
+                
+                # Store complete data: (id, name, type, part_count)
+                container_data = (container.id, container.name, container_type, part_count)
+                self.container_combo.addItem(display_text, container_data)
+        
+        # Setup custom delegate for better rendering
+        utils.setup_container_combo_delegate(self.container_combo)
                 
         if self.container_combo.count() == 0:
             # Disable move option if no other containers
@@ -361,10 +372,16 @@ class DeleteContainerDialog(QDialog):
         try:
             if self.move_radio.isChecked():
                 # Get target container
-                target_id = self.container_combo.currentData()
-                if target_id is None:
+                target_data = self.container_combo.currentData()
+                if target_data is None:
                     QMessageBox.warning(self, "No Target", "Please select a target container")
                     return
+                
+                # Extract container ID from data tuple (id, name, type, part_count)
+                try:
+                    target_id = target_data[0] if isinstance(target_data, tuple) else target_data
+                except (TypeError, IndexError):
+                    target_id = target_data
                 
                 # Move all parts to target container
                 if self.db_manager.moveAllParts(self.container.id, target_id):

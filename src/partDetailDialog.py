@@ -74,6 +74,10 @@ class PartDetailDialog(QDialog):
         
     def populate_container_combo(self):
         utils.populate_container_combo(self.ui.containerCombo, DatabaseManager(), None, [self.container.id])
+        
+        # Setup custom delegate for better rendering
+        utils.setup_container_combo_delegate(self.ui.containerCombo)
+        
         self.ui.containerCombo.setCurrentIndex(0)
         
  
@@ -111,15 +115,21 @@ class PartDetailDialog(QDialog):
             
     def on_move_clicked(self):
         quantity = self.ui.qtySpinBox.value()
-        target_container_id = self.ui.containerCombo.currentData()
+        target_container_data = self.ui.containerCombo.currentData()
         
         if quantity <= 0 or quantity > self.current_quantity:
             QMessageBox.warning(self, "Invalid Quantity", "Please enter a valid quantity to move")
             return
             
-        if target_container_id is None:
+        if target_container_data is None:
             QMessageBox.warning(self, "No Container", "Please select a target container")
             return
+        
+        # Extract container ID from data tuple (id, name, type, part_count)
+        try:
+            target_container_id = target_container_data[0] if isinstance(target_container_data, tuple) else target_container_data
+        except (TypeError, IndexError):
+            target_container_id = target_container_data
             
         # Move parts from one container to another
         if self.move_parts_to_container(quantity, target_container_id):

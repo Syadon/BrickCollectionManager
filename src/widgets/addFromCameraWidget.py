@@ -140,6 +140,9 @@ class AddFromCameraWidget(QWidget):
     def populate_container_list(self):
         utils.populate_container_combo(self.ui.containerCombobox, DatabaseManager(), self.targetContainer)
         
+        # Setup custom delegate for better rendering
+        utils.setup_container_combo_delegate(self.ui.containerCombobox)
+        
         # Connect to selection change event if not already connected
         try:
             self.ui.containerCombobox.currentIndexChanged.disconnect(self.on_container_selection_changed)
@@ -484,10 +487,21 @@ class AddFromCameraWidget(QWidget):
             # Get selected container
             container_data = self.ui.containerCombobox.currentData()
 
-            if not container_data or len(container_data) != 2:
+            if not container_data:
                 logging.warning("Invalid container data")
                 return
-            container_id, container_name = container_data
+            
+            # Extract container ID and name from data tuple (id, name, type, part_count)
+            try:
+                if isinstance(container_data, tuple):
+                    container_id = container_data[0]
+                    container_name = container_data[1] if len(container_data) > 1 else "Unknown"
+                else:
+                    container_id = container_data
+                    container_name = "Unknown"
+            except (TypeError, IndexError):
+                logging.warning("Error extracting container data")
+                return
 
             # Get quantity
             quantity = self.ui.qtySpinBox.value()

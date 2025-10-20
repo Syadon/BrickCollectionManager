@@ -294,6 +294,9 @@ class AddFromFileWidget(QWidget):
     def populate_container_combo(self):
         utils.populate_container_combo(self.ui.containerCombo, DatabaseManager(), self.targetContainer)
         
+        # Setup custom delegate for better rendering
+        utils.setup_container_combo_delegate(self.ui.containerCombo)
+        
         # Connect to selection change event if not already connected
         try:
             self.ui.containerCombo.currentIndexChanged.disconnect(self.on_container_selection_changed)
@@ -336,7 +339,17 @@ class AddFromFileWidget(QWidget):
             QMessageBox.warning(self, "Invalid Container", "Please select a valid container.")
             return
         
-        container_id, container_name = container_data
+        # Extract container ID and name from data tuple (id, name, type, part_count)
+        try:
+            if isinstance(container_data, tuple):
+                container_id: int = container_data[0]
+                container_name: str = container_data[1] if len(container_data) > 1 else "Unknown"
+            else:
+                container_id: int = container_data
+                container_name: str = "Unknown"
+        except (TypeError, IndexError):
+            container_id: int = container_data
+            container_name: str = "Unknown"
         
         # # Ottieni le righe selezionate
         # selected_rows = set(index.row() for index in self.ui.tableWidget.selectedIndexes())
