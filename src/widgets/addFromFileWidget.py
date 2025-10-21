@@ -11,6 +11,7 @@ from src.imageProvider import ImagesProvider
 from config import AppConfig
 from src import utils
 from src.partsFileParser import XmlParser
+from src.logger import get_logger, log_exception
 import logging
 
 
@@ -58,6 +59,8 @@ class AddFromFileWidget(QWidget):
     
     def __init__(self, container:Container|None = None, parent=None):
         super().__init__(parent)
+        self.logger = get_logger()
+        self.logger.debug("Initializing AddFromFileWidget")
 
         self.ui = Ui_AddFromFileWidget()
         self.ui.setupUi(self)
@@ -151,18 +154,22 @@ class AddFromFileWidget(QWidget):
             # Pulisci la tabella e i dati esistenti
             self.clear_table()
 
+            self.logger.info(f"Parsing XML file: {file_path}")
             parser_result = XmlParser.parse_file(file_path)
             
             if not parser_result.success:
                 # Mostra gli errori all'utente
                 errors = "\n".join(parser_result.errors)
+                self.logger.error(f"XML parsing failed: {errors}")
                 QMessageBox.critical(self, "XML Error", f"Could not parse the XML file:\n{errors}")
                 return
             
             if len(parser_result.warnings) > 0:
                 # Mostra avvisi non bloccanti
                 warnings = "\n".join(parser_result.warnings)
-                logging.warning(f"XML parsing warnings: {warnings}")
+                self.logger.warning(f"XML parsing warnings: {warnings}")
+            
+            self.logger.info(f"Successfully parsed {len(parser_result.parts)} parts from XML")
             
             # Prepara le query per il database
             db_manager = DatabaseManager()
@@ -219,8 +226,8 @@ class AddFromFileWidget(QWidget):
                 )
                 
         except Exception as e:
+            log_exception(e, "Error loading XML file")
             QMessageBox.critical(self, "Error", f"An error occurred while loading the file: {str(e)}")
-            logging.error(f"Error loading XML file: {str(e)}", exc_info=True)
             
         self.update_add_button_state()
     

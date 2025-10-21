@@ -2,6 +2,7 @@ from PySide6.QtWidgets import (QWidget, QFileDialog, QMessageBox, QDialogButtonB
 from PySide6.QtCore import QDir
 from ui.ui_databaseWidget import Ui_DatabaseWidget
 from src.database import DatabaseManager
+from src.logger import get_logger, log_exception
 import os
 import logging
 import shutil
@@ -14,6 +15,8 @@ import xml.etree.ElementTree as ET
 class DatabaseWidget(QWidget):
     def __init__(self, parent=None):
         super().__init__(parent)
+        self.logger = get_logger()
+        self.logger.debug("Initializing DatabaseWidget")
 
         self.ui = Ui_DatabaseWidget()
         self.ui.setupUi(self)
@@ -170,6 +173,7 @@ class DatabaseWidget(QWidget):
             return False
     
     def update_database(self):
+        self.logger.info("Starting database update")
         dbManager = DatabaseManager()
         try:
             # Ottieni i percorsi dei file XML dai campi di testo
@@ -178,25 +182,29 @@ class DatabaseWidget(QWidget):
             parts_file = self.ui.partsEdit.text()
             codes_file = self.ui.colorPartEdit.text()
             
+            self.logger.info(f"Importing colors from: {colors_file}")
             # Aggiorna il database con i file XML selezionati
             if not dbManager.import_colors_from_xml(colors_file):
                 raise Exception("Failed to import colors from XML")
             
+            self.logger.info(f"Importing categories from: {categories_file}")
             if not dbManager.import_categories_from_xml(categories_file):
                 raise Exception("Failed to import categories from XML")
             
+            self.logger.info(f"Importing parts from: {parts_file}")
             if not dbManager.import_parts_from_xml(parts_file):
                 raise Exception("Failed to import parts from XML")
             
+            self.logger.info(f"Importing color parts from: {codes_file}")
             if not dbManager.import_color_parts_from_xml(codes_file):
                 raise Exception("Failed to import color parts from XML")
         
         except Exception as e:
+            log_exception(e, "Failed to update the database")
             QMessageBox.critical(self, "Error", f"Failed to update the database: {str(e)}")
-            logging.error(f"Failed to update the database: {str(e)}")
         else:
+            self.logger.info("Database update completed successfully")
             QMessageBox.information(self, "Success", "Database has been successfully updated.")
-            logging.error(f"Database has been successfully updated.")
 
     def create_restore_database(self):
         """Creates a backup copy of the database file with timestamp"""

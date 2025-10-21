@@ -4,6 +4,7 @@ from PySide6.QtCore import QFile
 from src.mainWindow import MainWindow
 from config import AppConfig
 from src.database import DatabaseManager
+from src.logger import get_logger, setup_exception_hook, log_exception
 import sys
 import resources_rc as resources_rc  # Importa il file delle risorse generato
 import os
@@ -30,33 +31,46 @@ def setup_window_geometry(app, window):
     )
 
 def main():
-        # Create the application
-    app = QApplication(sys.argv)
-
+    # Setup logging system
+    setup_exception_hook()
+    logger = get_logger()
+    
     try:
+        logger.info("Starting application")
+        
+        # Create the application
+        app = QApplication(sys.argv)
+
         # Initialize application configuration
+        logger.info("Initializing application configuration")
         AppConfig.initialize()
         
         app.setApplicationName(AppConfig.APP_NAME)
         app.setApplicationVersion(AppConfig.APP_VERSION)
         app.setOrganizationName(AppConfig.ORGANIZATION_NAME)
+        logger.info(f"Application: {AppConfig.APP_NAME} v{AppConfig.APP_VERSION}")
         
         # Set application icon from resources
+        logger.debug("Loading application icon")
         app_icon = QIcon(":/icons/app_icon.png")
         app.setWindowIcon(app_icon)
         
         # Check if placeholder icon exists in resources
         placeholder = QPixmap(":/images/app_icon.png")
         if placeholder.isNull():
-            print("Warning: app_icon.png not found in resources")
+            logger.warning("app_icon.png not found in resources")
         
         # Initialize database
+        logger.info("Initializing database")
         db_manager = DatabaseManager()
         if not db_manager.initialize_database():
+            logger.critical("Failed to initialize database")
             QMessageBox.critical(None, "Database Error", 
                             "Could not initialize the database. The application will now exit.")
             sys.exit(1)
+        logger.info("Database initialized successfully")
         
+        logger.info("Applying theme and stylesheet")
         extra = {
             # Button colors
             'danger': '#dc3545',
@@ -77,25 +91,35 @@ def main():
             styleStr = bytearray(style_from_resources.readAll().data()).decode('utf-8')
             app.setStyleSheet(stylesheet + styleStr.format(**os.environ))
             style_from_resources.close()
+            logger.debug("Custom stylesheet loaded successfully")
+        else:
+            logger.warning("Failed to load custom stylesheet")
 
         # with open('resources/custom.css') as file:
         #     app.setStyleSheet(stylesheet + file.read().format(**os.environ))
         
         # Create and show main window
+        logger.info("Creating main window")
         window = MainWindow()
         window.show()
 
         setup_window_geometry(app, window)
+        logger.info("Main window displayed")
         
         # Start the event loop
+        logger.info("Starting event loop")
         exit_code = app.exec()
         
         # Cleanup
+        logger.info("Application shutting down")
         db_manager.close_connection()
+        logger.info("Database connection closed")
+        logger.info("="*70)
         sys.exit(exit_code)
     except Exception as e:
+        log_exception(e, "Fatal error during application startup")
         QMessageBox.critical(None, "Application Error", 
-                             f"An unexpected error occurred: {e}\nThe application will now exit.")
+                             f"An unexpected error occurred: {e}\nThe application will now exit.\n\nCheck logs for details.")
         sys.exit(1)
 
 if __name__ == "__main__":

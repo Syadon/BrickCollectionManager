@@ -9,12 +9,16 @@ from ui.ui_addManualWidget import Ui_AddManualWidget
 from src.database import Container, DatabaseManager
 from src.imageProvider import ImagesProvider
 from src import utils
+from src.logger import get_logger, log_exception
 from config import AppConfig
 
 class AddManualWidget(QWidget):
 
     def __init__(self, container:Container|None = None, parent=None):
         super(AddManualWidget, self).__init__(parent)
+        
+        self.logger = get_logger()
+        self.logger.debug("Initializing AddManualWidget")
 
         self.ui = Ui_AddManualWidget()
         self.ui.setupUi(self)
@@ -304,8 +308,11 @@ class AddManualWidget(QWidget):
             # Ottieni ColorPart e aggiungi alla collezione
             dbManager = DatabaseManager()
             if not dbManager.addColorPartIDToContainer(data['id'], container_id, quantity):
+                self.logger.error(f"Failed to add color_part {data['id']} to container {container_id}")
                 QMessageBox.critical(self, "Error", "Failed to add part to container")
                 return
+            
+            self.logger.info(f"Added {quantity}x color_part {data['id']} to container {container_id}")
             
             # Aggiorna conteggio parti nel container
             self.update_container_combo_display()
@@ -328,6 +335,7 @@ class AddManualWidget(QWidget):
             self.ui.search_add_button.setEnabled(False)
             
         except Exception as e:
+            log_exception(e, "Error adding part to container")
             QMessageBox.critical(self, "Error", f"An error occurred: {str(e)}")
 
     def update_container_combo_display(self):

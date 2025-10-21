@@ -51,6 +51,9 @@ class AppConfig:
     CACHE_DIR = DATA_DIR / "cache"
     PARTS_IMG_CACHE_DIR = CACHE_DIR / "parts_images"
     
+    # Logs directory
+    LOGS_DIR = DATA_DIR / "logs"
+    
     # UI Configuration
     WINDOW_WIDTH = 800
     WINDOW_HEIGHT = 600
@@ -74,6 +77,7 @@ class AppConfig:
         cls.DATABASE_DIR.mkdir(exist_ok=True)
         cls.CACHE_DIR.mkdir(exist_ok=True)
         cls.PARTS_IMG_CACHE_DIR.mkdir(parents=True, exist_ok=True)
+        cls.LOGS_DIR.mkdir(parents=True, exist_ok=True)
 
     @classmethod
     def load_stylesheet(cls) -> str:

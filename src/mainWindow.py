@@ -1,15 +1,20 @@
 from PySide6.QtWidgets import (QMainWindow, QWidget, QVBoxLayout, QHBoxLayout, 
                               QToolBar, QStackedLayout, QDialog, QPushButton, QMessageBox, QStatusBar)
 from PySide6.QtGui import QIcon, QAction
-from PySide6.QtCore import Qt, QSize
+from PySide6.QtCore import Qt, QSize, QUrl
+from PySide6.QtGui import QDesktopServices
 from src.widgets import (ContainerListWidget, SearchManualWidget, AddManualWidget,
                         AddFromCameraWidget, AddFromFileWidget, DatabaseWidget)
 from config import AppConfig
+from src.logger import get_logger, get_log_file_path, get_log_dir
 import resources_rc
 
 class MainWindow(QMainWindow):
     def __init__(self):
         super().__init__()
+        self.logger = get_logger()
+        self.logger.info("Initializing MainWindow")
+        
         self.setWindowTitle("Brick Collection Manager")
         self.setMinimumSize(1200, 700)
 
@@ -49,6 +54,9 @@ class MainWindow(QMainWindow):
 
         # Create toolbar actions
         self.setup_toolbar()
+        
+        # Setup menu bar
+        self.setup_menu_bar()
         
         # Setup status bar
         self.setup_status_bar()
@@ -97,6 +105,68 @@ class MainWindow(QMainWindow):
         containers_action.setChecked(True)
         self.toolbar.actions()[0].setChecked(True)
 
+    def setup_menu_bar(self):
+        """Setup the menu bar with Help menu"""
+        menubar = self.menuBar()
+        
+        # Help menu
+        help_menu = menubar.addMenu("&Help")
+        
+        # Open logs folder action
+        open_logs_action = QAction("Open Logs Folder", self)
+        open_logs_action.triggered.connect(self.open_logs_folder)
+        help_menu.addAction(open_logs_action)
+        
+        # View log file action
+        view_log_action = QAction("View Log File", self)
+        view_log_action.triggered.connect(self.view_log_file)
+        help_menu.addAction(view_log_action)
+        
+        help_menu.addSeparator()
+        
+        # About action
+        about_action = QAction("About", self)
+        about_action.triggered.connect(self.show_about)
+        help_menu.addAction(about_action)
+
+    def open_logs_folder(self):
+        """Open the logs folder in the system file manager"""
+        try:
+            log_dir = get_log_dir()
+            self.logger.info(f"Opening logs folder: {log_dir}")
+            QDesktopServices.openUrl(QUrl.fromLocalFile(str(log_dir)))
+        except Exception as e:
+            self.logger.error(f"Failed to open logs folder: {e}", exc_info=True)
+            QMessageBox.warning(self, "Error", f"Failed to open logs folder:\n{e}")
+    
+    def view_log_file(self):
+        """Open the current log file in the default text editor"""
+        try:
+            log_file = get_log_file_path()
+            self.logger.info(f"Opening log file: {log_file}")
+            QDesktopServices.openUrl(QUrl.fromLocalFile(str(log_file)))
+        except Exception as e:
+            self.logger.error(f"Failed to open log file: {e}", exc_info=True)
+            QMessageBox.warning(self, "Error", f"Failed to open log file:\n{e}")
+    
+    def show_about(self):
+        """Show about dialog"""
+        about_text = f"""
+        <h2>{AppConfig.APP_NAME}</h2>
+        <p>Version: {AppConfig.APP_VERSION}</p>
+        <p>A comprehensive tool for managing your LEGO brick collection.</p>
+        <p><b>Features:</b></p>
+        <ul>
+            <li>Organize bricks in containers</li>
+            <li>Search and filter your collection</li>
+            <li>Import from BrickLink XML files</li>
+            <li>Camera-based brick recognition</li>
+            <li>Database management tools</li>
+        </ul>
+        <p>Logs are stored in: {get_log_dir()}</p>
+        """
+        QMessageBox.about(self, "About", about_text)
+
     def setup_status_bar(self):
         """Setup the status bar with app version"""
         status_bar = QStatusBar()
@@ -107,6 +177,10 @@ class MainWindow(QMainWindow):
         status_bar.showMessage(version_text)
 
     def switch_page(self, index):
+        page_names = ["Containers", "Search Parts", "Add Manually", "Add From Camera", "Add From File", "Database"]
+        page_name = page_names[index] if index < len(page_names) else f"Page {index}"
+        self.logger.debug(f"Switching to page: {page_name} (index: {index})")
+        
         # Uncheck all actions except the selected one
         for i, action in enumerate(self.toolbar.actions()):
             if action.isCheckable():  # Only modify checkable actions

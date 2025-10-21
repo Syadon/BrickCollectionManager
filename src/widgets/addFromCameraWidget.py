@@ -9,6 +9,7 @@ from src.imageProvider import ImagesProvider
 from src.widgets.colorLabel import ColorLabel
 from src.utils import TransparentSelectionDelegate, qImageToOpenCV, rgb_to_hsv, calculate_hsv_similarity
 from config import AppConfig
+from src.logger import get_logger, log_exception
 import cv2
 import numpy as np
 import logging
@@ -20,6 +21,8 @@ class AddFromCameraWidget(QWidget):
 
     def __init__(self, container:Container|None = None, parent=None):
         super().__init__(parent)
+        self.logger = get_logger()
+        self.logger.debug("Initializing AddFromCameraWidget")
 
         self.ui = Ui_AddFromCameraWidget()
         self.ui.setupUi(self)

@@ -5,6 +5,7 @@ from PySide6.QtGui import QIcon
 from src.database import DatabaseManager
 from src.containerDetailDialog import ContainerDetailDialog
 from src.addContainerDialog import AddContainerDialog
+from src.logger import get_logger, log_exception
 import operator
 import resources_rc  # Import the compiled resources
 
@@ -63,6 +64,8 @@ class ContainerTableModel(QAbstractTableModel):
 class ContainerListWidget(QWidget):
     def __init__(self, parent=None):
         super().__init__(parent)
+        self.logger = get_logger()
+        self.logger.debug("Initializing ContainerListWidget")
         
         # Create main layout
         layout = QVBoxLayout(self)

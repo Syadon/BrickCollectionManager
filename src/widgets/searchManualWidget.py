@@ -8,6 +8,7 @@ from config import AppConfig
 from src.utils import TransparentSelectionDelegate, populate_color_combo, setup_color_combo_delegate
 from src.partDetailDialog import PartDetailDialog
 from src.partsFileParser import XmlParser
+from src.logger import get_logger, log_exception
 import logging
 import copy
 from ui.ui_searchManualWidget import Ui_SearchManualWidget
@@ -15,6 +16,9 @@ from ui.ui_searchManualWidget import Ui_SearchManualWidget
 class SearchManualWidget(QWidget):
     def __init__(self, parent=None):
         super().__init__(parent=parent)
+        self.logger = get_logger()
+        self.logger.debug("Initializing SearchManualWidget")
+        
         self.setMinimumSize(800, 600)
         self.setWindowTitle("Search Parts")
 
@@ -164,6 +168,7 @@ class SearchManualWidget(QWidget):
             self.perform_manual_search()
 
     def perform_file_search(self, filePath):
+        self.logger.info(f"Performing file search: {filePath}")
         # Clear previous results
         self.ui.search_results_table.setRowCount(0)
         
@@ -174,12 +179,16 @@ class SearchManualWidget(QWidget):
             if not parser_result.success:
                 # Mostra gli errori all'utente
                 errors = "\n".join(parser_result.errors)
+                self.logger.error(f"XML parsing failed: {errors}")
                 QMessageBox.critical(self, "XML Error", f"Could not parse the XML file:\n{errors}")
                 return
             
             if not parser_result.parts or len(parser_result.parts) == 0:
+                self.logger.warning("No parts found in XML file")
                 QMessageBox.information(self, "No Results", "No parts found in the file.")
                 return
+            
+            self.logger.info(f"Found {len(parser_result.parts)} parts in XML file")
             
             # Prepare DatabaseManager
             dbManager = self.db_manager
@@ -309,10 +318,11 @@ class SearchManualWidget(QWidget):
                 )
             
         except Exception as e:
+            log_exception(e, "Error in perform_file_search")
             QMessageBox.critical(self, "Error", f"An error occurred while processing the file: {str(e)}")
-            logging.error(f"Error in perform_file_search: {str(e)}", exc_info=True)
 
     def perform_manual_search(self):
+        self.logger.info("Performing manual search")
         # Clear previous results
         self.ui.search_results_table.setRowCount(0)
         
@@ -332,9 +342,11 @@ class SearchManualWidget(QWidget):
             
         # Display results
         if not results:
+            self.logger.info("No results found for manual search")
             QMessageBox.information(self, "No Results", "No parts found matching your search criteria.")
             return
-            
+        
+        self.logger.info(f"Found {len(results)} results for manual search")
         self.ui.search_results_table.setRowCount(len(results))
         
         for row, data in enumerate(results):
