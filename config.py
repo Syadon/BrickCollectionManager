@@ -30,7 +30,7 @@ def get_user_data_dir():
 class AppConfig:
     # Application Information
     APP_NAME = "Brick Collection Manager"
-    APP_VERSION = "0.2.0"
+    APP_VERSION = "0.2.1"
     ORGANIZATION_NAME = ""
     
     # File Paths
