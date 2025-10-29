@@ -135,11 +135,18 @@ def build_application():
             app_path = dist_dir / "BrickCollectionManager.app"
             if app_path.exists():
                 print(f"✓ macOS app created: {app_path}")
-        else:
-            exe_name = "BrickCollectionManager.exe" if system == "windows" else "BrickCollectionManager"
-            exe_path = dist_dir / exe_name
+        elif system == "windows":
+            exe_path = dist_dir / "BrickCollectionManager.exe"
             if exe_path.exists():
-                print(f"✓ Executable created: {exe_path}")
+                print(f"✓ Windows executable created: {exe_path}")
+        else:
+            # On Linux, PyInstaller creates a directory with the executable inside
+            linux_dir = dist_dir / "BrickCollectionManager"
+            linux_exe = linux_dir / "BrickCollectionManager"
+            if linux_dir.exists() and linux_exe.exists():
+                print(f"✓ Linux executable created: {linux_exe}")
+            elif linux_dir.exists():
+                print(f"✓ Linux build directory created: {linux_dir}")
         
         return True
         
@@ -171,12 +178,17 @@ def create_distribution_package():
         app_dest = package_dir / "BrickCollectionManager.app"
         if app_source.exists():
             shutil.copytree(app_source, app_dest)
-    else:
-        exe_name = "BrickCollectionManager.exe" if system == "windows" else "BrickCollectionManager"
-        exe_source = dist_dir / exe_name
-        exe_dest = package_dir / exe_name
+    elif system == "windows":
+        exe_source = dist_dir / "BrickCollectionManager.exe"
+        exe_dest = package_dir / "BrickCollectionManager.exe"
         if exe_source.exists():
             shutil.copy2(exe_source, exe_dest)
+    else:
+        # On Linux, PyInstaller creates a directory with the executable and libraries
+        linux_source = dist_dir / "BrickCollectionManager"
+        linux_dest = package_dir / "BrickCollectionManager"
+        if linux_source.exists():
+            shutil.copytree(linux_source, linux_dest)
     
     # Copy additional files
     additional_files = [
@@ -227,13 +239,13 @@ def main():
     
     if system == "macos":
         print("  - Double-click BrickCollectionManager.app")
-        print("  - Or run: open dist/BrickCollectionManager-{system}-{arch}/BrickCollectionManager.app")
+        print(f"  - Or run: open dist/BrickCollectionManager-{system}-{arch}/BrickCollectionManager.app")
     elif system == "windows":
         print("  - Double-click BrickCollectionManager.exe")
         print(f"  - Or run: dist\\BrickCollectionManager-{system}-{arch}\\BrickCollectionManager.exe")
     else:
-        print("  - Run: ./dist/BrickCollectionManager-{system}-{arch}/BrickCollectionManager")
-        print("  - Make sure to set execute permissions: chmod +x BrickCollectionManager")
+        print(f"  - Run: ./dist/BrickCollectionManager-{system}-{arch}/BrickCollectionManager/BrickCollectionManager")
+        print("  - Make sure to set execute permissions if needed: chmod +x BrickCollectionManager")
 
 if __name__ == "__main__":
     main()
