@@ -1,25 +1,44 @@
-from PySide6.QtWidgets import QWidget, QTableWidgetItem, QMessageBox, QLabel, QStackedLayout, QVBoxLayout
-from PySide6.QtGui import QImage, QIcon, QColor, QKeyEvent, QPainter, QPen, QPixmap
-from PySide6.QtCore import QByteArray, Qt, QRect, QBuffer, QEvent, QTimer
-from PySide6.QtMultimedia import QCamera, QMediaCaptureSession, QImageCapture, QMediaDevices
-from PySide6.QtMultimediaWidgets import QVideoWidget
-from src.database import DatabaseManager, Container, BrickColor
-from src.timedMessageBox import TimedMessageBox
-from src.imageProvider import ImagesProvider
-from src.widgets.colorLabel import ColorLabel
-from src.utils import TransparentSelectionDelegate, qImageToOpenCV, rgb_to_hsv, calculate_hsv_similarity
-from config import AppConfig
-from src.logger import get_logger, log_exception
+import logging
+
 import cv2
 import numpy as np
-import logging
+from PySide6.QtCore import QBuffer, QByteArray, QEvent, QRect, Qt, QTimer
+from PySide6.QtGui import QColor, QIcon, QImage, QKeyEvent, QPainter, QPen, QPixmap
+from PySide6.QtMultimedia import (
+    QCamera,
+    QImageCapture,
+    QMediaCaptureSession,
+    QMediaDevices,
+)
+from PySide6.QtMultimediaWidgets import QVideoWidget
+from PySide6.QtWidgets import (
+    QLabel,
+    QMessageBox,
+    QStackedLayout,
+    QTableWidgetItem,
+    QVBoxLayout,
+    QWidget,
+)
+
+from config import AppConfig
 from src import utils
 from src.brickRecongnition import BrickRecognition
+from src.database import BrickColor, Container, DatabaseManager
+from src.imageProvider import ImagesProvider
+from src.logger import get_logger, log_exception
+from src.timedMessageBox import TimedMessageBox
+from src.utils import (
+    TransparentSelectionDelegate,
+    calculate_hsv_similarity,
+    qImageToOpenCV,
+    rgb_to_hsv,
+)
+from src.widgets.colorLabel import ColorLabel
 from ui.ui_addFromCameraWidget import Ui_AddFromCameraWidget
 
-class AddFromCameraWidget(QWidget):
 
-    def __init__(self, container:Container|None = None, parent=None):
+class AddFromCameraWidget(QWidget):
+    def __init__(self, container: Container | None = None, parent=None):
         super().__init__(parent)
         self.logger = get_logger()
         self.logger.debug("Initializing AddFromCameraWidget")
@@ -32,40 +51,40 @@ class AddFromCameraWidget(QWidget):
         self.imageCaptured = False
         self.colorsDetected = []
         self.current_part_id = None
-        
+
         # Setup camera view stack layout
         self.camera_stack = QStackedLayout(self.ui.cameraView)
-        
+
         # Create video widget container
         self.video_container = QWidget()
         self.video_container_layout = QVBoxLayout(self.video_container)
         self.video_container_layout.setContentsMargins(0, 0, 0, 0)
-        
+
         # Setup video widget
         self.video_widget = QVideoWidget()
         self.video_container_layout.addWidget(self.video_widget)
-        
+
         # Create captured image container
         self.capture_container = QWidget()
         self.capture_container_layout = QVBoxLayout(self.capture_container)
         # Set black background for capture container
         self.capture_container.setStyleSheet("background-color: black;")
         self.capture_container_layout.setContentsMargins(0, 0, 0, 0)
-        
+
         # Create label for captured image
         self.capture_label = QLabel()
         self.capture_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
         self.capture_container_layout.addWidget(self.capture_label)
-        
+
         # Add widgets to stack
         self.camera_stack.addWidget(self.video_container)
         self.camera_stack.addWidget(self.capture_container)
-        
+
         # Setup QtMultimedia components
         self.media_capture_session = QMediaCaptureSession()
         self.camera = None
         self.image_capture = QImageCapture()
-        
+
         self.media_capture_session.setVideoOutput(self.video_widget)
         self.media_capture_session.setImageCapture(self.image_capture)
 
@@ -84,19 +103,23 @@ class AddFromCameraWidget(QWidget):
         self.ui.skipButton.clicked.connect(self.clearDetection)
         self.ui.addToContainerButton.clicked.connect(self.on_add_clicked)
 
-        self.ui.parts_list.setItemDelegateForColumn(0, TransparentSelectionDelegate(self.ui.parts_list))
-        self.ui.colors_list.setItemDelegateForColumn(0, TransparentSelectionDelegate(self.ui.colors_list))
-        
+        self.ui.parts_list.setItemDelegateForColumn(
+            0, TransparentSelectionDelegate(self.ui.parts_list)
+        )
+        self.ui.colors_list.setItemDelegateForColumn(
+            0, TransparentSelectionDelegate(self.ui.colors_list)
+        )
+
         # Connect list item selection
         self.ui.parts_list.itemSelectionChanged.connect(self.on_part_selected)
 
         # Install event filter for keyboard events
         self.installEventFilter(self)
-        
+
         # Initialize capture attributes
         self.captured_image = None
         self.detection_rect = None
-        
+
         self.update_add_button_state()
 
     def resizeEvent(self, event):
@@ -105,7 +128,7 @@ class AddFromCameraWidget(QWidget):
         self.update_video_widget_geometry()
         # And schedule another update after a short delay to ensure proper sizing
         QTimer.singleShot(100, self.update_video_widget_geometry)
-        
+
         # Update captured image if present
         if self.captured_image and self.detection_rect:
             self.setDetectionImage(self.captured_image, self.detection_rect)
@@ -141,18 +164,24 @@ class AddFromCameraWidget(QWidget):
         super().hideEvent(event)
 
     def populate_container_list(self):
-        utils.populate_container_combo(self.ui.containerCombobox, DatabaseManager(), self.targetContainer)
-        
+        utils.populate_container_combo(
+            self.ui.containerCombobox, DatabaseManager(), self.targetContainer
+        )
+
         # Setup custom delegate for better rendering
         utils.setup_container_combo_delegate(self.ui.containerCombobox)
-        
+
         # Connect to selection change event if not already connected
         try:
-            self.ui.containerCombobox.currentIndexChanged.disconnect(self.on_container_selection_changed)
-        except:
+            self.ui.containerCombobox.currentIndexChanged.disconnect(
+                self.on_container_selection_changed
+            )
+        except Exception:
             pass
-        self.ui.containerCombobox.currentIndexChanged.connect(self.on_container_selection_changed)
-        
+        self.ui.containerCombobox.currentIndexChanged.connect(
+            self.on_container_selection_changed
+        )
+
         # Update add button state
         self.on_container_selection_changed(self.ui.containerCombobox.currentIndex())
 
@@ -166,64 +195,64 @@ class AddFromCameraWidget(QWidget):
         camera_devices = QMediaDevices.videoInputs()
         for device in camera_devices:
             self.ui.acquisition_combo.addItem(device.description(), device)
-    
+
     def switch_camera(self, index):
         if index < 0 or index >= self.ui.acquisition_combo.count():
             return
 
         self.close_stream()
-        
+
         camera_device = self.ui.acquisition_combo.itemData(index)
         if not camera_device:
             # If "Camera Off" is selected, just return after closing the stream
             return
-            
+
         self.camera = QCamera(camera_device)
         self.media_capture_session.setCamera(self.camera)
         self.update()
 
         self.startStream()
-    
+
     def startStream(self):
         if self.camera:
             self.camera.start()
             self.camera_stack.setCurrentWidget(self.video_container)
             self.video_widget.show()
-            
+
     def close_stream(self):
         if self.camera:
             self.camera.stop()
             self.camera = None  # Reset camera to None when closing stream
         self.video_widget.hide()
-    
+
     def capture_image(self):
         if self.camera and self.camera.isActive():
             self.image_capture.capture()
-    
+
     def setDetectionImage(self, image, bb):
         self.captured_image = image.copy()
         self.detection_rect = bb
-        
+
         # Create a copy of the image to draw on
         display_image = self.captured_image.copy()
-        
+
         # Draw bounding box
         painter = QPainter(display_image)
         painter.setPen(QPen(Qt.GlobalColor.red, 3))
         painter.drawRect(bb)
         painter.end()
-        
+
         # Convert to pixmap and scale
         pixmap = QPixmap.fromImage(display_image)
         scaled_pixmap = pixmap.scaled(
             self.ui.cameraView.size(),
             Qt.AspectRatioMode.KeepAspectRatio,
-            Qt.TransformationMode.SmoothTransformation
+            Qt.TransformationMode.SmoothTransformation,
         )
-        
+
         # Set the image to the label
         self.capture_label.setPixmap(scaled_pixmap)
-        
+
         # Switch to capture view
         self.camera_stack.setCurrentWidget(self.capture_container)
 
@@ -249,20 +278,22 @@ class AddFromCameraWidget(QWidget):
         self.detection_rect = None
         self.update_add_button_state()
 
-    def on_image_captured(self, id, image:QImage):
+    def on_image_captured(self, id, image: QImage):
         # Convert QImage to bytes in memory
         byte_array = QByteArray()
         buffer = QBuffer(byte_array)
         buffer.open(QBuffer.OpenModeFlag.WriteOnly)
-        image.save(buffer, "JPG", quality=90)
+        image.save(buffer, "JPEG", quality=90)  # pyright: ignore[reportCallIssue, reportArgumentType]
         buffer.close()
 
         self.imageCaptured = True
 
         recongnition = BrickRecognition()
-        recognition_result = recongnition.recognize(bytearray(byte_array.data()), 
-                                                    image_width=image.width(), 
-                                                    image_height=image.height())
+        recognition_result = recongnition.recognize(
+            bytearray(byte_array.data()),
+            image_width=image.width(),
+            image_height=image.height(),
+        )
         if recognition_result:
             self.on_part_detected(image, recognition_result)
 
@@ -270,16 +301,16 @@ class AddFromCameraWidget(QWidget):
         # Check if a part is selected
         if not self.current_part_id:
             return
-            
+
         # Get selected color
         current_row = self.ui.colors_list.currentRow()
         if current_row < 0:
             return
-            
+
         color_item = self.ui.colors_list.item(current_row, 0)
         if not color_item:
             return
-            
+
         # Get color data
         color_data = color_item.data(Qt.ItemDataRole.UserRole)
 
@@ -287,28 +318,29 @@ class AddFromCameraWidget(QWidget):
         part_row = self.ui.parts_list.currentRow()
         if part_row < 0:
             return
-        
+
         # Request image for the part with this color
         image = self.imgProvider.get_part_image(self.current_part_id, color_data.id)
-        
+
         # If image is available, update immediately
         if image:
             self.update_part_image_camera(image, part_row)
-        
+
         self.update_add_button_state()
 
     def on_image_loaded(self, key, pixmap):
         # Parse key to get part_id and color_id
         try:
-            part_id, color_id = key.split('_')
-        except:
+            part_id, color_id = key.split("_")
+        except Exception as e:
+            log_exception(e)
             return
-     
+
         if color_id == "part":
             part_row = -1
             for row in range(self.ui.parts_list.rowCount()):
                 item = self.ui.parts_list.item(row, 0)
-                if item and item.data(Qt.ItemDataRole.UserRole)['id'] == part_id:
+                if item and item.data(Qt.ItemDataRole.UserRole)["id"] == part_id:
                     part_row = row
                     break
 
@@ -318,106 +350,116 @@ class AddFromCameraWidget(QWidget):
             # Only process if we have a current part selected
             if not self.current_part_id:
                 return
-            
+
             # Only update if this is our current part
             if part_id != self.current_part_id:
                 return
-            
+
             # Get current selected part and color
             part_row = self.ui.parts_list.currentRow()
             color_row = self.ui.colors_list.currentRow()
-            
+
             if part_row < 0 or color_row < 0:
                 return
-                
+
             # Get color data of selected color
             color_item = self.ui.colors_list.item(color_row, 0)
             if not color_item:
                 return
-                
+
             color_data = color_item.data(Qt.ItemDataRole.UserRole)
-            
+
             # Only update if this is our currently selected color
             if str(color_data.id) != color_id:
                 return
-            
+
         # Update image
         self.update_part_image_camera(pixmap, part_row)
-        
+
     def update_part_image_camera(self, pixmap, row):
         if row < 0 or row >= self.ui.parts_list.rowCount():
             return
-            
+
         # Scale image
-        scaled = pixmap.scaled(self.iconSize, self.iconSize, 
-                              Qt.AspectRatioMode.KeepAspectRatio, 
-                              Qt.TransformationMode.SmoothTransformation)
-        
+        scaled = pixmap.scaled(
+            self.iconSize,
+            self.iconSize,
+            Qt.AspectRatioMode.KeepAspectRatio,
+            Qt.TransformationMode.SmoothTransformation,
+        )
+
         # Update image in table
         image_item = self.ui.parts_list.item(row, 0)
         if image_item:
             image_item.setIcon(QIcon(scaled))
             self.ui.parts_list.viewport().update()  # Force repaint
             self.ui.parts_list.resizeColumnsToContents()
-            
+
             # Limit Name column width
             name_column_index = 2
             max_name_width = 400
             if self.ui.parts_list.columnWidth(name_column_index) > max_name_width:
                 self.ui.parts_list.setColumnWidth(name_column_index, max_name_width)
-            
+
             self.ui.parts_list.setWordWrap(True)
             self.ui.parts_list.resizeRowsToContents()
             self.ui.parts_list.horizontalHeader().setStretchLastSection(True)
-            
+
     def on_part_detected(self, image, detectionData):
         # Check if detectionData contains required fields
-        if 'bb' not in detectionData or 'items' not in detectionData:
+        if "bb" not in detectionData or "items" not in detectionData:
             logging.error("Detection data missing required fields (bb or items)")
             return
 
         # Check if bb contains all required coordinates
-        if not all(key in detectionData['bb'] for key in ['left', 'right', 'upper', 'lower']):
+        if not all(
+            key in detectionData["bb"] for key in ["left", "right", "upper", "lower"]
+        ):
             logging.error("Bounding box missing required coordinates")
             return
 
         # Check if items list is not empty
-        if not detectionData['items']:
+        if not detectionData["items"]:
             logging.error("No items detected")
             return
 
-        bbleft = int(detectionData['bb']['left'])
-        bbright = int(detectionData['bb']['right']) 
-        bbupper = int(detectionData['bb']['upper'])
-        bblower = int(detectionData['bb']['lower'])
-        bb = QRect(bbleft, bbupper, bbright-bbleft, bblower-bbupper)
+        bbleft = int(detectionData["bb"]["left"])
+        bbright = int(detectionData["bb"]["right"])
+        bbupper = int(detectionData["bb"]["upper"])
+        bblower = int(detectionData["bb"]["lower"])
+        bb = QRect(bbleft, bbupper, bbright - bbleft, bblower - bbupper)
 
-        #self.setDetectionImage(image, bb)
+        # self.setDetectionImage(image, bb)
         self.colorsDetected = self.detect_image_colors(image, bb)
 
         # Clear previous items
         self.ui.parts_list.setRowCount(0)
 
         # Add detected parts to list widget
-        for item in detectionData['items']:
+        for item in detectionData["items"]:
             row = self.ui.parts_list.rowCount()
             self.ui.parts_list.insertRow(row)
             # Create list item with part info
             image_item = QTableWidgetItem()
-            img = self.imgProvider.get_image_from_url(item['img_url'], f"{item['id']}_part")
-            if img != None and not img.isNull():
-                scaled = img.scaled(self.iconSize, self.iconSize, 
-                                    Qt.AspectRatioMode.KeepAspectRatio, 
-                                    Qt.TransformationMode.SmoothTransformation)
+            img = self.imgProvider.get_image_from_url(
+                item["img_url"], f"{item['id']}_part"
+            )
+            if img is not None and not img.isNull():
+                scaled = img.scaled(
+                    self.iconSize,
+                    self.iconSize,
+                    Qt.AspectRatioMode.KeepAspectRatio,
+                    Qt.TransformationMode.SmoothTransformation,
+                )
                 image_item.setIcon(QIcon(scaled))
-    
+
             id_item = QTableWidgetItem(f"{item['id']}")
             name_item = QTableWidgetItem(f"{item['name']}")
             # Enable word wrap for long part names
             name_item.setFlags(name_item.flags() | Qt.ItemFlag.ItemIsEnabled)
-            
+
             score_item = QTableWidgetItem()
-            score_item.setData(Qt.ItemDataRole.EditRole, round(item['score']*100, 2))
+            score_item.setData(Qt.ItemDataRole.EditRole, round(item["score"] * 100, 2))
 
             # Store full item data in item's data role
             image_item.setData(Qt.ItemDataRole.UserRole, item)
@@ -427,31 +469,31 @@ class AddFromCameraWidget(QWidget):
             self.ui.parts_list.setItem(row, 1, id_item)
             self.ui.parts_list.setItem(row, 2, name_item)
             self.ui.parts_list.setItem(row, 3, score_item)
-        
+
         # Adjust row heights for icons
         self.ui.parts_list.verticalHeader().setDefaultSectionSize(self.iconSize)
 
         # Adjust columns to content and stretch last column
         self.ui.parts_list.resizeColumnsToContents()
-        
+
         # Limit Name column width and enable word wrap
         name_column_index = 2  # Name is column 2 (0: Image, 1: ID, 2: Name, 3: Score)
         max_name_width = 400  # Maximum width for name column
         if self.ui.parts_list.columnWidth(name_column_index) > max_name_width:
             self.ui.parts_list.setColumnWidth(name_column_index, max_name_width)
-        
+
         # Enable word wrap for the table
         self.ui.parts_list.setWordWrap(True)
         self.ui.parts_list.resizeRowsToContents()  # Adjust row heights for wrapped text
-        
+
         self.ui.parts_list.horizontalHeader().setStretchLastSection(True)
 
         # Select first item if available
         if self.ui.parts_list.rowCount() > 0:
             self.ui.parts_list.selectRow(0)
-            
+
         self.setDetectionImage(image, bb)
-            
+
     def on_part_selected(self):
         current_row = self.ui.parts_list.currentRow()
         if current_row >= 0:
@@ -459,12 +501,12 @@ class AddFromCameraWidget(QWidget):
             current_item = self.ui.parts_list.item(current_row, 0)
             if current_item:
                 part_data = current_item.data(Qt.ItemDataRole.UserRole)
-                self.current_part_id = part_data['id']  # Store current part ID
+                self.current_part_id = part_data["id"]  # Store current part ID
                 logging.info(f"Selected part: {part_data['id']} - {part_data['name']}")
-                self.update_colors_list(part_data['id'])
-                
+                self.update_colors_list(part_data["id"])
+
         self.update_add_button_state()
-                
+
     def on_add_part_clicked(self):
         try:
             # Get selected part
@@ -472,7 +514,7 @@ class AddFromCameraWidget(QWidget):
             if current_row < 0:
                 logging.warning("No part selected")
                 return
-                
+
             part_item = self.ui.parts_list.item(current_row, 0)
             if not part_item:
                 logging.warning("No part data found")
@@ -482,7 +524,7 @@ class AddFromCameraWidget(QWidget):
             color_current_row = self.ui.colors_list.currentRow()
             if color_current_row < 0:
                 return
-                
+
             color_item = self.ui.colors_list.item(color_current_row, 0)
             if not color_item:
                 return
@@ -493,12 +535,14 @@ class AddFromCameraWidget(QWidget):
             if not container_data:
                 logging.warning("Invalid container data")
                 return
-            
+
             # Extract container ID and name from data tuple (id, name, type, part_count)
             try:
                 if isinstance(container_data, tuple):
                     container_id = container_data[0]
-                    container_name = container_data[1] if len(container_data) > 1 else "Unknown"
+                    container_name = (
+                        container_data[1] if len(container_data) > 1 else "Unknown"
+                    )
                 else:
                     container_id = container_data
                     container_name = "Unknown"
@@ -518,35 +562,40 @@ class AddFromCameraWidget(QWidget):
 
             # Get colors_parts ID
             dbManager = DatabaseManager()
-            colorPart = dbManager.getColorPart(part_data['id'], color_data.id)
+            colorPart = dbManager.getColorPart(part_data["id"], color_data.id)
             if colorPart is None:
                 logging.warning("No color_part found")
                 return
 
-            msg_pixmap = self.imgProvider.get_part_image(part_data['id'], color_data.id)
+            msg_pixmap = self.imgProvider.get_part_image(part_data["id"], color_data.id)
             # TODO: resize image to max
-            #...
+            # ...
 
             # Show a message box with the part image to confirm addition
-            msg = TimedMessageBox(timeout=5, buttons=[QMessageBox.StandardButton.Ok, 
-                                                      QMessageBox.StandardButton.Cancel], 
-                                  parent = self)
+            msg = TimedMessageBox(
+                timeout=5,
+                buttons=[
+                    QMessageBox.StandardButton.Ok,
+                    QMessageBox.StandardButton.Cancel,
+                ],
+                parent=self,
+            )
             msg.setWindowTitle("Adding Part")
             msg.setText(f"""
                 <html>
                 <p><b>Adding...</b></p>
-                <p><b>Part:</b> {part_data['id']} - {part_data['name']}</p>
+                <p><b>Part:</b> {part_data["id"]} - {part_data["name"]}</p>
                 <p><b>Color:</b> {color_data.name} - {color_data.type}</p>
                 <p><b>Quantity:</b> {quantity}</p>
                 <p><b>Container:</b> {container_name}</p>
                 </html>
             """)
             # msg.setStandardButtons(QMessageBox.Ok|QMessageBox.Cancel)
-            # msg.setDefaultButton(QMessageBox.Ok)            
-            if msg_pixmap != None:
+            # msg.setDefaultButton(QMessageBox.Ok)
+            if msg_pixmap is not None:
                 # TODO: resize image to max
                 msg.setIconPixmap(msg_pixmap)
-            
+
             response = msg.exec()
             if response == QMessageBox.StandardButton.Cancel:
                 return
@@ -557,25 +606,31 @@ class AddFromCameraWidget(QWidget):
                 msg = QMessageBox(self)
                 msg.setIcon(QMessageBox.Icon.Critical)
                 msg.setWindowTitle("Adding Part")
-                msg.setText(f"Fail to add {quantity} of part {part_data['id']} - {part_data['name']} in color {color_data.name} - {color_data.type} to container {container_name}")
+                msg.setText(
+                    f"Fail to add {quantity} of part {part_data['id']} - {part_data['name']} in color {color_data.name} - {color_data.type} to container {container_name}"
+                )
                 msg.setStandardButtons(QMessageBox.StandardButton.Ok)
-                if msg_pixmap != None:
+                if msg_pixmap is not None:
                     msg.setIconPixmap(msg_pixmap)
                 msg.exec()
                 return
 
-            utils.update_container_combo_single_parts_count(self.ui.containerCombobox, 
-                                                            dbManager, 
-                                                            self.ui.containerCombobox.currentIndex())
+            utils.update_container_combo_single_parts_count(
+                self.ui.containerCombobox,
+                dbManager,
+                self.ui.containerCombobox.currentIndex(),
+            )
 
-            logging.info(f"Added {quantity} of part {part_data['id']} in color {color_data.name} to container {container_id}")
+            logging.info(
+                f"Added {quantity} of part {part_data['id']} in color {color_data.name} to container {container_id}"
+            )
 
             return True
 
         except Exception as e:
             logging.error(f"Error adding part to collection: {str(e)}")
             return False
-            
+
     def update_colors_list(self, part_id):
         self.ui.colors_list.setRowCount(0)
         dbManage = DatabaseManager()
@@ -588,7 +643,9 @@ class AddFromCameraWidget(QWidget):
             # Configure column sizing and row height
             self.ui.colors_list.resizeColumnsToContents()
             self.ui.colors_list.horizontalHeader().setStretchLastSection(True)
-            self.ui.colors_list.verticalHeader().setDefaultSectionSize(self.iconSize)  # Set minimum row height
+            self.ui.colors_list.verticalHeader().setDefaultSectionSize(
+                self.iconSize
+            )  # Set minimum row height
             return
 
         # Calculate color similarity scores
@@ -597,25 +654,25 @@ class AddFromCameraWidget(QWidget):
             # Skip colors without RGB values
             if not color.rgb:
                 continue
-            
+
             color.year_to = int(color.year_to) if color.year_to else 0
 
             # Convert color RGB string to tuple
             c = QColor(f"#{color.rgb}")
             r, g, b = c.red(), c.green(), c.blue()
             color_hsv = rgb_to_hsv(r, g, b)
-            
+
             # Calculate best match score against detected colors
             max_score = 0
             for detected in self.colorsDetected:
-                dr, dg, db = detected['rgb']
+                dr, dg, db = detected["rgb"]
                 detected_hsv = rgb_to_hsv(dr, dg, db)
-                
+
                 # Calculate similarity in HSV space
                 similarity = calculate_hsv_similarity(color_hsv, detected_hsv)
-                
+
                 # Weight similarity by detected color percentage
-                weighted_score = float(similarity * (detected['percentage'] / 100))
+                weighted_score = float(similarity * (detected["percentage"] / 100))
                 max_score = max(max_score, weighted_score)
 
             scored_colors.append((color, max_score))
@@ -631,40 +688,48 @@ class AddFromCameraWidget(QWidget):
         for color in colors:
             if not color.rgb:
                 self.add_color_to_table(color)
-        
+
         # Configure column sizing
         self.ui.colors_list.resizeColumnsToContents()  # Resize all columns to fit content
-        self.ui.colors_list.horizontalHeader().setStretchLastSection(True)  # Make last column stretch to fill remaining space
-        self.ui.colors_list.verticalHeader().setDefaultSectionSize(self.iconSize)  # Set minimum row height
-                
-    def add_color_to_table(self, color: BrickColor, score: float|None = None):
+        self.ui.colors_list.horizontalHeader().setStretchLastSection(
+            True
+        )  # Make last column stretch to fill remaining space
+        self.ui.colors_list.verticalHeader().setDefaultSectionSize(
+            self.iconSize
+        )  # Set minimum row height
+
+    def add_color_to_table(self, color: BrickColor, score: float | None = None):
         # Nel metodo add_color_to_table, potresti aggiungere controlli più rigorosi
-        if not color or not hasattr(color, 'name'):
+        if not color or not hasattr(color, "name"):
             return
-            
+
         row = self.ui.colors_list.rowCount()
         self.ui.colors_list.insertRow(row)
 
         # Create items
         # Create ColorLabel for color name with background color
         rgb_hex = color.rgb if color.rgb else None
-        color_label = ColorLabel(color.name, rgb_hex, color.type, color.id)
-        
+        color_label = ColorLabel(color.name, rgb_hex, color.color_type, color.id)
+
         # Create empty item to store data (ColorLabel doesn't store data)
         name_item = QTableWidgetItem()
         name_item.setData(Qt.ItemDataRole.UserRole, color)
-        
+
         score_item = QTableWidgetItem()
-        score_item.setData(Qt.ItemDataRole.EditRole, round(score*100, 2) if score is not None else 0)
+        score_item.setData(
+            Qt.ItemDataRole.EditRole, round(score * 100, 2) if score is not None else 0
+        )
         year_item = QTableWidgetItem(str(color.year_to) if color.year_to else "")
 
         # Add items to row
         self.ui.colors_list.setItem(row, 0, name_item)  # Set the item with data
-        self.ui.colors_list.setCellWidget(row, 0, color_label)  # Set the ColorLabel widget
+        self.ui.colors_list.setCellWidget(
+            row, 0, color_label
+        )  # Set the ColorLabel widget
         self.ui.colors_list.setItem(row, 1, score_item)
         self.ui.colors_list.setItem(row, 2, year_item)
 
-    def detect_image_colors(self, image:QImage, bb:QRect):
+    def detect_image_colors(self, image: QImage, bb: QRect):
         try:
             cropped = image.copy(bb)
             cv_image = qImageToOpenCV(cropped)
@@ -675,7 +740,14 @@ class AddFromCameraWidget(QWidget):
             # Define criteria and apply kmeans
             criteria = (cv2.TERM_CRITERIA_EPS + cv2.TERM_CRITERIA_MAX_ITER, 10, 1.0)
             k = 3  # Number of clusters (main colors)
-            _, labels, centers = cv2.kmeans(pixels, k, None, criteria, 10, cv2.KMEANS_RANDOM_CENTERS)
+            _, labels, centers = cv2.kmeans(  # pyright: ignore[reportCallIssue]
+                data=pixels,
+                K=k,
+                bestLabels=None,  # pyright: ignore[reportArgumentType]
+                criteria=criteria,
+                attempts=10,
+                flags=cv2.KMEANS_RANDOM_CENTERS,
+            )
 
             # Convert centers to integers
             centers = centers.astype(np.uint8)
@@ -691,14 +763,16 @@ class AddFromCameraWidget(QWidget):
                 pixel_count = counts[i]
                 percentage = (pixel_count / total_pixels) * 100
                 hex_color = f"{r:02x}{g:02x}{b:02x}"
-                colors_with_percentages.append({
-                    'rgb': (r, g, b),
-                    'hex': hex_color.upper(),
-                    'percentage': percentage
-                })
+                colors_with_percentages.append(
+                    {
+                        "rgb": (r, g, b),
+                        "hex": hex_color.upper(),
+                        "percentage": percentage,
+                    }
+                )
 
             # Sort by percentage
-            colors_with_percentages.sort(key=lambda x: x['percentage'], reverse=True)
+            colors_with_percentages.sort(key=lambda x: x["percentage"], reverse=True)
 
             return colors_with_percentages
         except Exception as e:
@@ -707,13 +781,17 @@ class AddFromCameraWidget(QWidget):
 
     def on_container_selection_changed(self, index):
         self.update_add_button_state()
-        
+
     def update_add_button_state(self):
         # Disable add button if dummy container is selected
         container_data = self.ui.containerCombobox.currentData()
-        has_selection = (self.ui.parts_list.currentRow() >= 0 and 
-                        self.ui.colors_list.currentRow() >= 0)
-        self.ui.addToContainerButton.setEnabled(container_data is not None and has_selection)
+        has_selection = (
+            self.ui.parts_list.currentRow() >= 0
+            and self.ui.colors_list.currentRow() >= 0
+        )
+        self.ui.addToContainerButton.setEnabled(
+            container_data is not None and has_selection
+        )
 
     def eventFilter(self, obj, event):
         """Handle keyboard events"""
@@ -737,7 +815,9 @@ class AddFromCameraWidget(QWidget):
                 current_value = self.ui.qtySpinBox.value()
                 self.ui.qtySpinBox.setValue(current_value + 1)
                 return True
-            elif key_event.key() == Qt.Key.Key_F3 or key_event.key() == Qt.Key.Key_Minus:
+            elif (
+                key_event.key() == Qt.Key.Key_F3 or key_event.key() == Qt.Key.Key_Minus
+            ):
                 # Decrease quantity by 1, but don't go below minimum
                 current_value = self.ui.qtySpinBox.value()
                 if current_value > self.ui.qtySpinBox.minimum():

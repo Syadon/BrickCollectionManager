@@ -1,16 +1,23 @@
 from typing import List
-from PySide6.QtWidgets import QMessageBox, QWidget
+
 from PySide6.QtCore import QTimer
+from PySide6.QtWidgets import QMessageBox, QWidget
+
 
 class TimedMessageBox(QMessageBox):
-    def __init__(self, timeout : float=5, 
-                 buttons : List[QMessageBox.StandardButton]|None = None, 
-                 parent : QWidget|None = None, **kwargs):
-
+    def __init__(
+        self,
+        timeout: float = 5,
+        buttons: List[QMessageBox.StandardButton] | None = None,
+        parent: QWidget | None = None,
+        **kwargs,
+    ):
         if not buttons:
-            buttons = [QMessageBox.StandardButton.Ok, 
-                       QMessageBox.StandardButton.Abort, 
-                       QMessageBox.StandardButton.Cancel]
+            buttons = [
+                QMessageBox.StandardButton.Ok,
+                QMessageBox.StandardButton.Abort,
+                QMessageBox.StandardButton.Cancel,
+            ]
 
         self.timer = QTimer()
         self.timeout = timeout

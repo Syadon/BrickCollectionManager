@@ -1,11 +1,13 @@
 from PySide6.QtWidgets import QDialog
-from ui.ui_addcontainerdialog import Ui_AddContainerDialog
+
 from src.database import DatabaseManager
+from ui.ui_addcontainerdialog import Ui_AddContainerDialog
+
 
 class AddContainerDialog(QDialog):
     def __init__(self, parent=None):
         super().__init__(parent)
-        
+
         # Create and setup UI
         self.ui = Ui_AddContainerDialog()
         self.ui.setupUi(self)
@@ -20,12 +22,10 @@ class AddContainerDialog(QDialog):
 
     def addContainer(self):
         dbManager = DatabaseManager()
-        
+
         # Get the type from the combo box
         type_text = self.ui.typeComboBox.currentText().lower()
-        
+
         dbManager.addContainer(
-            self.ui.nameEdit.text(), 
-            self.ui.descriptionEdit.text(),
-            type_text
+            self.ui.nameEdit.text(), self.ui.descriptionEdit.text(), type_text
         )

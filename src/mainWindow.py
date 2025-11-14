@@ -1,24 +1,38 @@
-from PySide6.QtWidgets import (QMainWindow, QWidget, QVBoxLayout, QHBoxLayout, 
-                              QToolBar, QStackedLayout, QDialog, QPushButton, QMessageBox, QStatusBar)
-from PySide6.QtGui import QIcon, QAction
-from PySide6.QtCore import Qt, QSize, QUrl
-from PySide6.QtGui import QDesktopServices
-from src.widgets import (ContainerListWidget, SearchManualWidget, AddManualWidget,
-                        AddFromCameraWidget, AddFromFileWidget, DatabaseWidget)
-from config import AppConfig
-from src.logger import get_logger, get_log_file_path, get_log_dir
-import resources_rc
-import sys
-import subprocess
-import tempfile
 import os
+import subprocess
+import sys
+import tempfile
+
+from PySide6.QtCore import QSize, Qt, QUrl
+from PySide6.QtGui import QAction, QDesktopServices, QIcon
+from PySide6.QtWidgets import (
+    QHBoxLayout,
+    QMainWindow,
+    QMessageBox,
+    QStackedLayout,
+    QStatusBar,
+    QToolBar,
+    QWidget,
+)
+
+from config import AppConfig
+from src.logger import get_log_dir, get_log_file_path, get_logger
+from src.widgets import (
+    AddFromCameraWidget,
+    AddFromFileWidget,
+    AddManualWidget,
+    ContainerListWidget,
+    DatabaseWidget,
+    SearchManualWidget,
+)
+
 
 class MainWindow(QMainWindow):
     def __init__(self):
         super().__init__()
         self.logger = get_logger()
         self.logger.info("Initializing MainWindow")
-        
+
         self.setWindowTitle("Brick Collection Manager")
         self.setMinimumSize(1200, 700)
 
@@ -32,7 +46,7 @@ class MainWindow(QMainWindow):
         self.toolbar.setOrientation(Qt.Orientation.Vertical)
         self.toolbar.setIconSize(QSize(32, 32))
         self.toolbar.setToolButtonStyle(Qt.ToolButtonStyle.ToolButtonTextUnderIcon)
-        
+
         main_layout.addWidget(self.toolbar)
 
         # Create stacked layout for different pages
@@ -58,10 +72,10 @@ class MainWindow(QMainWindow):
 
         # Create toolbar actions
         self.setup_toolbar()
-        
+
         # Setup menu bar
         self.setup_menu_bar()
-        
+
         # Setup status bar
         self.setup_status_bar()
 
@@ -79,13 +93,17 @@ class MainWindow(QMainWindow):
         self.toolbar.addAction(search_action)
 
         # Add Manual action
-        add_manual_action = QAction(QIcon(":/icons/addManually.png"), "Add Manually", self)
+        add_manual_action = QAction(
+            QIcon(":/icons/addManually.png"), "Add Manually", self
+        )
         add_manual_action.setCheckable(True)
         add_manual_action.triggered.connect(lambda: self.switch_page(2))
         self.toolbar.addAction(add_manual_action)
 
         # Add Camera action
-        add_camera_action = QAction(QIcon(":/icons/addCamera.png"), "Add From Camera", self)
+        add_camera_action = QAction(
+            QIcon(":/icons/addCamera.png"), "Add From Camera", self
+        )
         add_camera_action.setCheckable(True)
         add_camera_action.triggered.connect(lambda: self.switch_page(3))
         self.toolbar.addAction(add_camera_action)
@@ -97,7 +115,7 @@ class MainWindow(QMainWindow):
         self.toolbar.addAction(add_file_action)
 
         # Add separator before database action
-        #self.toolbar.addSeparator()
+        # self.toolbar.addSeparator()
 
         # Database action
         database_action = QAction(QIcon(":/icons/database.png"), "Database", self)
@@ -112,40 +130,44 @@ class MainWindow(QMainWindow):
     def setup_menu_bar(self):
         """Setup the menu bar with Help menu"""
         menubar = self.menuBar()
-        
+
         # System menu (macOS only)
-        if sys.platform == 'darwin':
+        if sys.platform == "darwin":
             system_menu = menubar.addMenu("&System")
-            
+
             # Request Camera Permissions action
             request_camera_action = QAction("Request Camera Permissions", self)
-            request_camera_action.setStatusTip("Force macOS to request camera access permissions")
+            request_camera_action.setStatusTip(
+                "Force macOS to request camera access permissions"
+            )
             request_camera_action.triggered.connect(self.request_camera_permissions)
             system_menu.addAction(request_camera_action)
-            
+
             system_menu.addSeparator()
-            
+
             # Open System Preferences - Camera
             open_camera_prefs_action = QAction("Open Camera Settings...", self)
-            open_camera_prefs_action.setStatusTip("Open System Settings → Privacy → Camera")
+            open_camera_prefs_action.setStatusTip(
+                "Open System Settings → Privacy → Camera"
+            )
             open_camera_prefs_action.triggered.connect(self.open_camera_settings)
             system_menu.addAction(open_camera_prefs_action)
-        
+
         # Help menu
         help_menu = menubar.addMenu("&Help")
-        
+
         # Open logs folder action
         open_logs_action = QAction("Open Logs Folder", self)
         open_logs_action.triggered.connect(self.open_logs_folder)
         help_menu.addAction(open_logs_action)
-        
+
         # View log file action
         view_log_action = QAction("View Log File", self)
         view_log_action.triggered.connect(self.view_log_file)
         help_menu.addAction(view_log_action)
-        
+
         help_menu.addSeparator()
-        
+
         # About action
         about_action = QAction("About", self)
         about_action.triggered.connect(self.show_about)
@@ -160,16 +182,16 @@ class MainWindow(QMainWindow):
         except Exception as e:
             self.logger.error(f"Failed to open logs folder: {e}", exc_info=True)
             QMessageBox.warning(self, "Error", f"Failed to open logs folder:\n{e}")
-    
+
     def request_camera_permissions(self):
         """Request camera permissions by triggering imagesnap (macOS only)"""
-        if sys.platform != 'darwin':
+        if sys.platform != "darwin":
             self.logger.warning("Camera permission request is only available on macOS")
             return
-        
+
         try:
             self.logger.info("Requesting camera permissions via imagesnap")
-            
+
             # Show info message
             msg = QMessageBox(self)
             msg.setIcon(QMessageBox.Icon.Information)
@@ -179,29 +201,35 @@ class MainWindow(QMainWindow):
                 "This will trigger macOS to request camera permissions if not already granted.\n\n"
                 "If a permission dialog appears, please click 'OK' to allow camera access."
             )
-            msg.setStandardButtons(QMessageBox.StandardButton.Ok | QMessageBox.StandardButton.Cancel)
-            
+            msg.setStandardButtons(
+                QMessageBox.StandardButton.Ok | QMessageBox.StandardButton.Cancel
+            )
+
             if msg.exec() != QMessageBox.StandardButton.Ok:
                 self.logger.info("Camera permission request cancelled by user")
                 return
-            
+
             # Check if imagesnap is available
             imagesnap_path = None
-            for path in ['/usr/local/bin/imagesnap', '/opt/homebrew/bin/imagesnap']:
+            for path in ["/usr/local/bin/imagesnap", "/opt/homebrew/bin/imagesnap"]:
                 if os.path.exists(path):
                     imagesnap_path = path
                     break
-            
+
             if not imagesnap_path:
                 # Try to find in PATH
                 try:
-                    result = subprocess.run(['which', 'imagesnap'], 
-                                          capture_output=True, text=True, timeout=5)
+                    result = subprocess.run(
+                        ["which", "imagesnap"],
+                        capture_output=True,
+                        text=True,
+                        timeout=5,
+                    )
                     if result.returncode == 0:
                         imagesnap_path = result.stdout.strip()
-                except:
-                    pass
-            
+                except Exception:
+                    imagesnap_path = None
+
             if not imagesnap_path:
                 self.logger.error("imagesnap not found")
                 QMessageBox.warning(
@@ -211,24 +239,24 @@ class MainWindow(QMainWindow):
                     "Please install it using Homebrew:\n"
                     "brew install imagesnap\n\n"
                     "Alternatively, you can manually authorize the app in:\n"
-                    "System Settings → Privacy & Security → Camera"
+                    "System Settings → Privacy & Security → Camera",
                 )
                 return
-            
+
             # Create a temporary file for the snapshot
-            with tempfile.NamedTemporaryFile(suffix='.jpg', delete=False) as tmp_file:
+            with tempfile.NamedTemporaryFile(suffix=".jpg", delete=False) as tmp_file:
                 tmp_path = tmp_file.name
-            
+
             try:
                 # Run imagesnap to capture a single image (this triggers permission request)
                 self.logger.info(f"Running imagesnap: {imagesnap_path}")
                 result = subprocess.run(
-                    [imagesnap_path, '-w', '1', tmp_path],
+                    [imagesnap_path, "-w", "1", tmp_path],
                     capture_output=True,
                     text=True,
-                    timeout=10
+                    timeout=10,
                 )
-                
+
                 if result.returncode == 0:
                     self.logger.info("imagesnap succeeded - camera permissions granted")
                     QMessageBox.information(
@@ -236,7 +264,7 @@ class MainWindow(QMainWindow):
                         "Success",
                         "Camera access successful!\n\n"
                         "The app now has permission to access the camera.\n"
-                        "You can now use the Camera widget."
+                        "You can now use the Camera widget.",
                     )
                 else:
                     self.logger.warning(f"imagesnap failed: {result.stderr}")
@@ -247,16 +275,16 @@ class MainWindow(QMainWindow):
                         "Please check:\n"
                         "• System Settings → Privacy & Security → Camera\n"
                         "• Make sure BrickCollectionManager is authorized\n\n"
-                        f"Error: {result.stderr}"
+                        f"Error: {result.stderr}",
                     )
             finally:
                 # Clean up temporary file
                 try:
                     if os.path.exists(tmp_path):
                         os.unlink(tmp_path)
-                except:
+                except Exception:
                     pass
-                    
+
         except subprocess.TimeoutExpired:
             self.logger.error("imagesnap timed out")
             QMessageBox.warning(
@@ -264,30 +292,34 @@ class MainWindow(QMainWindow):
                 "Timeout",
                 "Camera access request timed out.\n\n"
                 "Please manually authorize the app in:\n"
-                "System Settings → Privacy & Security → Camera"
+                "System Settings → Privacy & Security → Camera",
             )
         except Exception as e:
-            self.logger.error(f"Failed to request camera permissions: {e}", exc_info=True)
+            self.logger.error(
+                f"Failed to request camera permissions: {e}", exc_info=True
+            )
             QMessageBox.warning(
                 self,
                 "Error",
                 f"Failed to request camera permissions:\n{e}\n\n"
                 "You can manually authorize the app in:\n"
-                "System Settings → Privacy & Security → Camera"
+                "System Settings → Privacy & Security → Camera",
             )
-    
+
     def open_camera_settings(self):
         """Open macOS System Settings to Camera privacy settings"""
-        if sys.platform != 'darwin':
+        if sys.platform != "darwin":
             return
-        
+
         try:
             self.logger.info("Opening Camera settings in System Preferences")
             # Open System Settings to Camera privacy page
-            subprocess.run([
-                'open',
-                'x-apple.systempreferences:com.apple.preference.security?Privacy_Camera'
-            ])
+            subprocess.run(
+                [
+                    "open",
+                    "x-apple.systempreferences:com.apple.preference.security?Privacy_Camera",
+                ]
+            )
         except Exception as e:
             self.logger.error(f"Failed to open camera settings: {e}", exc_info=True)
             QMessageBox.warning(
@@ -295,9 +327,9 @@ class MainWindow(QMainWindow):
                 "Error",
                 f"Failed to open settings:\n{e}\n\n"
                 "Please manually open:\n"
-                "System Settings → Privacy & Security → Camera"
+                "System Settings → Privacy & Security → Camera",
             )
-    
+
     def view_log_file(self):
         """Open the current log file in the default text editor"""
         try:
@@ -307,7 +339,7 @@ class MainWindow(QMainWindow):
         except Exception as e:
             self.logger.error(f"Failed to open log file: {e}", exc_info=True)
             QMessageBox.warning(self, "Error", f"Failed to open log file:\n{e}")
-    
+
     def show_about(self):
         """Show about dialog"""
         about_text = f"""
@@ -330,20 +362,27 @@ class MainWindow(QMainWindow):
         """Setup the status bar with app version"""
         status_bar = QStatusBar()
         self.setStatusBar(status_bar)
-        
+
         # Display app version
         version_text = f"{getattr(AppConfig, 'APP_NAME', '0.0.0')} v{getattr(AppConfig, 'APP_VERSION', '0.0.0')}"
         status_bar.showMessage(version_text)
 
     def switch_page(self, index):
-        page_names = ["Containers", "Search Parts", "Add Manually", "Add From Camera", "Add From File", "Database"]
+        page_names = [
+            "Containers",
+            "Search Parts",
+            "Add Manually",
+            "Add From Camera",
+            "Add From File",
+            "Database",
+        ]
         page_name = page_names[index] if index < len(page_names) else f"Page {index}"
         self.logger.debug(f"Switching to page: {page_name} (index: {index})")
-        
+
         # Uncheck all actions except the selected one
         for i, action in enumerate(self.toolbar.actions()):
             if action.isCheckable():  # Only modify checkable actions
                 action.setChecked(i == index)
-        
+
         # Switch to the selected page
         self.stack_layout.setCurrentIndex(index)

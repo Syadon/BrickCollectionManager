@@ -1,22 +1,32 @@
-from PySide6.QtWidgets import (QWidget, QVBoxLayout, QHBoxLayout, QPushButton, 
-                              QLabel, QComboBox, QSpinBox, QMessageBox, 
-                              QTableWidget, QTableWidgetItem, QSizePolicy, QCompleter)
-from PySide6.QtGui import QIcon, QColor
-from PySide6.QtCore import Qt, QStringListModel
-from src.utils import TransparentSelectionDelegate, populate_color_combo, setup_color_combo_delegate
-from src.widgets.colorLabel import ColorLabel
-from ui.ui_addManualWidget import Ui_AddManualWidget
+from PySide6.QtCore import QStringListModel, Qt
+from PySide6.QtGui import QIcon
+from PySide6.QtWidgets import (
+    QCompleter,
+    QMessageBox,
+    QSizePolicy,
+    QTableWidget,
+    QTableWidgetItem,
+    QWidget,
+)
+
+from config import AppConfig
+from src import utils
 from src.database import Container, DatabaseManager
 from src.imageProvider import ImagesProvider
-from src import utils
 from src.logger import get_logger, log_exception
-from config import AppConfig
+from src.utils import (
+    TransparentSelectionDelegate,
+    populate_color_combo,
+    setup_color_combo_delegate,
+)
+from src.widgets.colorLabel import ColorLabel
+from ui.ui_addManualWidget import Ui_AddManualWidget
+
 
 class AddManualWidget(QWidget):
-
-    def __init__(self, container:Container|None = None, parent=None):
+    def __init__(self, container: Container | None = None, parent=None):
         super(AddManualWidget, self).__init__(parent)
-        
+
         self.logger = get_logger()
         self.logger.debug("Initializing AddManualWidget")
 
@@ -45,98 +55,131 @@ class AddManualWidget(QWidget):
         super().hideEvent(event)
 
     def setup_widget(self):
-        
         # Part ID
         self.ui.search_part_id_edit.textChanged.connect(self.on_search_part_id_changed)
-        
+
         # Part Name
-        self.ui.search_part_name_edit.textChanged.connect(self.on_search_part_name_changed)
+        self.ui.search_part_name_edit.textChanged.connect(
+            self.on_search_part_name_changed
+        )
 
         # Connect inputs to validation
         self.ui.search_part_id_edit.textChanged.connect(self.validate_search_inputs)
         self.ui.search_part_name_edit.textChanged.connect(self.validate_search_inputs)
-        self.ui.search_color_combo.currentIndexChanged.connect(self.validate_search_inputs)
-        self.ui.search_color_type_combo.currentIndexChanged.connect(self.validate_search_inputs)
+        self.ui.search_color_combo.currentIndexChanged.connect(
+            self.validate_search_inputs
+        )
+        self.ui.search_color_type_combo.currentIndexChanged.connect(
+            self.validate_search_inputs
+        )
 
         # Color
-        self.ui.search_color_combo.setSizePolicy(QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Fixed)
-        
+        self.ui.search_color_combo.setSizePolicy(
+            QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Fixed
+        )
+
         # Color Type
-        self.ui.search_color_type_combo.setSizePolicy(QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Fixed)
+        self.ui.search_color_type_combo.setSizePolicy(
+            QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Fixed
+        )
 
         # Pulsanti di ricerca
         self.ui.search_button.clicked.connect(self.perform_search)
         self.ui.search_clear_button.clicked.connect(self.clear_search)
 
-        
         # Tabella risultati
         headerLabels = ["Image", "Part ID", "Part Name", "Color"]
-        
+
         self.ui.search_results_table.setColumnCount(len(headerLabels))
         self.ui.search_results_table.setHorizontalHeaderLabels(headerLabels)
         self.ui.search_results_table.horizontalHeader().setStretchLastSection(True)
         self.ui.search_results_table.verticalHeader().setVisible(False)
-        self.ui.search_results_table.setEditTriggers(QTableWidget.EditTrigger.NoEditTriggers)
-        self.ui.search_results_table.setSelectionBehavior(QTableWidget.SelectionBehavior.SelectRows)
+        self.ui.search_results_table.setEditTriggers(
+            QTableWidget.EditTrigger.NoEditTriggers
+        )
+        self.ui.search_results_table.setSelectionBehavior(
+            QTableWidget.SelectionBehavior.SelectRows
+        )
         self.ui.search_results_table.setSortingEnabled(True)
-        self.ui.search_results_table.setSelectionMode(QTableWidget.SelectionMode.SingleSelection)
-        self.ui.search_results_table.setItemDelegateForColumn(0, TransparentSelectionDelegate(self.ui.search_results_table))
-        self.ui.search_results_table.setItemDelegateForColumn(3, TransparentSelectionDelegate(self.ui.search_results_table))
+        self.ui.search_results_table.setSelectionMode(
+            QTableWidget.SelectionMode.SingleSelection
+        )
+        self.ui.search_results_table.setItemDelegateForColumn(
+            0, TransparentSelectionDelegate(self.ui.search_results_table)
+        )
+        self.ui.search_results_table.setItemDelegateForColumn(
+            3, TransparentSelectionDelegate(self.ui.search_results_table)
+        )
 
         # Imposta altezza righe per immagini
-        self.ui.search_results_table.verticalHeader().setDefaultSectionSize(self.iconSize + 4)
-        
+        self.ui.search_results_table.verticalHeader().setDefaultSectionSize(
+            self.iconSize + 4
+        )
+
         # Add button
-        self.ui.search_add_button.setEnabled(False)  # Disabilitato finché non viene selezionato un item
+        self.ui.search_add_button.setEnabled(
+            False
+        )  # Disabilitato finché non viene selezionato un item
         self.ui.search_add_button.clicked.connect(self.on_search_add_clicked)
-        
+
         # Configura autocompletamento
-        #self.setup_search_autocomplete()
+        # self.setup_search_autocomplete()
 
         # Connect signals from file import widget
-        #self.file_import_widget.part_added.connect(lambda: self.populate_container_list())
-        
+        # self.file_import_widget.part_added.connect(lambda: self.populate_container_list())
+
         # Connetti al segnale di selezione tabella
-        self.ui.search_results_table.itemSelectionChanged.connect(self.on_search_selection_changed)
-        
+        self.ui.search_results_table.itemSelectionChanged.connect(
+            self.on_search_selection_changed
+        )
+
         # Initial validation
         self.validate_search_inputs()
 
     def populate_container_list(self):
-        utils.populate_container_combo(self.ui.searchContainerComboBox, 
-                                       DatabaseManager(), 
-                                       self.targetContainer)
-        
+        utils.populate_container_combo(
+            self.ui.searchContainerComboBox, DatabaseManager(), self.targetContainer
+        )
+
         # Setup custom delegate for better rendering
         utils.setup_container_combo_delegate(self.ui.searchContainerComboBox)
-        
+
         # Connect to selection change event if not already connected
         try:
-            self.ui.searchContainerComboBox.currentIndexChanged.disconnect(self.on_container_selection_changed)
-        except:
+            self.ui.searchContainerComboBox.currentIndexChanged.disconnect(
+                self.on_container_selection_changed
+            )
+        except Exception as e:
+            log_exception(e)
             pass
-        self.ui.searchContainerComboBox.currentIndexChanged.connect(self.on_container_selection_changed)
-        
+        self.ui.searchContainerComboBox.currentIndexChanged.connect(
+            self.on_container_selection_changed
+        )
+
         # Update add button state
-        self.on_container_selection_changed(self.ui.searchContainerComboBox.currentIndex())
+        self.on_container_selection_changed(
+            self.ui.searchContainerComboBox.currentIndex()
+        )
 
     def populate_search_combos(self):
         dbManager = DatabaseManager()
-        
+
         # Setup color combo with delegate
-        populate_color_combo(self.ui.search_color_combo, dbManager, include_any_option=True)
+        populate_color_combo(
+            self.ui.search_color_combo, dbManager, include_any_option=True
+        )
         setup_color_combo_delegate(self.ui.search_color_combo)
-        
+
         # Add "Any" option to color type combo
         self.ui.search_color_type_combo.addItem("Any", None)
-        
+
         # Tipi di colore
         for type in dbManager.getColorsTypesNames():
             self.ui.search_color_type_combo.addItem(type, type)
 
     def setup_search_autocomplete(self):
         dbManager = DatabaseManager()
-        
+
         # Part ID completer
         part_ids = dbManager.getAllPartsIds()
         part_id_model = QStringListModel(part_ids)
@@ -144,7 +187,7 @@ class AddManualWidget(QWidget):
         part_id_completer.setCaseSensitivity(Qt.CaseSensitivity.CaseInsensitive)
         part_id_completer.setFilterMode(Qt.MatchFlag.MatchContains)
         self.ui.search_part_id_edit.setCompleter(part_id_completer)
-        
+
         # Part Name completer
         part_names = dbManager.getAllPartsNames()
         part_name_model = QStringListModel(part_names)
@@ -158,8 +201,10 @@ class AddManualWidget(QWidget):
         has_part_id = bool(self.ui.search_part_id_edit.text().strip())
         has_part_name = bool(self.ui.search_part_name_edit.text().strip())
         has_color = self.ui.search_color_combo.currentIndex() > 0  # Index 0 is "Any"
-        has_color_type = self.ui.search_color_type_combo.currentIndex() > 0  # Index 0 is "Any"
-        
+        has_color_type = (
+            self.ui.search_color_type_combo.currentIndex() > 0
+        )  # Index 0 is "Any"
+
         # Enable search if at least one criteria is provided
         is_valid = has_part_id or has_part_name or has_color or has_color_type
         self.ui.search_button.setEnabled(is_valid)
@@ -190,11 +235,11 @@ class AddManualWidget(QWidget):
     def perform_search(self):
         # Pulisci risultati precedenti
         self.ui.search_results_table.setRowCount(0)
-        
+
         # Ottieni criteri di ricerca
         part_id = self.ui.search_part_id_edit.text()
         part_name = self.ui.search_part_name_edit.text()
-        
+
         # Extract color name from color data tuple
         color_data = self.ui.search_color_combo.currentData()
         if color_data is not None:
@@ -202,63 +247,84 @@ class AddManualWidget(QWidget):
             color_name = color_data[1]
         else:
             color_name = None
-            
+
         color_type = self.ui.search_color_type_combo.currentData()
-        
+
         # Esegui la ricerca nel database
         dbManager = DatabaseManager()
-        results = dbManager.searchColorsParts(part_id=part_id, 
-                                            part_name=part_name,
-                                            color_name=color_name,
-                                            color_type=color_type)
-        
+        results = dbManager.searchColorsParts(
+            part_id=part_id,
+            part_name=part_name,
+            color_name=color_name,
+            color_type=color_type,
+        )
+
         # Mostra risultati
         if not results:
-            QMessageBox.information(self, "No Results", "No parts found matching your search criteria.")
+            QMessageBox.information(
+                self, "No Results", "No parts found matching your search criteria."
+            )
             return
-        
+
         self.ui.search_results_table.setRowCount(len(results))
-        
+
         for row, data in enumerate(results):
             # Colonna immagine
             image_item = QTableWidgetItem()
-            image_item.setData(Qt.ItemDataRole.UserRole, data)  # Salva i dati completi per uso futuro
-            
+            image_item.setData(
+                Qt.ItemDataRole.UserRole, data
+            )  # Salva i dati completi per uso futuro
+
             # Prova a ottenere l'immagine
-            part_id = data['part_id']
-            color_id = data['color_id']
+            part_id = data["part_id"]
+            color_id = data["color_id"]
             img = self.imgProvider.get_part_image(part_id, color_id)
             if img is not None:
-                scaled = img.scaled(self.iconSize, self.iconSize, 
-                                    Qt.AspectRatioMode.KeepAspectRatio, 
-                                    Qt.TransformationMode.SmoothTransformation)
+                scaled = img.scaled(
+                    self.iconSize,
+                    self.iconSize,
+                    Qt.AspectRatioMode.KeepAspectRatio,
+                    Qt.TransformationMode.SmoothTransformation,
+                )
                 image_item.setIcon(QIcon(scaled))
-            
+
             self.ui.search_results_table.setItem(row, 0, image_item)
-            
+
             # Part ID
-            self.ui.search_results_table.setItem(row, 1, QTableWidgetItem(data['part_id']))
-            
+            self.ui.search_results_table.setItem(
+                row, 1, QTableWidgetItem(data["part_id"])
+            )
+
             # Part Name
-            name_item = QTableWidgetItem(data['part_name'])
-            name_item.setFlags(name_item.flags() | Qt.ItemFlag.ItemIsEnabled | Qt.ItemFlag.ItemIsSelectable)
+            name_item = QTableWidgetItem(data["part_name"])
+            name_item.setFlags(
+                name_item.flags()
+                | Qt.ItemFlag.ItemIsEnabled
+                | Qt.ItemFlag.ItemIsSelectable
+            )
             self.ui.search_results_table.setItem(row, 2, name_item)
-            
+
             # Color using ColorLabel widget
-            rgb_hex = data['rgb'] if data['rgb'] else None
-            color_label = ColorLabel(data['color_name'], rgb_hex, data['color_type'], data['color_id'])
+            rgb_hex = data["rgb"] if data["rgb"] else None
+            color_label = ColorLabel(
+                data["color_name"], rgb_hex, data["color_type"], data["color_id"]
+            )
             self.ui.search_results_table.setCellWidget(row, 3, color_label)
-        
+
         # Regola larghezza colonne
-        self.ui.search_results_table.setColumnWidth(0, self.iconSize + 8)  # Dimensione fissa per colonna immagine
+        self.ui.search_results_table.setColumnWidth(
+            0, self.iconSize + 8
+        )  # Dimensione fissa per colonna immagine
         self.ui.search_results_table.resizeColumnsToContents()
-        
+
         # Limit Name column width
         name_column_index = 2
         max_name_width = 400
         if self.ui.search_results_table.columnWidth(name_column_index) > max_name_width:
-            self.ui.search_results_table.setColumnWidth(name_column_index, max_name_width)
-        
+            self.ui.search_results_table.setColumnWidth(
+                name_column_index, max_name_width
+            )
+
         self.ui.search_results_table.setWordWrap(True)
         self.ui.search_results_table.resizeRowsToContents()
         self.ui.search_results_table.horizontalHeader().setStretchLastSection(True)
@@ -272,91 +338,106 @@ class AddManualWidget(QWidget):
             current_row = self.ui.search_results_table.currentRow()
             if current_row < 0:
                 return
-            
+
             # Ottieni dati dalla tabella
             item = self.ui.search_results_table.item(current_row, 0)
             if not item:
                 return
-            
+
             # Recupera dati completi
             data = item.data(Qt.ItemDataRole.UserRole)
-            
+
             # Ottieni container selezionato
             container_data = self.ui.searchContainerComboBox.currentData()
             if not container_data:
                 QMessageBox.warning(self, "No Container", "Please select a container")
                 return
-            
+
             # Extract container ID and name from data tuple (id, name, type, part_count)
             try:
                 if isinstance(container_data, tuple):
                     container_id = container_data[0]
-                    container_name = container_data[1] if len(container_data) > 1 else "Unknown"
+                    container_name = (
+                        container_data[1] if len(container_data) > 1 else "Unknown"
+                    )
                 else:
                     container_id = container_data
                     container_name = "Unknown"
             except (TypeError, IndexError):
                 QMessageBox.warning(self, "Error", "Invalid container data")
                 return
-            
+
             # Ottieni quantità
             quantity = self.ui.search_qty_spinbox.value()
             if quantity <= 0:
-                QMessageBox.warning(self, "Invalid Quantity", "Please enter a valid quantity")
+                QMessageBox.warning(
+                    self, "Invalid Quantity", "Please enter a valid quantity"
+                )
                 return
-            
+
             # Ottieni ColorPart e aggiungi alla collezione
             dbManager = DatabaseManager()
-            if not dbManager.addColorPartIDToContainer(data['id'], container_id, quantity):
-                self.logger.error(f"Failed to add color_part {data['id']} to container {container_id}")
+            if not dbManager.addColorPartIDToContainer(
+                data["id"], container_id, quantity
+            ):
+                self.logger.error(
+                    f"Failed to add color_part {data['id']} to container {container_id}"
+                )
                 QMessageBox.critical(self, "Error", "Failed to add part to container")
                 return
-            
-            self.logger.info(f"Added {quantity}x color_part {data['id']} to container {container_id}")
-            
+
+            self.logger.info(
+                f"Added {quantity}x color_part {data['id']} to container {container_id}"
+            )
+
             # Aggiorna conteggio parti nel container
             self.update_container_combo_display()
-            
+
             # Mostra messaggio di conferma
             msg = QMessageBox(self)
             msg.setWindowTitle("Part Added")
-            msg.setText(f"Added {quantity} of part {data['part_id']} - {data['part_name']} in color {data['color_name']} to container {container_name}")
+            msg.setText(
+                f"Added {quantity} of part {data['part_id']} - {data['part_name']} in color {data['color_name']} to container {container_name}"
+            )
             msg.setStandardButtons(QMessageBox.StandardButton.Ok)
-            
+
             # Aggiungi immagine al messaggio
-            pixmap = self.imgProvider.get_part_image(data['part_id'], data['color_id'])
+            pixmap = self.imgProvider.get_part_image(data["part_id"], data["color_id"])
             if pixmap:
                 msg.setIconPixmap(pixmap)
-            
+
             msg.exec()
-            
+
             # Pulisci la selezione
             self.ui.search_results_table.clearSelection()
             self.ui.search_add_button.setEnabled(False)
-            
+
         except Exception as e:
             log_exception(e, "Error adding part to container")
             QMessageBox.critical(self, "Error", f"An error occurred: {str(e)}")
 
     def update_container_combo_display(self):
-        utils.update_container_combo_single_parts_count(self.ui.searchContainerComboBox, 
-                                                        DatabaseManager(), 
-                                                        self.ui.searchContainerComboBox.currentIndex())
+        utils.update_container_combo_single_parts_count(
+            self.ui.searchContainerComboBox,
+            DatabaseManager(),
+            self.ui.searchContainerComboBox.currentIndex(),
+        )
 
     def on_image_loaded(self, key, pixmap):
         # Parse key to get part_id and color_id
         try:
-            part_id, color_id = key.split('_')
-        except:
+            part_id, color_id = key.split("_")
+        except Exception as e:
+            log_exception(e, "Error parsing image key")
             return
-        
+
         for row in range(self.ui.search_results_table.rowCount()):
             item = self.ui.search_results_table.item(row, 0)
             if not item:
                 continue
 
-            row_part_id = str(item.data(Qt.ItemDataRole.UserRole)['part_id'])
-            row_color_id = str(item.data(Qt.ItemDataRole.UserRole)['color_id'])
+            row_part_id = str(item.data(Qt.ItemDataRole.UserRole)["part_id"])
+            row_color_id = str(item.data(Qt.ItemDataRole.UserRole)["color_id"])
             if row_part_id == part_id and row_color_id == color_id:
                 self.update_part_image_search(pixmap, row)
                 break
@@ -364,11 +445,14 @@ class AddManualWidget(QWidget):
     def update_part_image_search(self, pixmap, row):
         if row < 0 or row >= self.ui.search_results_table.rowCount():
             return
-            
+
         # Scale image
-        scaled = pixmap.scaled(self.iconSize, self.iconSize, 
-                              Qt.AspectRatioMode.KeepAspectRatio, 
-                              Qt.TransformationMode.SmoothTransformation)
+        scaled = pixmap.scaled(
+            self.iconSize,
+            self.iconSize,
+            Qt.AspectRatioMode.KeepAspectRatio,
+            Qt.TransformationMode.SmoothTransformation,
+        )
 
         # Update image in table
         image_item = self.ui.search_results_table.item(row, 0)
@@ -383,6 +467,7 @@ class AddManualWidget(QWidget):
     def update_add_button_state(self):
         # Disable add button if dummy container is selected
         container_data = self.ui.searchContainerComboBox.currentData()
-        self.ui.search_add_button.setEnabled(container_data is not None and self.ui.search_results_table.currentRow() >= 0)
-
-
+        self.ui.search_add_button.setEnabled(
+            container_data is not None
+            and self.ui.search_results_table.currentRow() >= 0
+        )

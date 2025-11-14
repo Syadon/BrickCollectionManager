@@ -114,7 +114,7 @@ class DatabaseManager:
             partCount = self.getConteinerPartCount(id)
             lotCount = self.getConteinerLotCount(id)
 
-            if partCount == None or lotCount == None:
+            if partCount is None or lotCount is None:
                 continue
 
             container = Container(
@@ -342,7 +342,7 @@ class DatabaseManager:
         query.addBindValue(container_id)
         if query.exec() and query.next():
             val = query.value(0)
-            return val if val != None and val != "" else 0
+            return val if val is not None and val != "" else 0
         else:
             return None
 
@@ -354,7 +354,7 @@ class DatabaseManager:
         query.addBindValue(container_id)
         if query.exec() and query.next():
             val = query.value(0)
-            return val if val != None and val != "" else 0
+            return val if val is not None and val != "" else 0
         else:
             return None
 
@@ -650,7 +650,7 @@ class DatabaseManager:
                 colorYearTo_elem = item.find("COLORYEARTO")
 
                 if color_elem is None or name_elem is None or not color_elem.text:
-                    logging.warning(f"Invalid xml codes for color_part!")
+                    logging.warning("Invalid xml codes for color_part!")
                     continue
 
                 # Extract data
@@ -764,7 +764,7 @@ class DatabaseManager:
                     or name is None
                     or name.text is None
                 ):
-                    logging.warning(f"Invalid xml codes for categories!")
+                    logging.warning("Invalid xml codes for categories!")
                     continue
 
                 # Extract data
@@ -844,7 +844,7 @@ class DatabaseManager:
                     or category.text is None
                     or altitemid is None
                 ):
-                    logging.warning(f"Invalid xml codes for parts!")
+                    logging.warning("Invalid xml codes for parts!")
                     continue
 
                 # Extract data
@@ -947,12 +947,12 @@ class DatabaseManager:
                     or codename is None
                     or codename.text is None
                 ):
-                    logging.warning(f"Invalid xml codes for color_part!")
+                    logging.warning("Invalid xml codes for color_part!")
                     continue
 
                 # Extract data
                 c = self.getColorFromName(colorname.text.strip())
-                if c == None or c.id == None:
+                if c is None or c.id is None:
                     logging.warning(
                         f"Invalid color in codes for color_part {codename.text} - {item_id.text}!"
                     )

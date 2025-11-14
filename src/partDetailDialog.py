@@ -1,15 +1,24 @@
-from PySide6.QtWidgets import (QDialog, QMessageBox, QFormLayout)
-from PySide6.QtGui import QColor, QPixmap
 from PySide6.QtCore import Qt
-from src.database import DatabaseManager, Container, CollectionPart
+from PySide6.QtGui import QPixmap
+from PySide6.QtWidgets import QDialog, QMessageBox
+
+from config import AppConfig
+from src import utils
+from src.database import CollectionPart, Container, DatabaseManager
 from src.imageProvider import ImagesProvider
 from src.widgets.colorLabel import ColorLabel
-from config import AppConfig
 from ui.ui_detailPartDialog import Ui_DeatilPartDialog
-from src import utils
+
 
 class PartDetailDialog(QDialog):
-    def __init__(self, part_data: CollectionPart, container: Container, qty = 1, outsideDefault = False, parent=None):
+    def __init__(
+        self,
+        part_data: CollectionPart,
+        container: Container,
+        qty=1,
+        outsideDefault=False,
+        parent=None,
+    ):
         super().__init__(parent)
 
         self.imgSize = 256
@@ -23,15 +32,16 @@ class PartDetailDialog(QDialog):
         self.container = container
 
         self.imgProvider.image_loaded.connect(self.setup_image)
-        
+
         self.setup_ui()
 
         self.ui.qtySpinBox.setValue(qty)
         self.ui.toOutsideRadioButton.setChecked(outsideDefault)
-        
+
     def setup_ui(self):
-        
-        image = self.imgProvider.get_part_image(self.part_data.part_id, self.part_data.color_id)
+        image = self.imgProvider.get_part_image(
+            self.part_data.part_id, self.part_data.color_id
+        )
         if image is not None:
             self.setup_image("", image)
 
@@ -39,55 +49,68 @@ class PartDetailDialog(QDialog):
         self.ui.idValLabel.setText(self.part_data.part_id)
         self.ui.nameValLabel.setText(self.part_data.part_name)
         self.ui.categoryValLabel.setText(self.part_data.part_category)
-        
+
         # Create and add ColorLabel
-        rgb_hex = self.part_data.rgb if hasattr(self.part_data, 'rgb') else None
-        color_id = self.part_data.color_id if hasattr(self.part_data, 'color_id') else None
-        color_type = self.part_data.color_type if hasattr(self.part_data, 'color_type') else None
-        
-        self.color_label = ColorLabel(self.part_data.color_name, rgb_hex, color_type, color_id)
+        rgb_hex = self.part_data.rgb if hasattr(self.part_data, "rgb") else None
+        color_id = (
+            self.part_data.color_id if hasattr(self.part_data, "color_id") else None
+        )
+        color_type = (
+            self.part_data.color_type if hasattr(self.part_data, "color_type") else None
+        )
+
+        self.color_label = ColorLabel(
+            self.part_data.color_name, rgb_hex, color_type, color_id
+        )
         self.ui.infoLayout.addWidget(self.color_label, 3, 1)
 
         self.ui.currentContainerValue.setText(self.container.name)
-        
+
         # Current quantity
         self.current_quantity = self.part_data.quantity
         self.ui.currentQtyValLabel.setText(str(self.current_quantity))
-    
+
         self.ui.qtySpinBox.setRange(1, self.current_quantity)
         self.ui.qtySpinBox.setValue(1)
 
-        self.ui.moveButton.setProperty('class', 'warning')
+        self.ui.moveButton.setProperty("class", "warning")
         self.ui.moveButton.clicked.connect(self.on_move_remove_clicked)
-        self.ui.toContainerRadioButton.toggled.connect(self.ui.containerCombo.setEnabled)
-        
+        self.ui.toContainerRadioButton.toggled.connect(
+            self.ui.containerCombo.setEnabled
+        )
+
         self.populate_container_combo()
 
-    def setup_image(self, key, pixmap:QPixmap):
+    def setup_image(self, key, pixmap: QPixmap):
         sz = pixmap.size()
         if sz.width() > self.imgSize or sz.height() > self.imgSize:
-            image = pixmap.scaled(self.imgSize, self.imgSize, 
-                                  Qt.AspectRatioMode.KeepAspectRatio, Qt.TransformationMode.SmoothTransformation)
+            image = pixmap.scaled(
+                self.imgSize,
+                self.imgSize,
+                Qt.AspectRatioMode.KeepAspectRatio,
+                Qt.TransformationMode.SmoothTransformation,
+            )
             self.ui.imageLabel.setPixmap(image)
         else:
             self.ui.imageLabel.setPixmap(pixmap)
-        
+
     def populate_container_combo(self):
-        utils.populate_container_combo(self.ui.containerCombo, DatabaseManager(), None, [self.container.id])
-        
+        utils.populate_container_combo(
+            self.ui.containerCombo, DatabaseManager(), None, [self.container.id]
+        )
+
         # Setup custom delegate for better rendering
         utils.setup_container_combo_delegate(self.ui.containerCombo)
-        
+
         self.ui.containerCombo.setCurrentIndex(0)
-        
- 
+
         # dbManager = DatabaseManager()
         # containers = dbManager.getContainers()
-        
+
         # for container in containers:
         #     if container.id != self.container.id:
         #         self.ui.containerCombo.addItem(container.name, container.id)
-                
+
         # if self.ui.containerCombo.count() == 0:
         #     self.ui.toContainerRadioButton.setEnabled(False)
         #     self.ui.containerCombo.setEnabled(False)
@@ -98,52 +121,70 @@ class PartDetailDialog(QDialog):
             self.on_move_clicked()
         elif self.ui.toOutsideRadioButton.isChecked():
             self.on_remove_clicked()
-            
+
     def on_remove_clicked(self):
         quantity = self.ui.qtySpinBox.value()
-        
+
         if quantity <= 0 or quantity > self.current_quantity:
-            QMessageBox.warning(self, "Invalid Quantity", "Please enter a valid quantity to remove")
+            QMessageBox.warning(
+                self, "Invalid Quantity", "Please enter a valid quantity to remove"
+            )
             return
-            
+
         # Add function to database manager to remove parts
         if self.update_part_quantity(-quantity):
             QMessageBox.information(self, "Success", f"Removed {quantity} parts")
             self.accept()
         else:
             QMessageBox.critical(self, "Error", "Failed to remove parts")
-            
+
     def on_move_clicked(self):
         quantity = self.ui.qtySpinBox.value()
         target_container_data = self.ui.containerCombo.currentData()
-        
+
         if quantity <= 0 or quantity > self.current_quantity:
-            QMessageBox.warning(self, "Invalid Quantity", "Please enter a valid quantity to move")
+            QMessageBox.warning(
+                self, "Invalid Quantity", "Please enter a valid quantity to move"
+            )
             return
-            
+
         if target_container_data is None:
-            QMessageBox.warning(self, "No Container", "Please select a target container")
+            QMessageBox.warning(
+                self, "No Container", "Please select a target container"
+            )
             return
-        
+
         # Extract container ID from data tuple (id, name, type, part_count)
         try:
-            target_container_id = target_container_data[0] if isinstance(target_container_data, tuple) else target_container_data
+            target_container_id = (
+                target_container_data[0]
+                if isinstance(target_container_data, tuple)
+                else target_container_data
+            )
         except (TypeError, IndexError):
             target_container_id = target_container_data
-            
+
         # Move parts from one container to another
         if self.move_parts_to_container(quantity, target_container_id):
-            QMessageBox.information(self, "Success", f"Moved {quantity} parts to {self.ui.containerCombo.currentText()}")
+            QMessageBox.information(
+                self,
+                "Success",
+                f"Moved {quantity} parts to {self.ui.containerCombo.currentText()}",
+            )
             self.accept()
         else:
             QMessageBox.critical(self, "Error", "Failed to move parts")
-            
+
     def update_part_quantity(self, delta):
         dbManager = DatabaseManager()
-        result = dbManager.addColorPartIDToContainer(self.part_data.id, self.container.id, delta)
+        result = dbManager.addColorPartIDToContainer(
+            self.part_data.id, self.container.id, delta
+        )
         return result
 
     def move_parts_to_container(self, quantity, target_container_id):
         dbManager = DatabaseManager()
-        result = dbManager.movePartsBetweenContainers(self.part_data.id, self.container.id, target_container_id, quantity)
+        result = dbManager.movePartsBetweenContainers(
+            self.part_data.id, self.container.id, target_container_id, quantity
+        )
         return result
