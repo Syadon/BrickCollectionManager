@@ -67,6 +67,11 @@ class ContainerDetailDialog(QDialog):
         self.delete_button.clicked.connect(self.on_delete_clicked)
 
         # Setup parts table
+
+        self.name_column_index = 2
+        self.max_name_width = 400
+        self.type_column_index = 3
+        self.max_type_width = 200
         self.setup_parts_table()
 
         # Set dialog size based on parent window if available
@@ -119,13 +124,12 @@ class ContainerDetailDialog(QDialog):
         self.ui.partsView.resizeColumnsToContents()
 
         # Limit Name column width
-        name_column_index = 2
-        max_name_width = 400
-        if self.ui.partsView.columnWidth(name_column_index) > max_name_width:
-            self.ui.partsView.setColumnWidth(name_column_index, max_name_width)
+        if self.ui.partsView.columnWidth(self.name_column_index) > self.max_name_width:
+            self.ui.partsView.setColumnWidth(
+                self.name_column_index, self.max_name_width
+            )
 
-        type_column_index = 3
-        self.ui.partsView.setColumnWidth(type_column_index := 3, 150)  # Category column
+        self.ui.partsView.setColumnWidth(self.type_column_index, 150)  # Category column
 
         self.ui.partsView.setWordWrap(True)
         self.ui.partsView.resizeRowsToContents()
@@ -236,15 +240,15 @@ class ContainerDetailDialog(QDialog):
         self.ui.partsView.resizeColumnsToContents()
 
         # Limit Name column width
-        name_column_index = 2
-        max_name_width = 400
-        if self.ui.partsView.columnWidth(name_column_index) > max_name_width:
-            self.ui.partsView.setColumnWidth(name_column_index, max_name_width)
+        if self.ui.partsView.columnWidth(self.name_column_index) > self.max_name_width:
+            self.ui.partsView.setColumnWidth(
+                self.name_column_index, self.max_name_width
+            )
 
-        type_column_index = 3
-        max_type_width = 200
-        if self.ui.partsView.columnWidth(type_column_index) > max_type_width:
-            self.ui.partsView.setColumnWidth(type_column_index, max_type_width)
+        if self.ui.partsView.columnWidth(self.type_column_index) > self.max_type_width:
+            self.ui.partsView.setColumnWidth(
+                self.type_column_index, self.max_type_width
+            )
 
         self.ui.partsView.setWordWrap(True)
         self.ui.partsView.resizeRowsToContents()
