@@ -16,8 +16,8 @@ from PySide6.QtWidgets import (
 
 from config import AppConfig
 from src.database import DatabaseManager
-from src.imageProvider import ImagesProvider
 from src.partDetailDialog import PartDetailDialog
+from src.widgets.brickPreview import BrickPreview, get_global_image_provider
 from src.widgets.colorLabel import ColorLabel
 from ui.ui_containerDetailDialog import Ui_containerDetailDialog
 
@@ -90,9 +90,9 @@ class ContainerDetailDialog(QDialog):
 
         self.parts_data = dbManager.getContainersParts(self.container.id)
 
-        # Initialize image provider
-        self.imgProvider = ImagesProvider(AppConfig.PARTS_IMG_CACHE_DIR)
-        self.imgProvider.image_loaded.connect(self._update_image)
+        # Use global image provider and keep references to BrickPreview widgets
+        self.imgProvider = get_global_image_provider()
+        self.preview_widgets = []
 
         # Setup table headers
         headers = ["Image", "ID", "Part", "Category", "Color", "Quantity"]
@@ -141,24 +141,16 @@ class ContainerDetailDialog(QDialog):
     def populate_table_data(self):
         """Populate the table widget with parts data"""
         for row, part in enumerate(self.parts_data):
-            # Image column (0)
-            image_item = QTableWidgetItem()
-            image_item.setFlags(
-                Qt.ItemFlag.ItemIsEnabled | Qt.ItemFlag.ItemIsSelectable
-            )
-
-            # Try to get image
+            # Image column (0) - use BrickPreview widget
             if hasattr(part, "color_id") and hasattr(part, "part_id"):
-                image = self.imgProvider.get_part_image(part.part_id, part.color_id)
-                if image is not None:
-                    scaled_image = image.scaled(
-                        QSize(64, 64),
-                        Qt.AspectRatioMode.KeepAspectRatio,
-                        Qt.TransformationMode.SmoothTransformation,
-                    )
-                    image_item.setData(Qt.ItemDataRole.DecorationRole, scaled_image)
-
-            self.ui.partsView.setItem(row, 0, image_item)
+                preview = BrickPreview(
+                    part_id=part.part_id,
+                    color_id=str(part.color_id),
+                    size=64,
+                    parent=self,
+                )
+                self.ui.partsView.setCellWidget(row, 0, preview)
+                self.preview_widgets.append(preview)
 
             # ID column (1)
             id_item = QTableWidgetItem(str(part.part_id))
@@ -193,23 +185,7 @@ class ContainerDetailDialog(QDialog):
             )
             self.ui.partsView.setItem(row, 5, quantity_item)
 
-    def _update_image(self, key, pixmap):
-        """Update image in table when it's loaded asynchronously"""
-        part_id, color_id = key.split("_")
-
-        # Find all rows with this part_id and color_id
-        for row in range(self.ui.partsView.rowCount()):
-            part = self.parts_data[row]
-            if part.part_id == part_id and str(part.color_id) == color_id:
-                # Update the image in the table
-                image_item = self.ui.partsView.item(row, 0)
-                if image_item:
-                    scaled_image = pixmap.scaled(
-                        QSize(64, 64),
-                        Qt.AspectRatioMode.KeepAspectRatio,
-                        Qt.TransformationMode.SmoothTransformation,
-                    )
-                    image_item.setData(Qt.ItemDataRole.DecorationRole, scaled_image)
+    # Note: _update_image method removed - BrickPreview widgets handle image loading automatically
 
     def on_part_double_clicked(self, row, column):
         """Handle double-click on a part row"""

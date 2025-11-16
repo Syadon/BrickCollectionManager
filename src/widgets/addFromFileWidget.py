@@ -1,7 +1,6 @@
 import logging
 
 from PySide6.QtCore import QDir, QSize, Qt, Signal
-from PySide6.QtGui import QIcon
 from PySide6.QtWidgets import (
     QFileDialog,
     QMenu,
@@ -16,10 +15,10 @@ from PySide6.QtWidgets import (
 from config import AppConfig
 from src import utils
 from src.database import Container, DatabaseManager
-from src.imageProvider import ImagesProvider
 from src.logger import get_logger, log_exception
 from src.partsFileParser import XmlParser
 from src.utils import TransparentSelectionDelegate
+from src.widgets.brickPreview import BrickPreview
 from src.widgets.colorLabel import ColorLabel
 from ui.ui_addFromFileWidget import Ui_AddFromFileWidget
 
@@ -77,10 +76,9 @@ class AddFromFileWidget(QWidget):
 
         self.targetContainer = container
 
-        # Crea l'image provider
+        # Use global image provider and keep references to BrickPreview widgets
         self.iconSize = AppConfig.DEFAULT_ICON_SIZE
-        self.imgProvider = ImagesProvider(AppConfig.PARTS_IMG_CACHE_DIR)
-        self.imgProvider.image_loaded.connect(self.on_image_loaded)
+        self.preview_widgets = []
 
         # Connetti il pulsante openFile all'azione di apertura del file
         self.ui.openFileButton.clicked.connect(self.open_file_dialog)
@@ -107,7 +105,7 @@ class AddFromFileWidget(QWidget):
         self.ui.tableWidget.setContextMenuPolicy(Qt.ContextMenuPolicy.CustomContextMenu)
         self.ui.tableWidget.customContextMenuRequested.connect(self.show_context_menu)
 
-        # Dizionario per mappare le righe della tabella alle informazioni complete del pezzo
+        # List to store parts data from file
         self.parts_data = []
 
     def setup_table(self):
@@ -272,26 +270,25 @@ class AddFromFileWidget(QWidget):
         # Disconnetti il segnale cellChanged temporaneamente per evitare chiamate durante il popolamento
         self.ui.tableWidget.cellChanged.disconnect(self.on_cell_changed)
 
+        # Clear previous preview widgets
+        self.preview_widgets.clear()
+
         self.parts_data = parts_data
         self.ui.tableWidget.setRowCount(len(parts_data))
 
         for row, part in enumerate(parts_data):
             # Crea gli elementi della tabella
 
-            # Colonna immagine
-            image_item = QTableWidgetItem()
-            # Tenta di caricare l'immagine
+            # Colonna immagine - use BrickPreview widget
             if "part_id" in part and "color_id" in part:
-                img = self.imgProvider.get_part_image(part["part_id"], part["color_id"])
-                if img is not None:
-                    scaled = img.scaled(
-                        self.iconSize,
-                        self.iconSize,
-                        Qt.AspectRatioMode.KeepAspectRatio,
-                        Qt.TransformationMode.SmoothTransformation,
-                    )
-                    image_item.setIcon(QIcon(scaled))
-            self.ui.tableWidget.setItem(row, 0, image_item)
+                preview = BrickPreview(
+                    part_id=part["part_id"],
+                    color_id=str(part["color_id"]),
+                    size=self.iconSize,
+                    parent=self,
+                )
+                self.ui.tableWidget.setCellWidget(row, 0, preview)
+                self.preview_widgets.append(preview)
 
             # Colonna Part ID
             id_item = QTableWidgetItem(part.get("part_id", "Unknown"))
@@ -344,7 +341,6 @@ class AddFromFileWidget(QWidget):
         """Pulisce la tabella e i dati associati"""
         self.ui.tableWidget.setRowCount(0)
         self.parts_data = []
-        self.imgProvider.cleanup_tasks()
         self.update_add_button_state()
 
     def populate_container_combo(self):
@@ -509,32 +505,7 @@ class AddFromFileWidget(QWidget):
             QMessageBox.critical(self, "Error", f"An error occurred: {str(e)}")
             logging.error(f"Error adding parts to container: {str(e)}")
 
-    def on_image_loaded(self, key, pixmap):
-        """Callback chiamato quando un'immagine viene caricata dall'ImageProvider"""
-        try:
-            part_id, color_id = key.split("_")
-        except Exception as e:
-            logging.error(f"Error splitting key: {str(e)}")
-            return
-
-        # Cerca le righe che corrispondono a questo part_id e color_id
-        for row, part_data in enumerate(self.parts_data):
-            if (
-                str(part_data.get("part_id")) == part_id
-                and str(part_data.get("color_id")) == color_id
-            ):
-                # Aggiorna l'icona
-                scaled = pixmap.scaled(
-                    self.iconSize,
-                    self.iconSize,
-                    Qt.AspectRatioMode.KeepAspectRatio,
-                    Qt.TransformationMode.SmoothTransformation,
-                )
-
-                # Ottieni l'item della tabella
-                item = self.ui.tableWidget.item(row, 0)
-                if item:
-                    item.setIcon(QIcon(scaled))
+    # Note: on_image_loaded method removed - BrickPreview widgets handle image loading automatically
 
     def on_cell_changed(self, row, column):
         """Gestisce le modifiche alle celle della tabella"""

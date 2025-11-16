@@ -1,7 +1,7 @@
 import copy
 
 from PySide6.QtCore import QDir, QFile, QStringListModel, Qt
-from PySide6.QtGui import QColor, QIcon
+from PySide6.QtGui import QColor
 from PySide6.QtWidgets import (
     QCompleter,
     QDialog,
@@ -14,7 +14,6 @@ from PySide6.QtWidgets import (
 
 from config import AppConfig
 from src.database import CollectionPart, Container, DatabaseManager
-from src.imageProvider import ImagesProvider
 from src.logger import get_logger, log_exception
 from src.partDetailDialog import PartDetailDialog
 from src.partsFileParser import XmlParser
@@ -23,6 +22,7 @@ from src.utils import (
     populate_color_combo,
     setup_color_combo_delegate,
 )
+from src.widgets.brickPreview import BrickPreview, get_global_image_provider
 from src.widgets.colorLabel import ColorLabel
 from ui.ui_searchManualWidget import Ui_SearchManualWidget
 
@@ -40,8 +40,9 @@ class SearchManualWidget(QWidget):
         self.iconSize = AppConfig.DEFAULT_ICON_SIZE
 
         self.db_manager = DatabaseManager()
-        self.imgProvider = ImagesProvider(AppConfig.PARTS_IMG_CACHE_DIR)
-        self.imgProvider.image_loaded.connect(self.on_image_loaded)
+        # Use global image provider and keep references to BrickPreview widgets
+        self.imgProvider = get_global_image_provider()
+        self.preview_widgets = []
 
         self.ui = Ui_SearchManualWidget()
         self.ui.setupUi(self)
@@ -182,34 +183,7 @@ class SearchManualWidget(QWidget):
             self.ui.search_part_id_edit.clear()
             self.ui.search_part_id_edit.blockSignals(False)
 
-    def on_image_loaded(self, key, pixmap):
-        # Parse key to get part_id and color_id
-        try:
-            part_id, color_id = key.split("_")
-        except Exception as e:
-            print(f"Error parsing key: {e}")
-            return
-
-        # Find matching rows in the table
-        for row in range(self.ui.search_results_table.rowCount()):
-            item = self.ui.search_results_table.item(row, 0)
-            if not item:
-                continue
-
-            data = item.data(Qt.ItemDataRole.UserRole)
-            part = data[0]
-            if part.id == part_id and str(part.color_id) == color_id:
-                # Update the icon
-                scaled = pixmap.scaled(
-                    self.iconSize,
-                    self.iconSize,
-                    Qt.AspectRatioMode.KeepAspectRatio,
-                    Qt.TransformationMode.SmoothTransformation,
-                )
-                item.setIcon(QIcon(scaled))
-
-                # Force update
-                self.ui.search_results_table.viewport().update()
+    # Note: on_image_loaded method removed - BrickPreview widgets handle image loading automatically
 
     def perform_search(self):
         filePath = self.ui.fileEdit.text()
@@ -419,6 +393,8 @@ class SearchManualWidget(QWidget):
             return
 
         self.logger.info(f"Found {len(results)} results for manual search")
+        # Clear previous preview widgets
+        self.preview_widgets.clear()
         self.ui.search_results_table.setRowCount(len(results))
 
         for row, data in enumerate(results):
@@ -452,23 +428,21 @@ class SearchManualWidget(QWidget):
     def addItemToTable(
         self, row, part: CollectionPart, required_quantity: int | None = None
     ):
-        # Image column
+        # Image column - use BrickPreview widget
+        preview = BrickPreview(
+            part_id=part.part_id,
+            color_id=str(part.color_id),
+            size=self.iconSize,
+            parent=self,
+        )
+        self.ui.search_results_table.setCellWidget(row, 0, preview)
+        self.preview_widgets.append(preview)
+
+        # Create a hidden item to store data
         image_item = QTableWidgetItem()
         image_item.setData(
             Qt.ItemDataRole.UserRole, (part, required_quantity)
         )  # Store full data for later use
-
-        # Try to get image
-        img = self.imgProvider.get_part_image(part.part_id, part.color_id)
-        if img is not None:
-            scaled = img.scaled(
-                self.iconSize,
-                self.iconSize,
-                Qt.AspectRatioMode.KeepAspectRatio,
-                Qt.TransformationMode.SmoothTransformation,
-            )
-            image_item.setIcon(QIcon(scaled))
-
         self.ui.search_results_table.setItem(row, 0, image_item)
 
         # Part ID

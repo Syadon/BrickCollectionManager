@@ -1,5 +1,4 @@
 from PySide6.QtCore import QStringListModel, Qt
-from PySide6.QtGui import QIcon
 from PySide6.QtWidgets import (
     QCompleter,
     QMessageBox,
@@ -12,13 +11,13 @@ from PySide6.QtWidgets import (
 from config import AppConfig
 from src import utils
 from src.database import Container, DatabaseManager
-from src.imageProvider import ImagesProvider
 from src.logger import get_logger, log_exception
 from src.utils import (
     TransparentSelectionDelegate,
     populate_color_combo,
     setup_color_combo_delegate,
 )
+from src.widgets.brickPreview import BrickPreview
 from src.widgets.colorLabel import ColorLabel
 from ui.ui_addManualWidget import Ui_AddManualWidget
 
@@ -36,8 +35,8 @@ class AddManualWidget(QWidget):
         self.targetContainer = container
         self.iconSize = AppConfig.DEFAULT_ICON_SIZE
 
-        self.imgProvider = ImagesProvider(AppConfig.PARTS_IMG_CACHE_DIR)
-        self.imgProvider.image_loaded.connect(self.on_image_loaded)
+        # Keep references to BrickPreview widgets to prevent garbage collection
+        self.preview_widgets = []
 
         self.setup_widget()
 
@@ -51,7 +50,6 @@ class AddManualWidget(QWidget):
         # Reset to dummy container
         self.ui.searchContainerComboBox.setCurrentIndex(0)
         self.clear_search()
-        self.imgProvider.cleanup_tasks()
         super().hideEvent(event)
 
     def setup_widget(self):
@@ -229,12 +227,15 @@ class AddManualWidget(QWidget):
         self.ui.search_results_table.setRowCount(0)
         self.ui.search_add_button.setEnabled(False)
 
-        self.imgProvider.cleanup_tasks()
+        # No need to cleanup - using global provider
         # Validation will be triggered by the clear operations above
+        self.update_add_button_state()
 
     def perform_search(self):
         # Pulisci risultati precedenti
         self.ui.search_results_table.setRowCount(0)
+        # Clear preview widgets references
+        self.preview_widgets.clear()
 
         # Ottieni criteri di ricerca
         part_id = self.ui.search_part_id_edit.text()
@@ -269,25 +270,19 @@ class AddManualWidget(QWidget):
         self.ui.search_results_table.setRowCount(len(results))
 
         for row, data in enumerate(results):
-            # Colonna immagine
-            image_item = QTableWidgetItem()
-            image_item.setData(
-                Qt.ItemDataRole.UserRole, data
-            )  # Salva i dati completi per uso futuro
-
-            # Prova a ottenere l'immagine
+            # Colonna immagine - use BrickPreview widget
             part_id = data["part_id"]
-            color_id = data["color_id"]
-            img = self.imgProvider.get_part_image(part_id, color_id)
-            if img is not None:
-                scaled = img.scaled(
-                    self.iconSize,
-                    self.iconSize,
-                    Qt.AspectRatioMode.KeepAspectRatio,
-                    Qt.TransformationMode.SmoothTransformation,
-                )
-                image_item.setIcon(QIcon(scaled))
+            color_id = str(data["color_id"])
 
+            preview = BrickPreview(
+                part_id=part_id, color_id=color_id, size=self.iconSize, parent=self
+            )
+            self.ui.search_results_table.setCellWidget(row, 0, preview)
+            self.preview_widgets.append(preview)
+
+            # Create a hidden item to store data
+            image_item = QTableWidgetItem()
+            image_item.setData(Qt.ItemDataRole.UserRole, data)
             self.ui.search_results_table.setItem(row, 0, image_item)
 
             # Part ID
@@ -423,43 +418,8 @@ class AddManualWidget(QWidget):
             self.ui.searchContainerComboBox.currentIndex(),
         )
 
-    def on_image_loaded(self, key, pixmap):
-        # Parse key to get part_id and color_id
-        try:
-            part_id, color_id = key.split("_")
-        except Exception as e:
-            log_exception(e, "Error parsing image key")
-            return
-
-        for row in range(self.ui.search_results_table.rowCount()):
-            item = self.ui.search_results_table.item(row, 0)
-            if not item:
-                continue
-
-            row_part_id = str(item.data(Qt.ItemDataRole.UserRole)["part_id"])
-            row_color_id = str(item.data(Qt.ItemDataRole.UserRole)["color_id"])
-            if row_part_id == part_id and row_color_id == color_id:
-                self.update_part_image_search(pixmap, row)
-                break
-
-    def update_part_image_search(self, pixmap, row):
-        if row < 0 or row >= self.ui.search_results_table.rowCount():
-            return
-
-        # Scale image
-        scaled = pixmap.scaled(
-            self.iconSize,
-            self.iconSize,
-            Qt.AspectRatioMode.KeepAspectRatio,
-            Qt.TransformationMode.SmoothTransformation,
-        )
-
-        # Update image in table
-        image_item = self.ui.search_results_table.item(row, 0)
-        if image_item:
-            image_item.setIcon(QIcon(scaled))
-            self.ui.search_results_table.viewport().update()  # Force repaint
-            self.ui.search_results_table.resizeColumnsToContents()
+    # Note: on_image_loaded and update_part_image_search methods removed
+    # BrickPreview widgets handle image loading automatically
 
     def on_container_selection_changed(self, index):
         self.update_add_button_state()
