@@ -59,8 +59,7 @@ class BrickPreview(QLabel):
         self._img_provider = get_global_image_provider()
 
         # Connect to the image provider signals
-        self._img_provider.image_loaded.connect(self._on_image_loaded)
-        self._img_provider.image_error.connect(self._on_image_error)
+        self.connect_image_provider()
 
         # Setup the label
         self.setAlignment(Qt.AlignmentFlag.AlignCenter)
@@ -70,6 +69,14 @@ class BrickPreview(QLabel):
         # Load the image if part_id and color_id are provided
         if part_id and color_id:
             self.load_part_image(part_id, color_id)
+
+    def connect_image_provider(self):
+        self._img_provider.image_loaded.connect(self._on_image_loaded)
+        self._img_provider.image_error.connect(self._on_image_error)
+
+    def disconnect_image_provider(self):
+        self._img_provider.disconnect(self._on_image_loaded)
+        self._img_provider.disconnect(self._on_image_error)
 
     def set_size(self, size: int):
         """

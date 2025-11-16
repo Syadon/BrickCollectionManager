@@ -3,7 +3,7 @@ import logging
 import cv2
 import numpy as np
 from PySide6.QtCore import QBuffer, QByteArray, QEvent, QRect, Qt, QTimer
-from PySide6.QtGui import QColor, QIcon, QImage, QKeyEvent, QPainter, QPen, QPixmap
+from PySide6.QtGui import QColor, QImage, QKeyEvent, QPainter, QPen, QPixmap
 from PySide6.QtMultimedia import (
     QCamera,
     QImageCapture,
@@ -24,8 +24,7 @@ from config import AppConfig
 from src import utils
 from src.brickRecongnition import BrickRecognition
 from src.database import BrickColor, Container, DatabaseManager
-from src.imageProvider import ImagesProvider
-from src.logger import get_logger, log_exception
+from src.logger import get_logger
 from src.timedMessageBox import TimedMessageBox
 from src.utils import (
     TransparentSelectionDelegate,
@@ -33,6 +32,7 @@ from src.utils import (
     qImageToOpenCV,
     rgb_to_hsv,
 )
+from src.widgets.brickPreview import BrickPreview, get_global_image_provider
 from src.widgets.colorLabel import ColorLabel
 from ui.ui_addFromCameraWidget import Ui_AddFromCameraWidget
 
@@ -45,6 +45,8 @@ class AddFromCameraWidget(QWidget):
 
         self.ui = Ui_AddFromCameraWidget()
         self.ui.setupUi(self)
+
+        self.preview_widgets = []
 
         self.iconSize = AppConfig.DEFAULT_ICON_SIZE
         self.targetContainer = container
@@ -90,9 +92,6 @@ class AddFromCameraWidget(QWidget):
 
         self.image_capture.imageCaptured.connect(self.on_image_captured)
 
-        self.imgProvider = ImagesProvider(AppConfig.PARTS_IMG_CACHE_DIR)
-        self.imgProvider.image_loaded.connect(self.on_image_loaded)
-
         # Connect colors_list selection changed signal
         self.ui.colors_list.itemSelectionChanged.connect(self.on_color_selected)
 
@@ -119,6 +118,8 @@ class AddFromCameraWidget(QWidget):
         # Initialize capture attributes
         self.captured_image = None
         self.detection_rect = None
+        self.partDataRowIndex: int = 1
+        self.colorDataRowIndex: int = 0
 
         self.update_add_button_state()
 
@@ -160,7 +161,6 @@ class AddFromCameraWidget(QWidget):
         self.ui.acquisition_combo.setCurrentIndex(0)
         # Reset to dummy container
         self.ui.containerCombobox.setCurrentIndex(0)
-        self.imgProvider.cleanup_tasks()
         super().hideEvent(event)
 
     def populate_container_list(self):
@@ -277,6 +277,7 @@ class AddFromCameraWidget(QWidget):
         self.captured_image = None
         self.detection_rect = None
         self.update_add_button_state()
+        self.preview_widgets.clear()
 
     def on_image_captured(self, id, image: QImage):
         # Convert QImage to bytes in memory
@@ -307,7 +308,7 @@ class AddFromCameraWidget(QWidget):
         if current_row < 0:
             return
 
-        color_item = self.ui.colors_list.item(current_row, 0)
+        color_item = self.ui.colors_list.item(current_row, self.colorDataRowIndex)
         if not color_item:
             return
 
@@ -319,91 +320,11 @@ class AddFromCameraWidget(QWidget):
         if part_row < 0:
             return
 
-        # Request image for the part with this color
-        image = self.imgProvider.get_part_image(self.current_part_id, color_data.id)
-
-        # If image is available, update immediately
-        if image:
-            self.update_part_image_camera(image, part_row)
+        previewWidget = self.ui.parts_list.cellWidget(part_row, 0)
+        if isinstance(previewWidget, BrickPreview):
+            previewWidget.load_part_image(self.current_part_id, color_data.id)
 
         self.update_add_button_state()
-
-    def on_image_loaded(self, key, pixmap):
-        # Parse key to get part_id and color_id
-        try:
-            part_id, color_id = key.split("_")
-        except Exception as e:
-            log_exception(e)
-            return
-
-        if color_id == "part":
-            part_row = -1
-            for row in range(self.ui.parts_list.rowCount()):
-                item = self.ui.parts_list.item(row, 0)
-                if item and item.data(Qt.ItemDataRole.UserRole)["id"] == part_id:
-                    part_row = row
-                    break
-
-            if part_row < 0:
-                return
-        else:
-            # Only process if we have a current part selected
-            if not self.current_part_id:
-                return
-
-            # Only update if this is our current part
-            if part_id != self.current_part_id:
-                return
-
-            # Get current selected part and color
-            part_row = self.ui.parts_list.currentRow()
-            color_row = self.ui.colors_list.currentRow()
-
-            if part_row < 0 or color_row < 0:
-                return
-
-            # Get color data of selected color
-            color_item = self.ui.colors_list.item(color_row, 0)
-            if not color_item:
-                return
-
-            color_data = color_item.data(Qt.ItemDataRole.UserRole)
-
-            # Only update if this is our currently selected color
-            if str(color_data.id) != color_id:
-                return
-
-        # Update image
-        self.update_part_image_camera(pixmap, part_row)
-
-    def update_part_image_camera(self, pixmap, row):
-        if row < 0 or row >= self.ui.parts_list.rowCount():
-            return
-
-        # Scale image
-        scaled = pixmap.scaled(
-            self.iconSize,
-            self.iconSize,
-            Qt.AspectRatioMode.KeepAspectRatio,
-            Qt.TransformationMode.SmoothTransformation,
-        )
-
-        # Update image in table
-        image_item = self.ui.parts_list.item(row, 0)
-        if image_item:
-            image_item.setIcon(QIcon(scaled))
-            self.ui.parts_list.viewport().update()  # Force repaint
-            self.ui.parts_list.resizeColumnsToContents()
-
-            # Limit Name column width
-            name_column_index = 2
-            max_name_width = 400
-            if self.ui.parts_list.columnWidth(name_column_index) > max_name_width:
-                self.ui.parts_list.setColumnWidth(name_column_index, max_name_width)
-
-            self.ui.parts_list.setWordWrap(True)
-            self.ui.parts_list.resizeRowsToContents()
-            self.ui.parts_list.horizontalHeader().setStretchLastSection(True)
 
     def on_part_detected(self, image, detectionData):
         # Check if detectionData contains required fields
@@ -439,19 +360,12 @@ class AddFromCameraWidget(QWidget):
         for item in detectionData["items"]:
             row = self.ui.parts_list.rowCount()
             self.ui.parts_list.insertRow(row)
+
             # Create list item with part info
-            image_item = QTableWidgetItem()
-            img = self.imgProvider.get_image_from_url(
-                item["img_url"], f"{item['id']}_part"
-            )
-            if img is not None and not img.isNull():
-                scaled = img.scaled(
-                    self.iconSize,
-                    self.iconSize,
-                    Qt.AspectRatioMode.KeepAspectRatio,
-                    Qt.TransformationMode.SmoothTransformation,
-                )
-                image_item.setIcon(QIcon(scaled))
+            preview = BrickPreview()
+            preview.load_image_from_url(item["img_url"], f"{item['id']}_part")
+            preview.set_size(self.iconSize)
+            self.preview_widgets.append(preview)
 
             id_item = QTableWidgetItem(f"{item['id']}")
             name_item = QTableWidgetItem(f"{item['name']}")
@@ -462,10 +376,11 @@ class AddFromCameraWidget(QWidget):
             score_item.setData(Qt.ItemDataRole.EditRole, round(item["score"] * 100, 2))
 
             # Store full item data in item's data role
-            image_item.setData(Qt.ItemDataRole.UserRole, item)
+            id_item.setData(Qt.ItemDataRole.UserRole, item)
 
             # Add item to list
-            self.ui.parts_list.setItem(row, 0, image_item)
+            self.partDataRowIndex = 1
+            self.ui.parts_list.setCellWidget(row, 0, preview)
             self.ui.parts_list.setItem(row, 1, id_item)
             self.ui.parts_list.setItem(row, 2, name_item)
             self.ui.parts_list.setItem(row, 3, score_item)
@@ -498,7 +413,7 @@ class AddFromCameraWidget(QWidget):
         current_row = self.ui.parts_list.currentRow()
         if current_row >= 0:
             # Get data from first column
-            current_item = self.ui.parts_list.item(current_row, 0)
+            current_item = self.ui.parts_list.item(current_row, self.partDataRowIndex)
             if current_item:
                 part_data = current_item.data(Qt.ItemDataRole.UserRole)
                 self.current_part_id = part_data["id"]  # Store current part ID
@@ -508,54 +423,54 @@ class AddFromCameraWidget(QWidget):
         self.update_add_button_state()
 
     def on_add_part_clicked(self):
+        # Get selected part
+        current_row = self.ui.parts_list.currentRow()
+        if current_row < 0:
+            logging.warning("No part selected")
+            return
+
+        part_item = self.ui.parts_list.item(current_row, self.partDataRowIndex)
+        if not part_item:
+            logging.warning("No part data found")
+            return
+
+        # Get selected color
+        color_current_row = self.ui.colors_list.currentRow()
+        if color_current_row < 0:
+            return
+
+        color_item = self.ui.colors_list.item(color_current_row, self.colorDataRowIndex)
+        if not color_item:
+            return
+
+        # Get selected container
+        container_data = self.ui.containerCombobox.currentData()
+
+        if not container_data:
+            logging.warning("Invalid container data")
+            return
+
+        # Extract container ID and name from data tuple (id, name, type, part_count)
         try:
-            # Get selected part
-            current_row = self.ui.parts_list.currentRow()
-            if current_row < 0:
-                logging.warning("No part selected")
-                return
+            if isinstance(container_data, tuple):
+                container_id = container_data[0]
+                container_name = (
+                    container_data[1] if len(container_data) > 1 else "Unknown"
+                )
+            else:
+                container_id = container_data
+                container_name = "Unknown"
+        except (TypeError, IndexError):
+            logging.warning("Error extracting container data")
+            return
 
-            part_item = self.ui.parts_list.item(current_row, 0)
-            if not part_item:
-                logging.warning("No part data found")
-                return
+        # Get quantity
+        quantity = self.ui.qtySpinBox.value()
+        if quantity <= 0:
+            logging.warning("Invalid quantity")
+            return
 
-            # Get selected color
-            color_current_row = self.ui.colors_list.currentRow()
-            if color_current_row < 0:
-                return
-
-            color_item = self.ui.colors_list.item(color_current_row, 0)
-            if not color_item:
-                return
-
-            # Get selected container
-            container_data = self.ui.containerCombobox.currentData()
-
-            if not container_data:
-                logging.warning("Invalid container data")
-                return
-
-            # Extract container ID and name from data tuple (id, name, type, part_count)
-            try:
-                if isinstance(container_data, tuple):
-                    container_id = container_data[0]
-                    container_name = (
-                        container_data[1] if len(container_data) > 1 else "Unknown"
-                    )
-                else:
-                    container_id = container_data
-                    container_name = "Unknown"
-            except (TypeError, IndexError):
-                logging.warning("Error extracting container data")
-                return
-
-            # Get quantity
-            quantity = self.ui.qtySpinBox.value()
-            if quantity <= 0:
-                logging.warning("Invalid quantity")
-                return
-
+        try:
             # Get part and color IDs
             part_data = part_item.data(Qt.ItemDataRole.UserRole)
             color_data = color_item.data(Qt.ItemDataRole.UserRole)
@@ -567,7 +482,9 @@ class AddFromCameraWidget(QWidget):
                 logging.warning("No color_part found")
                 return
 
-            msg_pixmap = self.imgProvider.get_part_image(part_data["id"], color_data.id)
+            msg_pixmap = get_global_image_provider().get_part_image(
+                part_data["id"], color_data.id
+            )
             # TODO: resize image to max
             # ...
 
@@ -585,7 +502,7 @@ class AddFromCameraWidget(QWidget):
                 <html>
                 <p><b>Adding...</b></p>
                 <p><b>Part:</b> {part_data["id"]} - {part_data["name"]}</p>
-                <p><b>Color:</b> {color_data.name} - {color_data.type}</p>
+                <p><b>Color:</b> {color_data.name} - {color_data.color_type}</p>
                 <p><b>Quantity:</b> {quantity}</p>
                 <p><b>Container:</b> {container_name}</p>
                 </html>
@@ -607,7 +524,7 @@ class AddFromCameraWidget(QWidget):
                 msg.setIcon(QMessageBox.Icon.Critical)
                 msg.setWindowTitle("Adding Part")
                 msg.setText(
-                    f"Fail to add {quantity} of part {part_data['id']} - {part_data['name']} in color {color_data.name} - {color_data.type} to container {container_name}"
+                    f"Fail to add {quantity} of part {part_data['id']} - {part_data['name']} in color {color_data.name} - {color_data.color_type} to container {container_name}"
                 )
                 msg.setStandardButtons(QMessageBox.StandardButton.Ok)
                 if msg_pixmap is not None:
@@ -722,6 +639,7 @@ class AddFromCameraWidget(QWidget):
         year_item = QTableWidgetItem(str(color.year_to) if color.year_to else "")
 
         # Add items to row
+        self.colorDataRowIndex = 0
         self.ui.colors_list.setItem(row, 0, name_item)  # Set the item with data
         self.ui.colors_list.setCellWidget(
             row, 0, color_label
