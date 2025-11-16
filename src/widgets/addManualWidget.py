@@ -17,7 +17,7 @@ from src.utils import (
     populate_color_combo,
     setup_color_combo_delegate,
 )
-from src.widgets.brickPreview import BrickPreview
+from src.widgets.brickPreview import BrickPreview, get_global_image_provider
 from src.widgets.colorLabel import ColorLabel
 from ui.ui_addManualWidget import Ui_AddManualWidget
 
@@ -397,7 +397,9 @@ class AddManualWidget(QWidget):
             msg.setStandardButtons(QMessageBox.StandardButton.Ok)
 
             # Aggiungi immagine al messaggio
-            pixmap = self.imgProvider.get_part_image(data["part_id"], data["color_id"])
+            pixmap = get_global_image_provider().get_part_image(
+                data["part_id"], data["color_id"]
+            )
             if pixmap:
                 msg.setIconPixmap(pixmap)
 
