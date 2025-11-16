@@ -58,9 +58,9 @@
     </layout>
    </item>
    <item row="0" column="1">
-    <widget class="QLabel" name="imageLabel">
+    <widget class="BrickPreview" name="imageLabel">
      <property name="text">
-      <string>Preview Image</string>
+      <string/>
      </property>
      <property name="alignment">
       <set>Qt::AlignmentFlag::AlignCenter</set>
@@ -239,6 +239,11 @@
   </connection>
  </connections>
  <customwidgets>
+  <customwidget>
+   <class>BrickPreview</class>
+   <extends>QLabel</extends>
+   <header>src.widgets.brickPreview</header>
+  </customwidget>
   <customwidget>
    <class>ContainerComboBox</class>
    <extends>QComboBox</extends>

@@ -1,11 +1,8 @@
-from PySide6.QtCore import Qt
-from PySide6.QtGui import QPixmap
 from PySide6.QtWidgets import QDialog, QMessageBox
 
-from config import AppConfig
 from src import utils
 from src.database import CollectionPart, Container, DatabaseManager
-from src.imageProvider import ImagesProvider
+from src.widgets.brickPreview import BrickPreview
 from src.widgets.colorLabel import ColorLabel
 from ui.ui_detailPartDialog import Ui_DeatilPartDialog
 
@@ -22,7 +19,6 @@ class PartDetailDialog(QDialog):
         super().__init__(parent)
 
         self.imgSize = 256
-        self.imgProvider = ImagesProvider(AppConfig.PARTS_IMG_CACHE_DIR)
 
         # Create and setup UI
         self.ui = Ui_DeatilPartDialog()
@@ -31,19 +27,18 @@ class PartDetailDialog(QDialog):
         self.part_data = part_data
         self.container = container
 
-        self.imgProvider.image_loaded.connect(self.setup_image)
-
         self.setup_ui()
 
         self.ui.qtySpinBox.setValue(qty)
         self.ui.toOutsideRadioButton.setChecked(outsideDefault)
 
     def setup_ui(self):
-        image = self.imgProvider.get_part_image(
-            self.part_data.part_id, self.part_data.color_id
+        # The BrickPreview widget is now defined directly in the UI file
+        # Just configure it with the part data
+        self.ui.imageLabel.set_size(self.imgSize)
+        self.ui.imageLabel.load_part_image(
+            self.part_data.part_id, str(self.part_data.color_id)
         )
-        if image is not None:
-            self.setup_image("", image)
 
         # Part ID and Name
         self.ui.idValLabel.setText(self.part_data.part_id)
@@ -80,19 +75,6 @@ class PartDetailDialog(QDialog):
         )
 
         self.populate_container_combo()
-
-    def setup_image(self, key, pixmap: QPixmap):
-        sz = pixmap.size()
-        if sz.width() > self.imgSize or sz.height() > self.imgSize:
-            image = pixmap.scaled(
-                self.imgSize,
-                self.imgSize,
-                Qt.AspectRatioMode.KeepAspectRatio,
-                Qt.TransformationMode.SmoothTransformation,
-            )
-            self.ui.imageLabel.setPixmap(image)
-        else:
-            self.ui.imageLabel.setPixmap(pixmap)
 
     def populate_container_combo(self):
         utils.populate_container_combo(
