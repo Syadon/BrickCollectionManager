@@ -2,7 +2,6 @@ from PySide6.QtWidgets import QDialog, QMessageBox
 
 from src import utils
 from src.database import CollectionPart, Container, DatabaseManager
-from src.widgets.brickPreview import BrickPreview
 from src.widgets.colorLabel import ColorLabel
 from ui.ui_detailPartDialog import Ui_DeatilPartDialog
 
