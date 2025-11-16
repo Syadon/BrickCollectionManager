@@ -341,6 +341,7 @@ class AddFromFileWidget(QWidget):
         """Pulisce la tabella e i dati associati"""
         self.ui.tableWidget.setRowCount(0)
         self.parts_data = []
+        self.preview_widgets.clear()
         self.update_add_button_state()
 
     def populate_container_combo(self):

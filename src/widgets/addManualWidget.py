@@ -226,6 +226,7 @@ class AddManualWidget(QWidget):
         self.ui.search_color_type_combo.setCurrentIndex(0)
         self.ui.search_results_table.setRowCount(0)
         self.ui.search_add_button.setEnabled(False)
+        self.preview_widgets.clear()
 
         # No need to cleanup - using global provider
         # Validation will be triggered by the clear operations above

@@ -496,6 +496,7 @@ class SearchManualWidget(QWidget):
         self.ui.search_color_type_combo.setCurrentIndex(0)
         self.ui.search_results_table.setRowCount(0)
         self.ui.fileEdit.clear()
+        self.preview_widgets.clear()
         # Validation will be triggered by the clear operations above
 
     def on_result_double_clicked(self, row, column):
