@@ -2,7 +2,9 @@
 <RCC version="1.0">
     <qresource prefix="/images">
         <file>app_icon_hd.png</file>
-    </qresource>    <qresource prefix="/styles">
+        <file>app_icon.png</file>
+    </qresource>
+    <qresource prefix="/styles">
         <file>custom.css</file>
     </qresource>
     <qresource prefix="/database">
@@ -19,6 +21,5 @@
         <file>database.png</file>
         <file>down.png</file>
         <file>up.png</file>
-        <file>app_icon.png</file>
     </qresource>
 </RCC>
