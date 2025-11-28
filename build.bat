@@ -8,7 +8,7 @@ REM Check if uv is available
 uv --version >nul 2>&1
 if errorlevel 1 (
     echo ❌ uv is required but not installed
-    echo 📦 Install uv first: https://astral.sh/uv/install
+    echo 📦 Install uv first: https://github.com/astral-sh/uv"
     exit /b 1
 )
 

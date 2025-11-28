@@ -9,7 +9,7 @@ echo "=================================================="
 # Check if uv is available
 if ! command -v uv &> /dev/null; then
     echo "❌ uv is required but not installed"
-    echo "📦 Install uv first: curl -LsSf https://astral.sh/uv/install.sh | sh"
+    echo "📦 Install uv first: https://github.com/astral-sh/uv"
     exit 1
 fi
 
