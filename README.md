@@ -1,9 +1,11 @@
 # BrickCollectionManager
 
+![BrickCollectionManager icon](https://github.com/Syadon/BrickCollectionManager/blob/main/resources/app_icon.png?raw=true)
+
 ## Description
 
 BrickCollectionManager is a simple desktop application that I use to organize my own brick collection.
-I use bags and boxes keep everything together without having to sort by part, colour or category.
+I use bags and boxes to keep everything together without having to sort by part, colour or category.
 
 The app was inspired by projects such as Instabrick, Pileometer and Brickstore.
 
@@ -25,6 +27,5 @@ I do not have space for well-categorised containers such as drawer cabinets.
 ## Installation
 
 This project uses python and pyside, install [uv](https://github.com/astral-sh/uv) for esay installation.
-    Run the *build.sh* or *build.bat* script.
+Run the *build.sh* or *build.bat* script.
 You will find the executable in the build directory.
-
