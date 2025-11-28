@@ -2,8 +2,8 @@
 
 ## Description
 
-BrickCollectionManager is a simple desktop application for organising bricks.
-Use bags and boxes to organise your collection without having to sort by part, colour or category.
+BrickCollectionManager is a simple desktop application that I use to organize my own brick collection.
+I use bags and boxes keep everything together without having to sort by part, colour or category.
 
 The app was inspired by projects such as Instabrick, Pileometer and Brickstore.
 
@@ -12,7 +12,7 @@ BrickCollectionManager data is fully local.
 The objectives of this project are twofold:
 - Organise my brick collection using boxes and bags containing mixed pieces and help me find the pieces I need.
 I do not have space for well-categorised containers such as drawer cabinets.
-- Experiment with Copilot. I am trying to use AI as much as possible just for "science".
+- Experiment with Copilot. In this project I am trying to use AI as much as possible just for "science".
 
 ## Features
 
