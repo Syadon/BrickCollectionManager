@@ -29,3 +29,10 @@ I do not have space for well-categorised containers such as drawer cabinets.
 This project uses python and pyside, install [uv](https://github.com/astral-sh/uv) for esay installation.
 Run the *build.sh* or *build.bat* script.
 You will find the executable in the build directory.
+
+## Usage
+
+Build your catalogue of pieces by downloading the required files from BrickLink.
+From the 'Database' tab, you can find the link to all the requested files and import them.
+Repeat this process to update the catalogue.
+
