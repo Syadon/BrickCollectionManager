@@ -36,3 +36,5 @@ Build your catalogue of pieces by downloading the required files from BrickLink.
 From the 'Database' tab, you can find the link to all the requested files and import them.
 Repeat this process to update the catalogue.
 
+![BrickCollectionManager icon](https://github.com/Syadon/BrickCollectionManager/blob/main/docs/Screenshot_1.png?raw=true)
+![BrickCollectionManager icon](https://github.com/Syadon/BrickCollectionManager/blob/main/docs/Screenshot_2.png?raw=true)
