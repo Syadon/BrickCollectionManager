@@ -6,6 +6,8 @@ from PySide6.QtWidgets import (
     QMenu,
     QMessageBox,
     QPushButton,
+    QStyle,
+    QStyledItemDelegate,
     QTableView,
     QVBoxLayout,
     QWidget,
@@ -15,6 +17,26 @@ from src.addContainerDialog import AddContainerDialog
 from src.containerDetailDialog import ContainerDetailDialog
 from src.database import DatabaseManager
 from src.logger import get_logger
+
+
+class CenterIconDelegate(QStyledItemDelegate):
+    """Custom delegate to center icons in table cells"""
+
+    def paint(self, painter, option, index):
+        if index.column() == 1:  # Type column
+            icon = index.data(Qt.ItemDataRole.DecorationRole)
+            if icon and isinstance(icon, QIcon):
+                # Calculate centered position for icon
+                icon_size = option.decorationSize
+                x = option.rect.x() + (option.rect.width() - icon_size.width()) // 2
+                y = option.rect.y() + (option.rect.height() - icon_size.height()) // 2
+
+                # Draw the icon centered
+                icon.paint(painter, x, y, icon_size.width(), icon_size.height())
+                return
+
+        # Default painting for other columns
+        super().paint(painter, option, index)
 
 
 class ContainerTableModel(QAbstractTableModel):
@@ -64,6 +86,11 @@ class ContainerTableModel(QAbstractTableModel):
                     return QIcon(":/icons/container_bag.png")
                 else:
                     return QIcon(":/icons/container_box.png")
+
+        elif role == Qt.ItemDataRole.TextAlignmentRole:
+            if attr == "type":
+                # Center the icon in the Type column
+                return Qt.AlignmentFlag.AlignCenter
 
         return None
 
@@ -140,12 +167,15 @@ class ContainerListWidget(QWidget):
         self.model = ContainerTableModel(containers)
         self.table_view.setModel(self.model)
 
+        # Set custom delegate for centering icons in Type column
+        self.table_view.setItemDelegateForColumn(1, CenterIconDelegate(self.table_view))
+
         # Configure column sizing
         self.table_view.resizeColumnsToContents()  # Resize all columns to fit content
 
         # Set specific width for type column (icon only)
         self.table_view.setColumnWidth(
-            1, 60
+            1, 100
         )  # Type column (now second column) - just wide enough for icon
 
         self.table_view.horizontalHeader().setStretchLastSection(
