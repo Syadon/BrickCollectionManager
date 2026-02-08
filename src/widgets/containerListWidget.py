@@ -22,17 +22,15 @@ class ContainerTableModel(QAbstractTableModel):
         super().__init__(parent)
         self.containers = containers
         self.attrOrder = [
-            "id",
-            "type",
             "name",
+            "type",
             "part_count",
             "lot_count",
             "description",
         ]
         self.headerList = [
-            "ID",
-            "Type",
             "Name",
+            "Type",
             "Part Count",
             "Lot Count",
             "Description",
@@ -138,7 +136,7 @@ class ContainerListWidget(QWidget):
 
     def update_view(self):
         dbManager = DatabaseManager()
-        containers = dbManager.getContainers()
+        containers = dbManager.getContainers(order_by="name")
         self.model = ContainerTableModel(containers)
         self.table_view.setModel(self.model)
 
@@ -146,7 +144,9 @@ class ContainerListWidget(QWidget):
         self.table_view.resizeColumnsToContents()  # Resize all columns to fit content
 
         # Set specific width for type column (icon only)
-        self.table_view.setColumnWidth(1, 60)  # Type column - just wide enough for icon
+        self.table_view.setColumnWidth(
+            1, 60
+        )  # Type column (now second column) - just wide enough for icon
 
         self.table_view.horizontalHeader().setStretchLastSection(
             True

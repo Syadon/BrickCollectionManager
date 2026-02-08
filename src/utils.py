@@ -99,7 +99,7 @@ def populate_container_combo(
     # Add dummy container as first option
     containerCombo.addItem("Select Container...", None)
 
-    containers = db_manager.getContainers()
+    containers = db_manager.getContainers(order_by="name")
 
     # Aggiungi i container al combobox
     for container in containers:

@@ -106,9 +106,9 @@ class DatabaseManager:
         else:
             return 0
 
-    def getContainers(self) -> list[Container]:
+    def getContainers(self, order_by: str = "id") -> list[Container]:
         containers = []
-        query = QSqlQuery("SELECT * FROM containers")
+        query = QSqlQuery(f"SELECT * FROM containers ORDER BY {order_by}")
         while query.next():
             id = query.value("id")
             partCount = self.getConteinerPartCount(id)

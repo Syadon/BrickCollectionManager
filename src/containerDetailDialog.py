@@ -361,7 +361,7 @@ class DeleteContainerDialog(QDialog):
         """Populate the container combo box with all containers except current one"""
         import src.utils as utils
 
-        containers = self.db_manager.getContainers()
+        containers = self.db_manager.getContainers(order_by="name")
 
         for container in containers:
             if container.id != self.container.id:
