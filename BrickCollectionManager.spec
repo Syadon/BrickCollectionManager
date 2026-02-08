@@ -26,7 +26,7 @@ a = Analysis(
     hiddenimports=[
         # Core PySide6 modules
         'PySide6.QtCore',
-        'PySide6.QtGui', 
+        'PySide6.QtGui',
         'PySide6.QtWidgets',
         'PySide6.QtSql',
         # Camera support (rimuovi se non usi la camera)
@@ -182,10 +182,10 @@ if sys.platform == 'darwin':
             'NSPrincipalClass': 'NSApplication',
             'NSAppleScriptEnabled': False,
             'NSHighResolutionCapable': True,
-            'CFBundleShortVersionString': '0.2.1',
-            'CFBundleVersion': '0.2.1',
+            'CFBundleShortVersionString': '0.2.2',
+            'CFBundleVersion': '0.2.2',
             'CFBundleDisplayName': 'Brick Collection Manager',
-            'CFBundleGetInfoString': 'Brick Collection Manager 0.2.1',
+            'CFBundleGetInfoString': 'Brick Collection Manager 0.2.2',
             'NSHumanReadableCopyright': 'Copyright © 2025 Brick Collection Manager Team',
             'LSMinimumSystemVersion': '10.13.0',
             'NSRequiresAquaSystemAppearance': False,
