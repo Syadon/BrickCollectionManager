@@ -6,6 +6,7 @@ from PySide6.QtWidgets import (
     QGroupBox,
     QHBoxLayout,
     QLabel,
+    QMenu,
     QMessageBox,
     QPushButton,
     QRadioButton,
@@ -17,6 +18,7 @@ from PySide6.QtWidgets import (
 from config import AppConfig
 from src.database import DatabaseManager
 from src.partDetailDialog import PartDetailDialog
+from src.partsMovementDialog import PartsMovementDialog
 from src.widgets.brickPreview import BrickPreview, get_global_image_provider
 from src.widgets.colorLabel import ColorLabel
 from ui.ui_containerDetailDialog import Ui_containerDetailDialog
@@ -72,6 +74,17 @@ class ContainerDetailDialog(QDialog):
         self.max_name_width = 400
         self.type_column_index = 3
         self.max_type_width = 200
+
+        self._sort_col: int | None = None
+        self._sort_order: Qt.SortOrder = Qt.SortOrder.AscendingOrder
+        self._sort_attr_by_col = {
+            1: "part_id",
+            2: "part_name",
+            3: "part_category",
+            4: "color_name",
+            5: "quantity",
+        }
+
         self.setup_parts_table()
 
         # Set dialog size based on parent window if available
@@ -106,7 +119,20 @@ class ContainerDetailDialog(QDialog):
         self.ui.partsView.setSelectionBehavior(
             QTableWidget.SelectionBehavior.SelectRows
         )
-        self.ui.partsView.setSelectionMode(QTableWidget.SelectionMode.SingleSelection)
+        self.ui.partsView.setSelectionMode(
+            QTableWidget.SelectionMode.ExtendedSelection
+        )
+
+        # Right-click context menu for bulk actions
+        self.ui.partsView.setContextMenuPolicy(Qt.ContextMenuPolicy.CustomContextMenu)
+        self.ui.partsView.customContextMenuRequested.connect(
+            self.on_parts_context_menu
+        )
+
+        # Click headers to sort
+        header = self.ui.partsView.horizontalHeader()
+        header.setSectionsClickable(True)
+        header.sectionClicked.connect(self.on_header_clicked)
 
         # Set row height for images (64px)
         self.ui.partsView.verticalHeader().setDefaultSectionSize(70)
@@ -196,13 +222,85 @@ class ContainerDetailDialog(QDialog):
                 # Refresh the parts list
                 self.refresh_parts_table()
 
+    def on_header_clicked(self, col: int):
+        """Sort parts_data by the column attribute and rebuild the table."""
+        if col not in self._sort_attr_by_col:
+            return
+
+        if self._sort_col == col:
+            self._sort_order = (
+                Qt.SortOrder.DescendingOrder
+                if self._sort_order == Qt.SortOrder.AscendingOrder
+                else Qt.SortOrder.AscendingOrder
+            )
+        else:
+            self._sort_col = col
+            self._sort_order = Qt.SortOrder.AscendingOrder
+
+        self.apply_sort()
+        self.ui.partsView.horizontalHeader().setSortIndicator(
+            self._sort_col, self._sort_order
+        )
+
+    def apply_sort(self):
+        """Reorder self.parts_data per current sort state and repopulate."""
+        if self._sort_col is None:
+            return
+        attr = self._sort_attr_by_col.get(self._sort_col)
+        if attr is None:
+            return
+
+        def key(p):
+            v = getattr(p, attr, None)
+            if isinstance(v, str):
+                return v.lower()
+            return v if v is not None else 0
+
+        self.parts_data = sorted(self.parts_data, key=key)
+        if self._sort_order == Qt.SortOrder.DescendingOrder:
+            self.parts_data.reverse()
+
+        # Rebuild rows so cell widgets stay aligned with data
+        self.ui.partsView.setRowCount(0)
+        self.preview_widgets = []
+        self.ui.partsView.setRowCount(len(self.parts_data))
+        self.populate_table_data()
+        self.ui.partsView.resizeRowsToContents()
+
+    def on_parts_context_menu(self, pos):
+        """Show context menu for selected parts rows."""
+        selected_rows = sorted(
+            {idx.row() for idx in self.ui.partsView.selectionModel().selectedRows()}
+        )
+        if not selected_rows:
+            return
+
+        menu = QMenu(self)
+        move_action = menu.addAction("Move selected parts…")
+        action = menu.exec(self.ui.partsView.viewport().mapToGlobal(pos))
+
+        if action == move_action:
+            selected_parts = [
+                self.parts_data[r] for r in selected_rows if r < len(self.parts_data)
+            ]
+            if not selected_parts:
+                return
+            dialog = PartsMovementDialog(selected_parts, self.container, parent=self)
+            if dialog.exec() == QDialog.DialogCode.Accepted:
+                self.refresh_parts_table()
+
     def refresh_parts_table(self):
         """Refresh the parts table with updated data"""
         self.parts_data = self.dbManager.getContainersParts(self.container.id)
 
-        # Clear and repopulate table
-        self.ui.partsView.setRowCount(len(self.parts_data))
-        self.populate_table_data()
+        # Clear and repopulate table; re-apply sort if one is active
+        if self._sort_col is not None:
+            self.apply_sort()
+        else:
+            self.ui.partsView.setRowCount(0)
+            self.preview_widgets = []
+            self.ui.partsView.setRowCount(len(self.parts_data))
+            self.populate_table_data()
 
         # Update counts
         self.ui.part_count_label.setText(
