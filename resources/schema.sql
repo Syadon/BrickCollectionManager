@@ -39,7 +39,7 @@ CREATE TABLE IF NOT EXISTS containers (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
     name TEXT NOT NULL UNIQUE,
     description TEXT,
-    type TEXT NOT NULL DEFAULT 'box' CHECK (type IN ('box', 'bag'))
+    type TEXT NOT NULL DEFAULT 'box' CHECK (type IN ('box', 'bag', 'original_box', 'build'))
 );
 
 CREATE TABLE IF NOT EXISTS parts_collection (

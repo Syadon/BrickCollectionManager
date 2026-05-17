@@ -6,6 +6,8 @@ from PySide6.QtCore import QRect, Qt
 from PySide6.QtGui import QIcon
 from PySide6.QtWidgets import QComboBox, QStyle, QStylePainter
 
+from src.database import container_type_icon_path
+
 
 class ContainerComboBox(QComboBox):
     """Custom combobox that displays container icon, name and part count for selected item"""
@@ -52,10 +54,7 @@ class ContainerComboBox(QComboBox):
                     )
 
                 # Get icon based on container type
-                if container_type == "bag":
-                    icon = QIcon(":/icons/container_bag.png")
-                else:
-                    icon = QIcon(":/icons/container_box.png")
+                icon = QIcon(container_type_icon_path(container_type))
 
                 # Calculate text area (the area where text is displayed)
                 text_rect = self.style().subControlRect(

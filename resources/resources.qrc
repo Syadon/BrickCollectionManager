@@ -14,6 +14,8 @@
         <file>container.png</file>
         <file>container_box.png</file>
         <file>container_bag.png</file>
+        <file>container_original_box.png</file>
+        <file>container_build.png</file>
         <file>search.png</file>
         <file>addManually.png</file>
         <file>addCamera.png</file>

@@ -1,6 +1,6 @@
 from PySide6.QtWidgets import QDialog
 
-from src.database import DatabaseManager
+from src.database import CONTAINER_TYPE_VALUES, DatabaseManager
 from ui.ui_addcontainerdialog import Ui_AddContainerDialog
 
 
@@ -24,7 +24,9 @@ class AddContainerDialog(QDialog):
         dbManager = DatabaseManager()
 
         # Get the type from the combo box
-        type_text = self.ui.typeComboBox.currentText().lower()
+        type_text = CONTAINER_TYPE_VALUES.get(
+            self.ui.typeComboBox.currentText(), "box"
+        )
 
         dbManager.addContainer(
             self.ui.nameEdit.text(), self.ui.descriptionEdit.text(), type_text

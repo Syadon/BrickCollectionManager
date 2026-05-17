@@ -15,7 +15,7 @@ from PySide6.QtWidgets import (
 
 from src.addContainerDialog import AddContainerDialog
 from src.containerDetailDialog import ContainerDetailDialog
-from src.database import DatabaseManager
+from src.database import DatabaseManager, container_type_icon_path
 from src.logger import get_logger
 
 
@@ -82,10 +82,7 @@ class ContainerTableModel(QAbstractTableModel):
             if attr == "type":
                 # Return appropriate icon based on container type
                 container_type = getattr(c, "type", "box")
-                if container_type == "bag":
-                    return QIcon(":/icons/container_bag.png")
-                else:
-                    return QIcon(":/icons/container_box.png")
+                return QIcon(container_type_icon_path(container_type))
 
         elif role == Qt.ItemDataRole.TextAlignmentRole:
             if attr == "type":

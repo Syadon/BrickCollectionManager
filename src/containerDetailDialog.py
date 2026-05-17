@@ -16,7 +16,11 @@ from PySide6.QtWidgets import (
 )
 
 from config import AppConfig
-from src.database import DatabaseManager
+from src.database import (
+    CONTAINER_TYPE_LABELS,
+    CONTAINER_TYPE_VALUES,
+    DatabaseManager,
+)
 from src.partDetailDialog import PartDetailDialog
 from src.partsMovementDialog import PartsMovementDialog
 from src.widgets.brickPreview import BrickPreview, get_global_image_provider
@@ -43,10 +47,9 @@ class ContainerDetailDialog(QDialog):
 
         # Setup type combobox
         if hasattr(container, "type"):
-            if container.type == "bag":
-                self.ui.type_combobox.setCurrentText("Bag")
-            else:
-                self.ui.type_combobox.setCurrentText("Box")
+            self.ui.type_combobox.setCurrentText(
+                CONTAINER_TYPE_LABELS.get(container.type, "Box")
+            )
 
         # Add delete button
         self.delete_button = QPushButton("Delete Container")
@@ -374,7 +377,9 @@ class ContainerDetailDialog(QDialog):
         self.container.description = self.ui.description_edit.text()
 
         # Update type
-        type_text = self.ui.type_combobox.currentText().lower()
+        type_text = CONTAINER_TYPE_VALUES.get(
+            self.ui.type_combobox.currentText(), "box"
+        )
         self.container.type = type_text
 
         # Save to database

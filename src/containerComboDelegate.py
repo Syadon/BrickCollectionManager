@@ -7,6 +7,8 @@ from PySide6.QtCore import QRect, QSize, Qt
 from PySide6.QtGui import QFont, QIcon
 from PySide6.QtWidgets import QStyle, QStyledItemDelegate
 
+from src.database import container_type_icon_path
+
 
 class ContainerComboDelegate(QStyledItemDelegate):
     """Custom delegate for rendering container items in combobox"""
@@ -60,10 +62,7 @@ class ContainerComboDelegate(QStyledItemDelegate):
             text_color = option.palette.text().color()
 
         # Get icon based on container type
-        if container_type == "bag":
-            icon = QIcon(":/icons/container_bag.png")
-        else:
-            icon = QIcon(":/icons/container_box.png")
+        icon = QIcon(container_type_icon_path(container_type))
 
         # Calculate positions - icon on the LEFT
         icon_rect = QRect(

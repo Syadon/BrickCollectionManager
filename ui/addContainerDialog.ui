@@ -58,6 +58,16 @@
          <string>Bag</string>
         </property>
        </item>
+       <item>
+        <property name="text">
+         <string>Original Box</string>
+        </property>
+       </item>
+       <item>
+        <property name="text">
+         <string>Build</string>
+        </property>
+       </item>
       </widget>
      </item>
     </layout>

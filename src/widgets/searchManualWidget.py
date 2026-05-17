@@ -252,7 +252,10 @@ class SearchManualWidget(QWidget):
 
                 # Cerca nelle parti della collezione per trovare i container che contengono questo pezzo
                 matching_parts = dbManager.searchIntoCollection(
-                    part_id=part_id, color_id=color_id
+                    part_id=part_id,
+                    color_id=color_id,
+                    include_original_box=self.ui.includeOriginalBoxCheck.isChecked(),
+                    include_build=self.ui.includeBuildCheck.isChecked(),
                 )
 
                 part_data = None
@@ -382,6 +385,8 @@ class SearchManualWidget(QWidget):
             part_name=self.ui.search_part_name_edit.text(),
             color_name=colorName,
             color_type=self.ui.search_color_type_combo.currentData(),
+            include_original_box=self.ui.includeOriginalBoxCheck.isChecked(),
+            include_build=self.ui.includeBuildCheck.isChecked(),
         )
 
         # Display results
@@ -496,6 +501,8 @@ class SearchManualWidget(QWidget):
         self.ui.search_color_type_combo.setCurrentIndex(0)
         self.ui.search_results_table.setRowCount(0)
         self.ui.fileEdit.clear()
+        self.ui.includeOriginalBoxCheck.setChecked(False)
+        self.ui.includeBuildCheck.setChecked(False)
         self.preview_widgets.clear()
         # Validation will be triggered by the clear operations above
 

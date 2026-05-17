@@ -9,6 +9,28 @@ from PySide6.QtSql import QSqlDatabase, QSqlQuery
 import resources_rc as resources_rc
 from config import AppConfig
 
+# Container type internal value -> display label.
+CONTAINER_TYPE_LABELS = {
+    "box": "Box",
+    "bag": "Bag",
+    "original_box": "Original Box",
+    "build": "Build",
+}
+# Display label -> internal value.
+CONTAINER_TYPE_VALUES = {v: k for k, v in CONTAINER_TYPE_LABELS.items()}
+# Container type internal value -> icon resource path.
+CONTAINER_TYPE_ICONS = {
+    "box": ":/icons/container_box.png",
+    "bag": ":/icons/container_bag.png",
+    "original_box": ":/icons/container_original_box.png",
+    "build": ":/icons/container_build.png",
+}
+
+
+def container_type_icon_path(container_type: str) -> str:
+    """Return the icon resource path for a container type, defaulting to box."""
+    return CONTAINER_TYPE_ICONS.get(container_type, CONTAINER_TYPE_ICONS["box"])
+
 
 @dataclass
 class BrickColor:
@@ -66,6 +88,10 @@ class DatabaseManager:
 
         # Create tables
         if not self._create_tables():
+            return False
+
+        # Apply schema migrations on pre-existing databases
+        if not self._migrate_containers():
             return False
 
         # Check if colors_parts table is empty
@@ -229,6 +255,8 @@ class DatabaseManager:
         color_name: str | None = None,
         color_type: str | None = None,
         color_id: int | None = None,
+        include_original_box: bool = False,
+        include_build: bool = False,
     ) -> list[CollectionPart]:
         # Build query based on search criteria
         query_str = """
@@ -271,6 +299,17 @@ class DatabaseManager:
         if color_id:
             query_str += " AND c.id = ?"
             params.append(color_id)
+
+        # Exclude special container types unless explicitly included
+        excluded_types = []
+        if not include_original_box:
+            excluded_types.append("original_box")
+        if not include_build:
+            excluded_types.append("build")
+        if excluded_types:
+            placeholders = ",".join("?" * len(excluded_types))
+            query_str += f" AND con.type NOT IN ({placeholders})"
+            params.extend(excluded_types)
 
         query_str += " ORDER BY quantity DESC, p.name, c.name"
 
@@ -359,7 +398,7 @@ class DatabaseManager:
             return None
 
     def addContainer(self, name: str, description: str, type: str = "box") -> bool:
-        if type not in ["box", "bag"]:
+        if type not in CONTAINER_TYPE_LABELS:
             type = "box"
 
         query = QSqlQuery()
@@ -603,6 +642,63 @@ class DatabaseManager:
         #     return False
         except Exception as e:
             logging.error(f"Error creating tables: {str(e)}")
+            return False
+
+    def _migrate_containers(self) -> bool:
+        """Rebuild the containers table on databases created before the
+        'original_box' / 'build' types existed, so the CHECK constraint
+        accepts the new values."""
+        try:
+            query = QSqlQuery()
+            if not query.exec(
+                "SELECT sql FROM sqlite_master "
+                "WHERE type='table' AND name='containers'"
+            ):
+                logging.error(
+                    f"Error reading containers schema: {query.lastError().text()}"
+                )
+                return False
+
+            if not query.next():
+                # Table does not exist yet (handled by _create_tables); nothing to do.
+                return True
+
+            table_sql = query.value(0) or ""
+            if "build" in table_sql:
+                # Already on the new schema.
+                return True
+
+            logging.info("Migrating containers table to new type constraint")
+            migration_statements = [
+                "PRAGMA foreign_keys=OFF",
+                "BEGIN TRANSACTION",
+                "ALTER TABLE containers RENAME TO _containers_old",
+                (
+                    "CREATE TABLE containers ("
+                    "id INTEGER PRIMARY KEY AUTOINCREMENT, "
+                    "name TEXT NOT NULL UNIQUE, "
+                    "description TEXT, "
+                    "type TEXT NOT NULL DEFAULT 'box' "
+                    "CHECK (type IN ('box', 'bag', 'original_box', 'build')))"
+                ),
+                "INSERT INTO containers (id, name, description, type) "
+                "SELECT id, name, description, type FROM _containers_old",
+                "DROP TABLE _containers_old",
+                "COMMIT",
+                "PRAGMA foreign_keys=ON",
+            ]
+            for statement in migration_statements:
+                if not query.exec(statement):
+                    logging.error(
+                        f"Container migration failed at '{statement}': "
+                        f"{query.lastError().text()}"
+                    )
+                    query.exec("ROLLBACK")
+                    query.exec("PRAGMA foreign_keys=ON")
+                    return False
+            return True
+        except Exception as e:
+            logging.error(f"Error migrating containers: {str(e)}")
             return False
 
     def import_colors_from_xml(self, filepath: str) -> bool:
