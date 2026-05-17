@@ -13,6 +13,7 @@ from PySide6.QtWidgets import (
 )
 
 from config import AppConfig
+from src.containerSelectionDialog import ContainerSelectionDialog
 from src.database import CollectionPart, Container, DatabaseManager
 from src.logger import get_logger, log_exception
 from src.partDetailDialog import PartDetailDialog
@@ -44,6 +45,9 @@ class SearchManualWidget(QWidget):
         self.imgProvider = get_global_image_provider()
         self.preview_widgets = []
 
+        # Containers to restrict the search to; None means all containers
+        self.selected_container_ids: set[int] | None = None
+
         self.ui = Ui_SearchManualWidget()
         self.ui.setupUi(self)
 
@@ -55,6 +59,7 @@ class SearchManualWidget(QWidget):
         self.ui.search_button.clicked.connect(self.perform_search)
         self.ui.search_clear_button.clicked.connect(self.clear_search)
         self.ui.openFileButton.clicked.connect(self.openFile)
+        self.ui.selectContainersButton.clicked.connect(self.open_container_selection)
 
         # Connect inputs to validation
         self.ui.search_part_id_edit.textChanged.connect(self.validate_search_inputs)
@@ -256,6 +261,7 @@ class SearchManualWidget(QWidget):
                     color_id=color_id,
                     include_original_box=self.ui.includeOriginalBoxCheck.isChecked(),
                     include_build=self.ui.includeBuildCheck.isChecked(),
+                    container_ids=self.selected_container_ids,
                 )
 
                 part_data = None
@@ -387,6 +393,7 @@ class SearchManualWidget(QWidget):
             color_type=self.ui.search_color_type_combo.currentData(),
             include_original_box=self.ui.includeOriginalBoxCheck.isChecked(),
             include_build=self.ui.includeBuildCheck.isChecked(),
+            container_ids=self.selected_container_ids,
         )
 
         # Display results
@@ -494,6 +501,16 @@ class SearchManualWidget(QWidget):
             quantity_item.setData(Qt.ItemDataRole.DisplayRole, part.quantity)
             self.ui.search_results_table.setItem(row, 6, quantity_item)
 
+    def open_container_selection(self):
+        dialog = ContainerSelectionDialog(self, self.selected_container_ids)
+        if dialog.exec() != QDialog.DialogCode.Accepted:
+            return
+
+        selected = dialog.selected_container_ids()
+        all_ids = {c.id for c in self.db_manager.getContainers()}
+        # If every container is selected, store None to keep "all" semantics
+        self.selected_container_ids = None if selected == all_ids else selected
+
     def clear_search(self):
         self.ui.search_part_id_edit.clear()
         self.ui.search_part_name_edit.clear()
@@ -503,6 +520,7 @@ class SearchManualWidget(QWidget):
         self.ui.fileEdit.clear()
         self.ui.includeOriginalBoxCheck.setChecked(False)
         self.ui.includeBuildCheck.setChecked(False)
+        self.selected_container_ids = None
         self.preview_widgets.clear()
         # Validation will be triggered by the clear operations above
 

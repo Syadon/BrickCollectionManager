@@ -257,6 +257,7 @@ class DatabaseManager:
         color_id: int | None = None,
         include_original_box: bool = False,
         include_build: bool = False,
+        container_ids: set[int] | list[int] | None = None,
     ) -> list[CollectionPart]:
         # Build query based on search criteria
         query_str = """
@@ -310,6 +311,15 @@ class DatabaseManager:
             placeholders = ",".join("?" * len(excluded_types))
             query_str += f" AND con.type NOT IN ({placeholders})"
             params.extend(excluded_types)
+
+        # Restrict to an explicit set of containers, if provided
+        if container_ids is not None:
+            if len(container_ids) == 0:
+                query_str += " AND 1=0"
+            else:
+                placeholders = ",".join("?" * len(container_ids))
+                query_str += f" AND con.id IN ({placeholders})"
+                params.extend(container_ids)
 
         query_str += " ORDER BY quantity DESC, p.name, c.name"
 
