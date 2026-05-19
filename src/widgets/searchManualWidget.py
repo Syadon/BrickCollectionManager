@@ -411,15 +411,17 @@ class SearchManualWidget(QWidget):
 
             required = required_map.get(key) if required_map else None
 
-            # Hide bricks already fully stocked in the target container — only
-            # the still-missing parts stay in the results.
-            if required is not None and self.target_container_id is not None:
+            # Quantity of this brick already inside the target container
+            target_qty = None
+            if self.target_container_id is not None:
                 target_qty = sum(
                     p.quantity
                     for p in parts
                     if p.container_id == self.target_container_id
                 )
-                if target_qty >= required:
+                # Hide bricks already fully stocked in the target container —
+                # only the still-missing parts stay in the results.
+                if required is not None and target_qty >= required:
                     continue
 
             brick_item = QTreeWidgetItem(tree)
@@ -429,20 +431,15 @@ class SearchManualWidget(QWidget):
             brick_item.setText(5, first.part_category)
 
             total = sum(p.quantity for p in parts)
+            target_suffix = (
+                f"  (in target: {target_qty})" if target_qty is not None else ""
+            )
             if required is not None:
-                brick_item.setText(2, f"{total} / {required}")
+                brick_item.setText(2, f"{total} / {required}{target_suffix}")
                 if total < required:
                     brick_item.setForeground(2, red)
-                # Target container already satisfies the requirement
-                if self.target_container_id is not None:
-                    target_qty = sum(
-                        p.quantity
-                        for p in parts
-                        if p.container_id == self.target_container_id
-                    )
-                    if target_qty >= required:
-                        for col in range(tree.columnCount()):
-                            brick_item.setBackground(col, green_bg)
+            elif target_suffix:
+                brick_item.setText(2, f"{total}{target_suffix}")
             else:
                 brick_item.setData(2, Qt.ItemDataRole.DisplayRole, total)
 
