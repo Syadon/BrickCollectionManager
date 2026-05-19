@@ -13,6 +13,7 @@ class PartDetailDialog(QDialog):
         container: Container,
         qty=1,
         outsideDefault=False,
+        target_container_id: int | None = None,
         parent=None,
     ):
         super().__init__(parent)
@@ -25,6 +26,7 @@ class PartDetailDialog(QDialog):
 
         self.part_data = part_data
         self.container = container
+        self.target_container_id = target_container_id
 
         self.setup_ui()
 
@@ -84,6 +86,20 @@ class PartDetailDialog(QDialog):
         utils.setup_container_combo_delegate(self.ui.containerCombo)
 
         self.ui.containerCombo.setCurrentIndex(0)
+
+        # Pre-select the target container as move destination, if given
+        if (
+            self.target_container_id is not None
+            and self.target_container_id != self.container.id
+        ):
+            for index in range(self.ui.containerCombo.count()):
+                data = self.ui.containerCombo.itemData(index)
+                data_id = data[0] if isinstance(data, tuple) else data
+                if data_id == self.target_container_id:
+                    self.ui.containerCombo.setCurrentIndex(index)
+                    self.ui.toContainerRadioButton.setChecked(True)
+                    self.ui.containerCombo.setEnabled(True)
+                    break
 
         # dbManager = DatabaseManager()
         # containers = dbManager.getContainers()

@@ -47,6 +47,9 @@ class SearchManualWidget(QWidget):
         # Containers to restrict the search to; None means all containers
         self.selected_container_ids: set[int] | None = None
 
+        # Target container: the move destination for double-click actions
+        self.target_container_id: int | None = None
+
         self.ui = Ui_SearchManualWidget()
         self.ui.setupUi(self)
 
@@ -59,6 +62,7 @@ class SearchManualWidget(QWidget):
         self.ui.search_clear_button.clicked.connect(self.clear_search)
         self.ui.openFileButton.clicked.connect(self.openFile)
         self.ui.selectContainersButton.clicked.connect(self.open_container_selection)
+        self.ui.selectTargetButton.clicked.connect(self.open_target_selection)
 
         # Connect inputs to validation
         self.ui.search_part_id_edit.textChanged.connect(self.validate_search_inputs)
@@ -255,7 +259,7 @@ class SearchManualWidget(QWidget):
                     color_id=color_id,
                     include_original_box=self.ui.includeOriginalBoxCheck.isChecked(),
                     include_build=self.ui.includeBuildCheck.isChecked(),
-                    container_ids=self.selected_container_ids,
+                    container_ids=self._effective_container_ids(),
                 )
 
                 if len(matching_parts) < 1:
@@ -361,7 +365,7 @@ class SearchManualWidget(QWidget):
             color_type=self.ui.search_color_type_combo.currentData(),
             include_original_box=self.ui.includeOriginalBoxCheck.isChecked(),
             include_build=self.ui.includeBuildCheck.isChecked(),
-            container_ids=self.selected_container_ids,
+            container_ids=self._effective_container_ids(),
         )
 
         # Display results
@@ -405,6 +409,19 @@ class SearchManualWidget(QWidget):
             parts = groups[key]
             first = parts[0]
 
+            required = required_map.get(key) if required_map else None
+
+            # Hide bricks already fully stocked in the target container — only
+            # the still-missing parts stay in the results.
+            if required is not None and self.target_container_id is not None:
+                target_qty = sum(
+                    p.quantity
+                    for p in parts
+                    if p.container_id == self.target_container_id
+                )
+                if target_qty >= required:
+                    continue
+
             brick_item = QTreeWidgetItem(tree)
             brick_item.setText(1, f"{len(parts)} container(s)")
             brick_item.setText(3, first.part_id)
@@ -412,11 +429,20 @@ class SearchManualWidget(QWidget):
             brick_item.setText(5, first.part_category)
 
             total = sum(p.quantity for p in parts)
-            required = required_map.get(key) if required_map else None
             if required is not None:
                 brick_item.setText(2, f"{total} / {required}")
                 if total < required:
                     brick_item.setForeground(2, red)
+                # Target container already satisfies the requirement
+                if self.target_container_id is not None:
+                    target_qty = sum(
+                        p.quantity
+                        for p in parts
+                        if p.container_id == self.target_container_id
+                    )
+                    if target_qty >= required:
+                        for col in range(tree.columnCount()):
+                            brick_item.setBackground(col, green_bg)
             else:
                 brick_item.setData(2, Qt.ItemDataRole.DisplayRole, total)
 
@@ -465,6 +491,39 @@ class SearchManualWidget(QWidget):
         # If every container is selected, store None to keep "all" semantics
         self.selected_container_ids = None if selected == all_ids else selected
 
+    def open_target_selection(self):
+        preselect = (
+            {self.target_container_id}
+            if self.target_container_id is not None
+            else None
+        )
+        dialog = ContainerSelectionDialog(self, preselect, single_selection=True)
+        if dialog.exec() != QDialog.DialogCode.Accepted:
+            return
+
+        self.target_container_id = dialog.selected_container_id()
+        self._update_target_button_text()
+
+    def _update_target_button_text(self):
+        if self.target_container_id is None:
+            self.ui.selectTargetButton.setText("Select Target…")
+            return
+        container = self.db_manager.getContainerById(self.target_container_id)
+        name = container.name if container else str(self.target_container_id)
+        self.ui.selectTargetButton.setText(f"Select Target… ({name})")
+
+    def _effective_container_ids(self) -> set[int] | None:
+        """Container set to search: the restricted set, plus the target if it
+        would otherwise be filtered out. None means all containers."""
+        if self.selected_container_ids is None:
+            return None
+        if (
+            self.target_container_id is not None
+            and self.target_container_id not in self.selected_container_ids
+        ):
+            return self.selected_container_ids | {self.target_container_id}
+        return self.selected_container_ids
+
     def clear_search(self):
         self.ui.search_part_id_edit.clear()
         self.ui.search_part_name_edit.clear()
@@ -475,6 +534,8 @@ class SearchManualWidget(QWidget):
         self.ui.includeOriginalBoxCheck.setChecked(False)
         self.ui.includeBuildCheck.setChecked(False)
         self.selected_container_ids = None
+        self.target_container_id = None
+        self._update_target_button_text()
         self.preview_widgets.clear()
         # Validation will be triggered by the clear operations above
 
@@ -497,10 +558,40 @@ class SearchManualWidget(QWidget):
         # Create container object
         container = Container(container_id, container_name, "", 0, 0)
 
+        # Current stock of this brick already in the target container
+        target_qty = 0
+        if self.target_container_id is not None:
+            brick_item = item.parent()
+            for i in range(brick_item.childCount()):
+                child_data = brick_item.child(i).data(0, Qt.ItemDataRole.UserRole)
+                if child_data and child_data[0].container_id == self.target_container_id:
+                    target_qty = child_data[0].quantity
+                    break
+
+        # Move qty default: for file searches, the amount still missing in the
+        # target, capped by what this container holds; otherwise this row's qty.
+        if required_qty is not None:
+            missing = max(required_qty - target_qty, 0)
+            max_move = min(qty, missing)
+        else:
+            max_move = qty
+        defaultQty = max(1, min(max_move, qty))
+
+        # Don't preselect the target as destination of a move out of itself
+        target_for_dialog = (
+            self.target_container_id
+            if self.target_container_id != container_id
+            else None
+        )
+
         # Open part detail dialog
-        defaultQty = required_qty if required_qty and required_qty > 0 else qty
         dialog = PartDetailDialog(
-            part, container, qty=defaultQty, outsideDefault=True, parent=self
+            part,
+            container,
+            qty=defaultQty,
+            outsideDefault=target_for_dialog is None,
+            target_container_id=target_for_dialog,
+            parent=self,
         )
         result = dialog.exec()
 
