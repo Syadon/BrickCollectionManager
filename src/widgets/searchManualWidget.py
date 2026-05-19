@@ -73,12 +73,12 @@ class SearchManualWidget(QWidget):
 
         table_header_labels = [
             "Image",
+            "Container",
+            "Quantity",
             "Part ID",
             "Part Name",
             "Category",
             "Color",
-            "Container",
-            "Quantity",
         ]
         tree = self.ui.search_results_tree
         tree.setColumnCount(7)
@@ -90,7 +90,7 @@ class SearchManualWidget(QWidget):
         tree.setSelectionMode(QTreeWidget.SelectionMode.SingleSelection)
         tree.setSortingEnabled(True)
         tree.setItemDelegateForColumn(0, TransparentSelectionDelegate(tree))
-        tree.setItemDelegateForColumn(4, TransparentSelectionDelegate(tree))
+        tree.setItemDelegateForColumn(6, TransparentSelectionDelegate(tree))
 
         # Column sizing: image column fixed (must hold the branch indicator +
         # the BrickPreview widget), the rest auto-fit their content.
@@ -406,19 +406,19 @@ class SearchManualWidget(QWidget):
             first = parts[0]
 
             brick_item = QTreeWidgetItem(tree)
-            brick_item.setText(1, first.part_id)
-            brick_item.setText(2, first.part_name)
-            brick_item.setText(3, first.part_category)
-            brick_item.setText(5, f"{len(parts)} container(s)")
+            brick_item.setText(1, f"{len(parts)} container(s)")
+            brick_item.setText(3, first.part_id)
+            brick_item.setText(4, first.part_name)
+            brick_item.setText(5, first.part_category)
 
             total = sum(p.quantity for p in parts)
             required = required_map.get(key) if required_map else None
             if required is not None:
-                brick_item.setText(6, f"{total} / {required}")
+                brick_item.setText(2, f"{total} / {required}")
                 if total < required:
-                    brick_item.setForeground(6, red)
+                    brick_item.setForeground(2, red)
             else:
-                brick_item.setData(6, Qt.ItemDataRole.DisplayRole, total)
+                brick_item.setData(2, Qt.ItemDataRole.DisplayRole, total)
 
             # Store data for the detail dialog / double-click handler
             brick_item.setData(0, Qt.ItemDataRole.UserRole, (first, required))
@@ -439,18 +439,18 @@ class SearchManualWidget(QWidget):
                 first.color_type,
                 first.color_id,
             )
-            tree.setItemWidget(brick_item, 4, color_label)
+            tree.setItemWidget(brick_item, 6, color_label)
 
             # One child per container holding this brick
             for part in parts:
                 child = QTreeWidgetItem(brick_item)
-                child.setText(5, part.container_name)
-                child.setData(6, Qt.ItemDataRole.DisplayRole, part.quantity)
+                child.setText(1, part.container_name)
+                child.setData(2, Qt.ItemDataRole.DisplayRole, part.quantity)
                 child.setData(0, Qt.ItemDataRole.UserRole, (part, required))
                 # Pseudo-containers (missing / not in DB) are highlighted red
                 if part.container_id is None:
-                    child.setForeground(5, red)
-                    child.setForeground(6, red)
+                    child.setForeground(1, red)
+                    child.setForeground(2, red)
 
         tree.setSortingEnabled(True)
         tree.setColumnWidth(0, self._image_column_width)
