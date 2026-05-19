@@ -1,14 +1,13 @@
-import copy
-
 from PySide6.QtCore import QDir, QFile, QStringListModel, Qt
 from PySide6.QtGui import QColor
 from PySide6.QtWidgets import (
     QCompleter,
     QDialog,
     QFileDialog,
+    QHeaderView,
     QMessageBox,
-    QTableWidget,
-    QTableWidgetItem,
+    QTreeWidget,
+    QTreeWidgetItem,
     QWidget,
 )
 
@@ -81,41 +80,31 @@ class SearchManualWidget(QWidget):
             "Container",
             "Quantity",
         ]
-        self.ui.search_results_table.setColumnCount(7)
-        self.ui.search_results_table.setHorizontalHeaderLabels(table_header_labels)
-        self.ui.search_results_table.horizontalHeader().setStretchLastSection(True)
-        self.ui.search_results_table.verticalHeader().setVisible(False)
-        self.ui.search_results_table.setEditTriggers(
-            QTableWidget.EditTrigger.NoEditTriggers
-        )
-        self.ui.search_results_table.setSelectionBehavior(
-            QTableWidget.SelectionBehavior.SelectRows
-        )
-        self.ui.search_results_table.setSortingEnabled(True)
-        self.ui.search_results_table.setSelectionMode(
-            QTableWidget.SelectionMode.SingleSelection
-        )
-        self.ui.search_results_table.setItemDelegateForColumn(
-            0, TransparentSelectionDelegate(self.ui.search_results_table)
-        )
-        self.ui.search_results_table.setItemDelegateForColumn(
-            4, TransparentSelectionDelegate(self.ui.search_results_table)
-        )
+        tree = self.ui.search_results_tree
+        tree.setColumnCount(7)
+        tree.setHeaderLabels(table_header_labels)
+        tree.setRootIsDecorated(True)
+        tree.setUniformRowHeights(False)
+        tree.setEditTriggers(QTreeWidget.EditTrigger.NoEditTriggers)
+        tree.setSelectionBehavior(QTreeWidget.SelectionBehavior.SelectRows)
+        tree.setSelectionMode(QTreeWidget.SelectionMode.SingleSelection)
+        tree.setSortingEnabled(True)
+        tree.setItemDelegateForColumn(0, TransparentSelectionDelegate(tree))
+        tree.setItemDelegateForColumn(4, TransparentSelectionDelegate(tree))
 
-        self.ui.search_results_table.verticalHeader().setDefaultSectionSize(
-            self.iconSize + 4
-        )
-        self.ui.search_results_table.setColumnWidth(
-            0, self.iconSize + 8
-        )  # Set fixed width for image column
-
-        # Configura l'espansione delle colonne
-        self.ui.search_results_table.horizontalHeader().setStretchLastSection(True)
+        # Column sizing: image column fixed (must hold the branch indicator +
+        # the BrickPreview widget), the rest auto-fit their content.
+        header = tree.header()
+        header.setStretchLastSection(True)
+        header.setSectionResizeMode(0, QHeaderView.ResizeMode.Fixed)
+        for col in (1, 2, 3, 4, 5):
+            header.setSectionResizeMode(col, QHeaderView.ResizeMode.ResizeToContents)
+        # Image cell starts after the tree indentation (expand arrow)
+        self._image_column_width = self.iconSize + tree.indentation() + 12
+        tree.setColumnWidth(0, self._image_column_width)
 
         # Connect double-click signal
-        self.ui.search_results_table.cellDoubleClicked.connect(
-            self.on_result_double_clicked
-        )
+        tree.itemDoubleClicked.connect(self.on_result_double_clicked)
 
         self.populate_combos()
 
@@ -201,7 +190,7 @@ class SearchManualWidget(QWidget):
     def perform_file_search(self, filePath):
         self.logger.info(f"Performing file search: {filePath}")
         # Clear previous results
-        self.ui.search_results_table.setRowCount(0)
+        self.ui.search_results_tree.clear()
 
         try:
             # Parse the file
@@ -225,12 +214,7 @@ class SearchManualWidget(QWidget):
 
             self.logger.info(f"Found {len(parser_result.parts)} parts in XML file")
 
-            # Prepare DatabaseManager
             dbManager = self.db_manager
-
-            # Track results to display in the table
-            display_results = []
-            missing_parts = []
 
             partIdEdit = self.ui.search_part_id_edit.text()
             partNameEdit = self.ui.search_part_name_edit.text()
@@ -242,6 +226,14 @@ class SearchManualWidget(QWidget):
             )  # color_data is (id, name, rgb)
 
             colorTypeEdit = self.ui.search_color_type_combo.currentData()
+
+            # Flat list of CollectionPart (one per container) + required qty per brick
+            results = []
+            required_map: dict[tuple, int] = {}
+            seen_keys = set()
+            total_parts = len(parser_result.parts)
+            missing_count = 0
+            insufficient_count = 0
 
             # Process each part in the file
             for part_info in parser_result.parts:
@@ -255,7 +247,9 @@ class SearchManualWidget(QWidget):
                 if colorIdEdit and color_id != int(colorIdEdit):
                     continue
 
-                # Cerca nelle parti della collezione per trovare i container che contengono questo pezzo
+                key = (part_id, color_id)
+
+                # Cerca i container che contengono questo pezzo
                 matching_parts = dbManager.searchIntoCollection(
                     part_id=part_id,
                     color_id=color_id,
@@ -264,7 +258,6 @@ class SearchManualWidget(QWidget):
                     container_ids=self.selected_container_ids,
                 )
 
-                part_data = None
                 if len(matching_parts) < 1:
                     # Cerca informazioni sul pezzo anche se non è nella collezione
                     color_part_info = dbManager.searchColorsParts(
@@ -272,7 +265,7 @@ class SearchManualWidget(QWidget):
                     )
 
                     if color_part_info and len(color_part_info) > 0:
-                        # Abbiamo trovato il pezzo ma non è nella collezione
+                        # Pezzo trovato nel catalogo ma non nella collezione
                         part_data = CollectionPart(
                             id=color_part_info[0]["id"],
                             part_id=color_part_info[0]["part_id"],
@@ -286,7 +279,6 @@ class SearchManualWidget(QWidget):
                             quantity=0,
                             container_id=None,
                         )
-                        missing_parts.append((part_data, required_qty))
                     else:
                         # Il pezzo non è proprio nel database
                         part_data = CollectionPart(
@@ -302,68 +294,44 @@ class SearchManualWidget(QWidget):
                             quantity=0,
                             container_id=None,
                         )
-                        missing_parts.append((part_data, required_qty))
-                    continue
-                else:
-                    part_data = copy.copy(matching_parts[0])
-                    part_data.container_name = ""
-                    part_data.quantity = 0
-                    part_data.container_id = None
 
-                if colorTypeEdit and part_data.color_type != colorTypeEdit:
+                    if key not in seen_keys:
+                        results.append(part_data)
+                        seen_keys.add(key)
+                    required_map[key] = required_map.get(key, 0) + required_qty
+                    missing_count += 1
+                    continue
+
+                sample = matching_parts[0]
+
+                if colorTypeEdit and sample.color_type != colorTypeEdit:
                     continue
 
                 if (
                     partNameEdit
-                    and partNameEdit.lower() not in part_data.part_name.lower()
+                    and partNameEdit.lower() not in sample.part_name.lower()
                 ):
                     continue
 
-                # Aggiungi ogni container che contiene il pezzo
-                required_qty_count = required_qty
-                for part in matching_parts:
-                    if required_qty_count <= part.quantity:
-                        display_results.append((part, required_qty_count))
-                        required_qty_count -= part.quantity
-                        break
-                    else:
-                        display_results.append((part, part.quantity))
-                        required_qty_count -= part.quantity
+                total_avail = sum(p.quantity for p in matching_parts)
+                if key not in seen_keys:
+                    results.extend(matching_parts)
+                    seen_keys.add(key)
+                required_map[key] = required_map.get(key, 0) + required_qty
+                if total_avail < required_qty:
+                    insufficient_count += 1
 
-                if required_qty_count > 0:
-                    not_enough_part = copy.copy(part_data)
-                    not_enough_part.quantity = 0
-                    not_enough_part.container_name = "Not enough parts"
-                    not_enough_part.container_id = None
-                    display_results.append((not_enough_part, required_qty_count))
-
-            # Aggiungi anche i pezzi mancanti
-            for part, req_qty in missing_parts:
-                display_results.append((part, req_qty))
-
-            # Mostra i risultati nella tabella
-            self.ui.search_results_table.setRowCount(len(display_results))
-
-            for row, (part, req_qty) in enumerate(display_results):
-                self.addItemToTable(row, part, req_qty)
-
-            # Adjust column widths
-            self.ui.search_results_table.setColumnWidth(
-                0, self.iconSize + 8
-            )  # Set fixed width for image column
-            self.ui.search_results_table.resizeColumnsToContents()
+            self.populate_results_tree(results, required_map)
 
             # Mostra una sintesi dei risultati
-            total_parts = len(parser_result.parts)
-            missing_count = len(missing_parts)
             found_count = total_parts - missing_count
-
-            if missing_count > 0:
+            if missing_count > 0 or insufficient_count > 0:
                 QMessageBox.information(
                     self,
                     "Search Results",
                     f"Found {found_count} of {total_parts} parts in your collection.\n"
-                    f"{missing_count} parts are missing or have insufficient quantity.",
+                    f"{missing_count} parts are missing, "
+                    f"{insufficient_count} have insufficient quantity.",
                 )
 
         except Exception as e:
@@ -375,7 +343,7 @@ class SearchManualWidget(QWidget):
     def perform_manual_search(self):
         self.logger.info("Performing manual search")
         # Clear previous results
-        self.ui.search_results_table.setRowCount(0)
+        self.ui.search_results_tree.clear()
 
         # Extract color name from color data tuple
         color_data = self.ui.search_color_combo.currentData()
@@ -405,101 +373,87 @@ class SearchManualWidget(QWidget):
             return
 
         self.logger.info(f"Found {len(results)} results for manual search")
-        # Clear previous preview widgets
-        self.preview_widgets.clear()
-        self.ui.search_results_table.setRowCount(len(results))
+        self.populate_results_tree(results)
 
-        for row, data in enumerate(results):
-            self.addItemToTable(row, data)
-
-        # Adjust column widths
-        self.ui.search_results_table.setColumnWidth(
-            0, self.iconSize + 8
-        )  # Set fixed width for image column
-        self.ui.search_results_table.resizeColumnsToContents()
-
-        # Limit Name column width
-        name_column_index = 2
-        max_name_width = 400
-        if self.ui.search_results_table.columnWidth(name_column_index) > max_name_width:
-            self.ui.search_results_table.setColumnWidth(
-                name_column_index, max_name_width
-            )
-
-        type_column_index = 3
-        max_type_width = 200
-        if self.ui.search_results_table.columnWidth(type_column_index) > max_type_width:
-            self.ui.search_results_table.setColumnWidth(
-                type_column_index, max_type_width
-            )
-
-        self.ui.search_results_table.setWordWrap(True)
-        self.ui.search_results_table.resizeRowsToContents()
-        self.ui.search_results_table.horizontalHeader().setStretchLastSection(True)
-
-    def addItemToTable(
-        self, row, part: CollectionPart, required_quantity: int | None = None
+    def populate_results_tree(
+        self, results: list[CollectionPart], required_map: dict | None = None
     ):
-        # Image column - use BrickPreview widget
-        preview = BrickPreview(
-            part_id=part.part_id,
-            color_id=str(part.color_id),
-            size=self.iconSize,
-            parent=self,
-        )
-        self.ui.search_results_table.setCellWidget(row, 0, preview)
-        self.preview_widgets.append(preview)
+        """Group flat search results by brick (part + color) into an expandable tree.
 
-        # Create a hidden item to store data
-        image_item = QTableWidgetItem()
-        image_item.setData(
-            Qt.ItemDataRole.UserRole, (part, required_quantity)
-        )  # Store full data for later use
-        self.ui.search_results_table.setItem(row, 0, image_item)
+        Each top-level item is a brick; its children are the containers holding it.
+        When ``required_map`` is given (file search) the brick row shows
+        "available / required" and is highlighted red when stock is insufficient.
+        """
+        tree = self.ui.search_results_tree
+        tree.setSortingEnabled(False)
+        tree.clear()
+        self.preview_widgets.clear()
 
-        # Part ID
-        self.ui.search_results_table.setItem(row, 1, QTableWidgetItem(part.part_id))
+        # Group results by (part_id, color_id), preserving first-seen order
+        groups: dict[tuple, list[CollectionPart]] = {}
+        order: list[tuple] = []
+        for part in results:
+            key = (part.part_id, part.color_id)
+            if key not in groups:
+                groups[key] = []
+                order.append(key)
+            groups[key].append(part)
 
-        # Part Name
-        name_item = QTableWidgetItem(part.part_name)
-        name_item.setFlags(
-            name_item.flags() | Qt.ItemFlag.ItemIsEnabled | Qt.ItemFlag.ItemIsSelectable
-        )
-        self.ui.search_results_table.setItem(row, 2, name_item)
+        red = QColor(255, 0, 0)
 
-        # Part Category
-        self.ui.search_results_table.setItem(
-            row, 3, QTableWidgetItem(part.part_category)
-        )
+        for key in order:
+            parts = groups[key]
+            first = parts[0]
 
-        # Color using ColorLabel widget
-        rgb_hex = part.rgb if part.rgb else None
-        color_label = ColorLabel(
-            part.color_name, rgb_hex, part.color_type, part.color_id
-        )
-        self.ui.search_results_table.setCellWidget(row, 4, color_label)
+            brick_item = QTreeWidgetItem(tree)
+            brick_item.setText(1, first.part_id)
+            brick_item.setText(2, first.part_name)
+            brick_item.setText(3, first.part_category)
+            brick_item.setText(5, f"{len(parts)} container(s)")
 
-        # Container
-        container_item = QTableWidgetItem(part.container_name)
-        self.ui.search_results_table.setItem(row, 5, container_item)
+            total = sum(p.quantity for p in parts)
+            required = required_map.get(key) if required_map else None
+            if required is not None:
+                brick_item.setText(6, f"{total} / {required}")
+                if total < required:
+                    brick_item.setForeground(6, red)
+            else:
+                brick_item.setData(6, Qt.ItemDataRole.DisplayRole, total)
 
-        # Quantity
-        if required_quantity is not None:
-            # Highlight containers that don't have enough parts in red
-            if part.quantity < required_quantity:
-                container_item.setForeground(QColor(255, 0, 0))
+            # Store data for the detail dialog / double-click handler
+            brick_item.setData(0, Qt.ItemDataRole.UserRole, (first, required))
 
-            # Quantity - Show "X / Y" where X is available quantity and Y is required quantity
-            qty_text = f"{part.quantity} / {required_quantity}"
-            quantity_item = QTableWidgetItem(qty_text)
-            # Color in red if there aren't enough parts
-            if part.quantity < required_quantity:
-                quantity_item.setForeground(QColor(255, 0, 0))
-            self.ui.search_results_table.setItem(row, 6, quantity_item)
-        else:
-            quantity_item = QTableWidgetItem()
-            quantity_item.setData(Qt.ItemDataRole.DisplayRole, part.quantity)
-            self.ui.search_results_table.setItem(row, 6, quantity_item)
+            # Image + color widgets (only on the brick row; children share them)
+            preview = BrickPreview(
+                part_id=first.part_id,
+                color_id=str(first.color_id),
+                size=self.iconSize,
+                parent=self,
+            )
+            tree.setItemWidget(brick_item, 0, preview)
+            self.preview_widgets.append(preview)
+
+            color_label = ColorLabel(
+                first.color_name,
+                first.rgb if first.rgb else None,
+                first.color_type,
+                first.color_id,
+            )
+            tree.setItemWidget(brick_item, 4, color_label)
+
+            # One child per container holding this brick
+            for part in parts:
+                child = QTreeWidgetItem(brick_item)
+                child.setText(5, part.container_name)
+                child.setData(6, Qt.ItemDataRole.DisplayRole, part.quantity)
+                child.setData(0, Qt.ItemDataRole.UserRole, (part, required))
+                # Pseudo-containers (missing / not in DB) are highlighted red
+                if part.container_id is None:
+                    child.setForeground(5, red)
+                    child.setForeground(6, red)
+
+        tree.setSortingEnabled(True)
+        tree.setColumnWidth(0, self._image_column_width)
 
     def open_container_selection(self):
         dialog = ContainerSelectionDialog(self, self.selected_container_ids)
@@ -516,7 +470,7 @@ class SearchManualWidget(QWidget):
         self.ui.search_part_name_edit.clear()
         self.ui.search_color_combo.setCurrentIndex(0)
         self.ui.search_color_type_combo.setCurrentIndex(0)
-        self.ui.search_results_table.setRowCount(0)
+        self.ui.search_results_tree.clear()
         self.ui.fileEdit.clear()
         self.ui.includeOriginalBoxCheck.setChecked(False)
         self.ui.includeBuildCheck.setChecked(False)
@@ -524,15 +478,13 @@ class SearchManualWidget(QWidget):
         self.preview_widgets.clear()
         # Validation will be triggered by the clear operations above
 
-    def on_result_double_clicked(self, row, column):
-        # Get the data from the row
-        item = self.ui.search_results_table.item(
-            row, 0
-        )  # First column has the complete data
-        if not item:
+    def on_result_double_clicked(self, item, column):
+        # Brick (top-level) rows just toggle expansion
+        if item.parent() is None:
+            item.setExpanded(not item.isExpanded())
             return
 
-        part_data = item.data(Qt.ItemDataRole.UserRole)
+        part_data = item.data(0, Qt.ItemDataRole.UserRole)
         if not part_data:
             return
 

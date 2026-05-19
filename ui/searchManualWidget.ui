@@ -188,7 +188,7 @@
       </widget>
      </item>
      <item>
-      <widget class="QTableWidget" name="search_results_table">
+      <widget class="QTreeWidget" name="search_results_tree">
        <property name="editTriggers">
         <set>QAbstractItemView::EditTrigger::NoEditTriggers</set>
        </property>
@@ -198,6 +198,11 @@
          <height>64</height>
         </size>
        </property>
+       <column>
+        <property name="text">
+         <string notr="true">1</string>
+        </property>
+       </column>
       </widget>
      </item>
      <item>
