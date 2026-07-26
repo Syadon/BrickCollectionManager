@@ -36,15 +36,7 @@ class XmlParser:
             root = tree.getroot()
 
             # Processa gli elementi nel file XML
-            for item in root.findall("ITEM"):
-                part_data = XmlParser._parse_item(item)
-
-                if part_data:
-                    result.parts.append(part_data)
-                else:
-                    result.warnings.append(
-                        f"Skipped item at position {len(result.parts) + len(result.warnings) + 1}"
-                    )
+            XmlParser._parse_root(root, result)
 
         except ET.ParseError as e:
             result.errors.append(f"XML parsing error: {str(e)}")
@@ -57,6 +49,43 @@ class XmlParser:
             logging.error(f"Error parsing XML file: {str(e)}")
 
         return result
+
+    @staticmethod
+    def parse_string(xml_content: str) -> XmlParserResult:
+        """Parsa una stringa XML e restituisce un oggetto XmlParserResult con i dati strutturati"""
+        result = XmlParserResult()
+
+        if not xml_content or not xml_content.strip():
+            result.errors.append("No XML content provided")
+            return result
+
+        try:
+            root = ET.fromstring(xml_content.strip())
+
+            # Processa gli elementi nell'XML
+            XmlParser._parse_root(root, result)
+
+        except ET.ParseError as e:
+            result.errors.append(f"XML parsing error: {str(e)}")
+            logging.error(f"XML parsing error: {str(e)}")
+        except Exception as e:
+            result.errors.append(f"Unexpected error: {str(e)}")
+            logging.error(f"Error parsing XML content: {str(e)}")
+
+        return result
+
+    @staticmethod
+    def _parse_root(root: ET.Element, result: XmlParserResult) -> None:
+        """Processa gli elementi ITEM di un albero XML aggiungendoli al risultato"""
+        for item in root.findall("ITEM"):
+            part_data = XmlParser._parse_item(item)
+
+            if part_data:
+                result.parts.append(part_data)
+            else:
+                result.warnings.append(
+                    f"Skipped item at position {len(result.parts) + len(result.warnings) + 1}"
+                )
 
     @staticmethod
     def _parse_item(item: ET.Element) -> Optional[Dict[str, Any]]:

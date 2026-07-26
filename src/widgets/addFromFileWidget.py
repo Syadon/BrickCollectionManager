@@ -1,6 +1,7 @@
 import logging
 
 from PySide6.QtCore import QDir, QSize, Qt, Signal
+from PySide6.QtGui import QGuiApplication
 from PySide6.QtWidgets import (
     QFileDialog,
     QMenu,
@@ -66,6 +67,9 @@ class AddFromFileWidget(QWidget):
     # Signal emitted when parts are added to a container
     part_added = Signal()
 
+    # Testo mostrato in fileEdit quando l'XML arriva dagli appunti
+    CLIPBOARD_SOURCE_LABEL = "[Clipboard]"
+
     def __init__(self, container: Container | None = None, parent=None):
         super().__init__(parent)
         self.logger = get_logger()
@@ -82,6 +86,9 @@ class AddFromFileWidget(QWidget):
 
         # Connetti il pulsante openFile all'azione di apertura del file
         self.ui.openFileButton.clicked.connect(self.open_file_dialog)
+
+        # Connetti il pulsante paste al caricamento dell'XML dagli appunti
+        self.ui.pasteButton.clicked.connect(self.load_from_clipboard)
 
         # Imposta il campo fileEdit come sola lettura
         self.ui.fileEdit.setReadOnly(True)
@@ -166,19 +173,55 @@ class AddFromFileWidget(QWidget):
             )
             return
 
+        if file_path == self.CLIPBOARD_SOURCE_LABEL:
+            QMessageBox.warning(
+                self,
+                "No File Selected",
+                "The last import came from the clipboard. "
+                "Use 'Paste XML' again or select an XML file.",
+            )
+            return
+
+        self.logger.info(f"Parsing XML file: {file_path}")
+        self._load_parts(lambda: XmlParser.parse_file(file_path), "file")
+
+    def load_from_clipboard(self):
+        """Carica e elabora l'XML copiato negli appunti (es. da Rebrickable)"""
+        xml_text = QGuiApplication.clipboard().text()
+
+        if not xml_text or not xml_text.strip():
+            QMessageBox.warning(
+                self,
+                "Empty Clipboard",
+                "The clipboard does not contain any text. "
+                "Copy the XML content first.",
+            )
+            return
+
+        self.ui.fileEdit.setText(self.CLIPBOARD_SOURCE_LABEL)
+        self.logger.info(f"Parsing XML from clipboard ({len(xml_text)} chars)")
+        self._load_parts(lambda: XmlParser.parse_string(xml_text), "clipboard")
+
+    def _load_parts(self, parse_callable, source_desc):
+        """Esegue il parsing tramite parse_callable ed elabora il risultato
+
+        source_desc descrive l'origine dei dati ("file" o "clipboard") ed è usato
+        nei messaggi mostrati all'utente.
+        """
         try:
             # Pulisci la tabella e i dati esistenti
             self.clear_table()
 
-            self.logger.info(f"Parsing XML file: {file_path}")
-            parser_result = XmlParser.parse_file(file_path)
+            parser_result = parse_callable()
 
             if not parser_result.success:
                 # Mostra gli errori all'utente
                 errors = "\n".join(parser_result.errors)
                 self.logger.error(f"XML parsing failed: {errors}")
                 QMessageBox.critical(
-                    self, "XML Error", f"Could not parse the XML file:\n{errors}"
+                    self,
+                    "XML Error",
+                    f"Could not parse the XML from the {source_desc}:\n{errors}",
                 )
                 return
 
@@ -222,7 +265,7 @@ class AddFromFileWidget(QWidget):
 
             # Mostra un messaggio di riepilogo
             if len(parts_to_add) > 0:
-                message = f"Loaded {len(parts_to_add)} parts from the file."
+                message = f"Loaded {len(parts_to_add)} parts from the {source_desc}."
                 if missing_parts:
                     message += (
                         f"\n{len(missing_parts)} parts were not found in the database."
@@ -239,7 +282,7 @@ class AddFromFileWidget(QWidget):
                             f"\n  ... and {len(missing_parts) - 10} more"
                         )
                     message += f"\n\nMissing parts:\n{missing_part_list}"
-                QMessageBox.information(self, "File Loaded", message)
+                QMessageBox.information(self, "XML Loaded", message)
             elif missing_parts:
                 part_list = "\n".join(
                     [f"{p[0]} (color {p[1]}): {p[2]} pcs" for p in missing_parts[:5]]
@@ -249,19 +292,22 @@ class AddFromFileWidget(QWidget):
                 QMessageBox.warning(
                     self,
                     "No Parts Found",
-                    f"None of the {len(missing_parts)} parts in the file were found in the database.\nExamples:\n{part_list}",
+                    f"None of the {len(missing_parts)} parts in the {source_desc} were found in the database.\nExamples:\n{part_list}",
                 )
             else:
                 QMessageBox.warning(
                     self,
                     "No Parts Found",
-                    "No parts were found in the XML file or the file format is not supported.",
+                    f"No parts were found in the XML from the {source_desc} "
+                    "or the format is not supported.",
                 )
 
         except Exception as e:
-            log_exception(e, "Error loading XML file")
+            log_exception(e, f"Error loading XML from {source_desc}")
             QMessageBox.critical(
-                self, "Error", f"An error occurred while loading the file: {str(e)}"
+                self,
+                "Error",
+                f"An error occurred while loading the {source_desc}: {str(e)}",
             )
 
         self.update_add_button_state()

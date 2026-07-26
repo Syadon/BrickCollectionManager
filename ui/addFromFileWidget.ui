@@ -33,6 +33,16 @@
        </property>
       </widget>
      </item>
+     <item>
+      <widget class="QPushButton" name="pasteButton">
+       <property name="toolTip">
+        <string>Load XML copied to the clipboard (e.g. from Rebrickable)</string>
+       </property>
+       <property name="text">
+        <string>Paste XML</string>
+       </property>
+      </widget>
+     </item>
     </layout>
    </item>
    <item>
