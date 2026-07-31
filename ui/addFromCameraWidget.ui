@@ -97,6 +97,16 @@
              </layout>
             </item>
             <item>
+             <widget class="QCheckBox" name="keepDetectionCheck">
+              <property name="toolTip">
+               <string>Keep the detected part and color list after adding, so the same part can be added in another color.</string>
+              </property>
+              <property name="text">
+               <string>Keep detection after adding</string>
+              </property>
+             </widget>
+            </item>
+            <item>
              <layout class="QHBoxLayout" name="collectionActionLayout">
               <item>
                <widget class="QPushButton" name="addToContainerButton">

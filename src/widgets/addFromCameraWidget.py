@@ -99,7 +99,6 @@ class AddFromCameraWidget(QWidget):
         self.ui.acquisition_combo.currentIndexChanged.connect(self.switch_camera)
         self.ui.captureButton.clicked.connect(self.capture_image)
         self.ui.skipButton.clicked.connect(self.on_next_clicked)
-        self.ui.skipButton.clicked.connect(self.clearDetection)
         self.ui.addToContainerButton.clicked.connect(self.on_add_clicked)
 
         self.ui.parts_list.setItemDelegateForColumn(
@@ -264,8 +263,13 @@ class AddFromCameraWidget(QWidget):
         try:
             result = self.on_add_part_clicked()
             if result:
-                self.startStream()
-                self.clearDetection()
+                if self.ui.keepDetectionCheck.isChecked():
+                    # Keep the detected part and colors so the same part can be
+                    # added in another color; only the quantity is reset
+                    self.ui.qtySpinBox.setValue(1)
+                else:
+                    self.startStream()
+                    self.clearDetection()
         except Exception as e:
             QMessageBox.critical(self, "Error", f"An error occurred: {str(e)}")
 
