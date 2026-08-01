@@ -3,7 +3,7 @@ import numpy as np
 from PySide6.QtGui import QImage, QPixmap
 from PySide6.QtWidgets import QComboBox, QStyle, QStyledItemDelegate
 
-from src.database import Container, DatabaseManager
+from src.database import BrickColor, Container, DatabaseManager
 
 
 class TransparentSelectionDelegate(QStyledItemDelegate):
@@ -185,17 +185,25 @@ def setup_container_combo_delegate(containerCombo: QComboBox):
 
 
 def populate_color_combo(
-    colorCombo: QComboBox, db_manager: DatabaseManager, include_any_option: bool = True
+    colorCombo: QComboBox,
+    db_manager: DatabaseManager,
+    include_any_option: bool = True,
+    colors: list[BrickColor] | None = None,
 ):
-    """Popola il combobox dei colori con background RGB"""
+    """Popola il combobox dei colori con background RGB.
+
+    Se `colors` è None vengono usati tutti i colori del database, altrimenti
+    solo quelli passati (es. i colori compatibili con un pezzo).
+    """
     colorCombo.clear()
 
     # Add "Any" option if requested
     if include_any_option:
         colorCombo.addItem("Any", None)
 
-    # Get all colors from database
-    colors = db_manager.getColors()
+    # Get all colors from database unless an explicit list is provided
+    if colors is None:
+        colors = db_manager.getColors()
 
     # Add colors to combobox
     for color in colors:

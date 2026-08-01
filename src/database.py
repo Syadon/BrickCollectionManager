@@ -435,6 +435,18 @@ class DatabaseManager:
         else:
             return None
 
+    def getContainerItemCount(self, colorPartID: int, container_id: int) -> int:
+        """Return the quantity of a colors_parts item in a container, 0 if absent"""
+        query = QSqlQuery()
+        query.prepare(
+            "SELECT count FROM parts_collection WHERE item = ? AND container_id = ?"
+        )
+        query.addBindValue(colorPartID)
+        query.addBindValue(container_id)
+        if query.exec() and query.next():
+            return query.value("count")
+        return 0
+
     def addColorPartToContainer(
         self, colorPart: ColorPart, container_id: int, quantity: int
     ) -> bool:
@@ -555,6 +567,54 @@ class DatabaseManager:
 
         except Exception as e:
             logging.error(f"Error moving parts: {str(e)}")
+            self.db.rollback()
+            return False
+
+    def changePartColorInContainer(
+        self,
+        source_item_id: int,
+        target_item_id: int,
+        container_id: int,
+        quantity: int,
+    ) -> bool:
+        """Move a quantity from one colors_parts item to another within a container.
+
+        If the target lot already exists its count is increased (merge).
+        """
+        # Start transaction
+        self.db.transaction()
+
+        try:
+            # Remove from the source lot
+            if not self.addColorPartIDToContainerNoTrans(
+                source_item_id, container_id, -quantity
+            ):
+                self.db.rollback()
+                return False
+
+            # Add to the target lot
+            if not self.addColorPartIDToContainerNoTrans(
+                target_item_id, container_id, quantity
+            ):
+                self.db.rollback()
+                return False
+
+            # Remove zero quantity entries
+            if not self.removeZeroQtyEntries(container_id):
+                self.db.rollback()
+                return False
+
+            # Commit transaction
+            if not self.db.commit():
+                logging.error(
+                    f"Error committing transaction: {self.db.lastError().text()}"
+                )
+                return False
+
+            return True
+
+        except Exception as e:
+            logging.error(f"Error changing part color: {str(e)}")
             self.db.rollback()
             return False
 
