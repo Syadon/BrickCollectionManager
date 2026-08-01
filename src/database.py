@@ -570,34 +570,48 @@ class DatabaseManager:
             self.db.rollback()
             return False
 
-    def changePartColorInContainer(
+    def updateLotInContainer(
         self,
         source_item_id: int,
         target_item_id: int,
         container_id: int,
-        quantity: int,
+        old_quantity: int,
+        new_quantity: int,
     ) -> bool:
-        """Move a quantity from one colors_parts item to another within a container.
+        """Set color and quantity of a lot inside a container.
 
-        If the target lot already exists its count is increased (merge).
+        The old lot (source_item_id, old_quantity) is replaced by
+        (target_item_id, new_quantity). A new_quantity of 0 removes the lot and
+        an already existing target lot is merged with the new quantity.
         """
         # Start transaction
         self.db.transaction()
 
         try:
-            # Remove from the source lot
-            if not self.addColorPartIDToContainerNoTrans(
-                source_item_id, container_id, -quantity
-            ):
-                self.db.rollback()
-                return False
+            if source_item_id == target_item_id:
+                # Same color: just apply the quantity delta
+                delta = new_quantity - old_quantity
+                if delta != 0:
+                    if not self.addColorPartIDToContainerNoTrans(
+                        source_item_id, container_id, delta
+                    ):
+                        self.db.rollback()
+                        return False
+            else:
+                # Remove the source lot
+                if not self.addColorPartIDToContainerNoTrans(
+                    source_item_id, container_id, -old_quantity
+                ):
+                    self.db.rollback()
+                    return False
 
-            # Add to the target lot
-            if not self.addColorPartIDToContainerNoTrans(
-                target_item_id, container_id, quantity
-            ):
-                self.db.rollback()
-                return False
+                # Add the new quantity to the target lot (merges if it exists)
+                if new_quantity > 0:
+                    if not self.addColorPartIDToContainerNoTrans(
+                        target_item_id, container_id, new_quantity
+                    ):
+                        self.db.rollback()
+                        return False
 
             # Remove zero quantity entries
             if not self.removeZeroQtyEntries(container_id):
@@ -614,7 +628,7 @@ class DatabaseManager:
             return True
 
         except Exception as e:
-            logging.error(f"Error changing part color: {str(e)}")
+            logging.error(f"Error updating lot: {str(e)}")
             self.db.rollback()
             return False
 

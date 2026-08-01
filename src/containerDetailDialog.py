@@ -22,8 +22,8 @@ from src.database import (
     DatabaseManager,
 )
 from src.partCloneDialog import PartCloneDialog
-from src.partColorChangeDialog import PartColorChangeDialog
 from src.partDetailDialog import PartDetailDialog
+from src.partLotEditDialog import PartLotEditDialog
 from src.partsMovementDialog import PartsMovementDialog
 from src.widgets.brickPreview import BrickPreview, get_global_image_provider
 from src.widgets.colorLabel import ColorLabel
@@ -284,11 +284,11 @@ class ContainerDetailDialog(QDialog):
         move_action = menu.addAction("Move selected parts…")
 
         # Single row actions
-        change_color_action = None
+        edit_lot_action = None
         clone_action = None
         if len(selected_rows) == 1:
             menu.addSeparator()
-            change_color_action = menu.addAction("Change color…")
+            edit_lot_action = menu.addAction("Edit lot…")
             clone_action = menu.addAction("Clone lot…")
 
         action = menu.exec(self.ui.partsView.viewport().mapToGlobal(pos))
@@ -304,13 +304,13 @@ class ContainerDetailDialog(QDialog):
             dialog = PartsMovementDialog(selected_parts, self.container, parent=self)
             if dialog.exec() == QDialog.DialogCode.Accepted:
                 self.refresh_parts_table()
-        elif action in (change_color_action, clone_action):
+        elif action in (edit_lot_action, clone_action):
             row = selected_rows[0]
             if row >= len(self.parts_data):
                 return
             part = self.parts_data[row]
-            if action == change_color_action:
-                dialog = PartColorChangeDialog(part, self.container, parent=self)
+            if action == edit_lot_action:
+                dialog = PartLotEditDialog(part, self.container, parent=self)
             else:
                 dialog = PartCloneDialog(part, self.container, parent=self)
             if dialog.exec() == QDialog.DialogCode.Accepted:

@@ -10,6 +10,7 @@ from PySide6.QtWidgets import (
 
 from src import utils
 from src.database import CollectionPart, Container, DatabaseManager
+from src.widgets.brickPreview import BrickPreview
 from src.widgets.colorComboBox import ColorComboBox
 from src.widgets.colorLabel import ColorLabel
 
@@ -52,14 +53,28 @@ class PartCloneDialog(QDialog):
         header.setWordWrap(True)
         layout.addWidget(header)
 
-        layout.addWidget(QLabel("Current color:"))
+        # Current state: preview (follows the selected color) and current color
+        current_row = QHBoxLayout()
+        self.preview = BrickPreview(
+            part_id=self.part.part_id,
+            color_id=str(self.part.color_id),
+            size=128,
+            parent=self,
+        )
+        current_row.addWidget(self.preview)
+
+        current_info = QVBoxLayout()
+        current_info.addWidget(QLabel("Current color:"))
         self.currentColorLabel = ColorLabel(
             self.part.color_name,
             self.part.rgb,
             self.part.color_type,
             self.part.color_id,
         )
-        layout.addWidget(self.currentColorLabel)
+        current_info.addWidget(self.currentColorLabel)
+        current_info.addStretch()
+        current_row.addLayout(current_info, 1)
+        layout.addLayout(current_row)
 
         combo_row = QHBoxLayout()
         combo_row.addWidget(QLabel("New color:"))
@@ -71,6 +86,8 @@ class PartCloneDialog(QDialog):
             colors=self.available_colors,
         )
         utils.setup_color_combo_delegate(self.colorCombo)
+        self.on_color_changed(self.colorCombo.currentIndex())
+        self.colorCombo.currentIndexChanged.connect(self.on_color_changed)
         combo_row.addWidget(self.colorCombo, 1)
         layout.addLayout(combo_row)
 
@@ -106,6 +123,14 @@ class PartCloneDialog(QDialog):
             self.quantitySpinBox.setEnabled(False)
             self.button_box.button(QDialogButtonBox.StandardButton.Ok).setEnabled(False)
             note.setText("No other compatible color for this part in the catalog.")
+
+    def on_color_changed(self, index):
+        """Keep the preview image in sync with the selected color"""
+        color_data = self.colorCombo.itemData(index)
+        if color_data is None:
+            return
+        color_id = color_data[0] if isinstance(color_data, tuple) else color_data
+        self.preview.load_part_image(self.part.part_id, str(color_id))
 
     def accept(self):
         try:
